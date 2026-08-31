@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>📺 大螢幕投影即時分數看板 - 國小課堂即時記錄系統</title>
+  <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+  <link rel="shortcut icon" href="/static/logo.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link id="app-favicon" rel="icon" type="image/png" href="/api/system/logo">
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+  <style>
+    html, body {
+      background: radial-gradient(circle at top, #1e1b4b 0%, #0f172a 60%, #020617 100%) !important;
+      color: #f8fafc;
+      height: 100vh;
+      max-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    .proj-window-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 22px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      border-bottom: 1.5px solid rgba(255, 255, 255, 0.12);
+      flex-wrap: wrap;
+      gap: 10px;
+      flex-shrink: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+    .proj-window-title {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      letter-spacing: 0.5px;
+    }
+    .proj-select-course {
+      background: #1e293b;
+      color: #ffffff;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      padding: 5px 10px;
+      border-radius: var(--radius-md);
+      font-size: 0.92rem;
+      font-weight: 700;
+      cursor: pointer;
+      outline: none;
+    }
+    .proj-main-content {
+      flex: 1;
+      height: calc(100vh - 65px);
+      padding: 8px 14px 10px 14px;
+      display: flex;
+      flex-direction: column;
+      max-width: 100%;
+      width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Big Screen Standalone Window Header -->
+  <header class="proj-window-header">
+    <div class="projection-title-area">
+      <span style="font-size: 2rem;">📺</span>
+      <div class="proj-window-title" id="proj-course-title" data-i18n="proj_title">課堂即時分數看板</div>
+      <select id="proj-course-select" class="proj-select-course">
+        <option value="">載入班級中...</option>
+      </select>
+      <div class="projection-period-tag" id="proj-period-label">📅 當天成績</div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+      <!-- Period Selector -->
+      <div class="proj-period-buttons">
+        <button class="proj-period-btn active" data-period="today" data-i18n="dash_period_today">當天</button>
+        <button class="proj-period-btn" data-period="week" data-i18n="dash_period_week">當週</button>
+        <button class="proj-period-btn" data-period="month" data-i18n="dash_period_month">當月</button>
+        <button class="proj-period-btn" data-period="range" data-i18n="dash_period_range">指定區間</button>
+        <button class="proj-period-btn" data-period="semester" data-i18n="dash_period_semester">學期總計</button>
+      </div>
+
+      <!-- Mode Switcher: 個人排行 vs 小組排行 vs 座號總覽 -->
+      <div class="proj-mode-toggle">
+        <button id="btn-proj-mode-individual" class="proj-mode-btn active" data-i18n="dash_mode_individual">🧑 個人排行</button>
+        <button id="btn-proj-mode-group" class="proj-mode-btn" data-i18n="dash_mode_group">🚩 小組排行</button>
+        <button id="btn-proj-mode-all" class="proj-mode-btn" data-i18n="dash_mode_all">📋 座號總覽</button>
+      </div>
+
+      <button id="btn-proj-toggle-lang" class="btn btn-lang-toggle" style="font-size: 0.88rem; padding: 6px 12px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);">🌐 繁中 / EN</button>
+      <button id="btn-proj-toggle-name-mode" class="btn btn-name-mode-toggle" style="font-size: 0.88rem; padding: 6px 12px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);">👤 姓名: 中文</button>
+
+      <div style="font-size: 0.85rem; color: #94a3b8; display: flex; align-items: center; gap: 5px;">
+        <span class="live-pulse-dot"></span> <span data-i18n="proj_live_sync">即時同步</span>
+      </div>
+
+      <button id="btn-fullscreen-toggle" class="btn" style="font-size: 0.92rem; padding: 7px 14px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);">⛶ 全螢幕</button>
+    </div>
+  </header>
+
+  <!-- Projection Custom Range Input Bar -->
+  <div id="proj-range-inputs" style="display: none; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: rgba(30, 41, 59, 0.95); border-radius: var(--radius-lg); margin: 16px auto 0 auto; max-width: 600px; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
+    <label style="font-size: 0.92rem; font-weight: 700; color: #cbd5e1;" data-i18n="proj_range_label">📅 投影自訂日期：</label>
+    <input type="date" id="proj-start-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
+    <span style="color: #94a3b8; font-weight: bold;">~</span>
+    <input type="date" id="proj-end-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
+    <button id="btn-apply-proj-range" class="btn" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="proj_range_apply_btn">套用區間</button>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="proj-main-content">
+    <!-- 1. 原有榮譽榜 Podium & List Container (頒獎台 + 名次清單) -->
+    <div id="proj-podium-view-container" style="flex: 1; display: flex; flex-direction: column;">
+      <!-- Podium (Top 3) -->
+      <div id="proj-podium-stage" class="podium-container"></div>
+
+      <!-- Runner-ups (Rank 4+) -->
+      <div class="proj-runners-up-section">
+        <div class="proj-runners-up-title">
+          <span data-i18n="proj_runners_up_title">🏅 榮譽榜單其他名次</span>
+        </div>
+        <div id="proj-runners-up-list" class="proj-runners-grid"></div>
+      </div>
+    </div>
+
+    <!-- 2. 全班學生座號得分一覽 Container (依座號 1 ~ N 排序，全屏 6x5 共 30 位免捲動) -->
+    <div id="proj-all-students-container" style="display: none; flex: 1; height: 100%; overflow: hidden;">
+      <div id="proj-all-students-grid" class="proj-all-students-grid"></div>
+    </div>
+  </main>
+
+  <!-- Toolkit Remote-Control Receiver: draw reveal / bulletin, triggered from a phone -->
+  <div id="proj-toolkit-overlay" class="proj-toolkit-overlay"></div>
+  <div id="proj-timer-widget" class="proj-timer-widget" style="display: none;">
+    <div class="proj-timer-label">⏱️ 課堂計時</div>
+    <div id="proj-timer-display" class="proj-timer-display">00:00</div>
+  </div>
+
+  <!-- Generic Beautified Confirm / Alert Modal (取代原生 confirm() / alert() 對話框) -->
+  <div id="modal-generic-confirm" class="modal-overlay" style="z-index: 100020;">
+    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div id="generic-confirm-icon-wrap" style="width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px;">
+        <span id="generic-confirm-icon">🔄</span>
+      </div>
+      <h3 id="generic-confirm-title" style="margin-bottom: 10px; font-weight: 800; font-size: 1.3rem; color: var(--text-main);"></h3>
+      <p id="generic-confirm-desc" style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px; display: none;"></p>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" id="btn-generic-confirm-cancel" class="btn btn-secondary" style="flex: 1; padding: 11px 0; font-weight: 700; font-size: 1rem;">取消</button>
+        <button type="button" id="btn-generic-confirm-ok" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem;">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/api.js?v=3.0"></script>
+  <script src="/static/js/i18n.js?v=3.0"></script>
+  <script src="/static/js/datepicker.js?v=3.0"></script>
+  <script src="/static/js/audio-engine.js?v=3.0"></script>
+  <script src="/static/js/realtime.js?v=3.0"></script>
+  <script src="/static/js/projection.js?v=3.0"></script>
+</body>
+</html>

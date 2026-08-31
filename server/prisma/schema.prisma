@@ -1,0 +1,199 @@
+// TeachSYS Prisma Schema
+//
+// 資料庫路徑在執行時才會決定（隨身碟/bin 目錄，見 src/paths.ts），因此不使用
+// `prisma migrate`；改由 src/db.ts 的 initSchema() 在啟動時執行等冪的
+// CREATE TABLE IF NOT EXISTS / ALTER TABLE ADD COLUMN（與原 Python
+// app/database.py 的 init_db() 行為一致）。這裡的 schema.prisma 僅用於產生
+// 型別安全的 Prisma Client，欄位定義必須與 db.ts 的建表 SQL 保持一致。
+//
+// 開發時的 DATABASE_URL 由 .env 提供；正式執行時由 src/db.ts 透過
+// `datasourceUrl` 動態覆寫為 bin/classroom_record.db 的實際路徑。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Course {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  teacherType        String   @default("homeroom") @map("teacher_type")
+  description        String?
+  seatRows           Int      @default(5) @map("seat_rows")
+  seatCols           Int      @default(6) @map("seat_cols")
+  blackboardPosition String   @default("top") @map("blackboard_position")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  students         Student[]
+  groups           Group[]
+  groupPlans       GroupPlan[]
+  attendance       Attendance[]
+  evaluationRules  EvaluationRule[]
+  scoreLogs        ScoreLog[]
+  qualitativeNotes QualitativeNote[]
+
+  @@map("courses")
+}
+
+model GroupPlan {
+  id        Int      @id @default(autoincrement())
+  courseId  Int      @map("course_id")
+  name      String
+  isActive  Int      @default(1) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  course  Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groups  Group[]
+  members GroupMember[]
+
+  @@map("group_plans")
+}
+
+model Group {
+  id         Int     @id @default(autoincrement())
+  courseId   Int     @map("course_id")
+  groupName  String  @map("group_name")
+  iconUrl    String? @map("icon_url")
+  orderIndex Int     @default(0) @map("order_index")
+  planId     Int?    @map("plan_id")
+
+  course        Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  plan          GroupPlan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  members       GroupMember[]
+  directStudents Student[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        Int @id @default(autoincrement())
+  planId    Int @map("plan_id")
+  groupId   Int @map("group_id")
+  studentId Int @map("student_id")
+
+  plan    GroupPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  group   Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, studentId])
+  @@map("group_members")
+}
+
+model Student {
+  id            Int     @id @default(autoincrement())
+  courseId      Int     @map("course_id")
+  studentNumber Int     @map("student_number")
+  studentCode   String? @map("student_code")
+  name          String
+  englishName   String? @map("english_name")
+  gender        String  @default("M")
+  groupId       Int?    @map("group_id")
+  seatRow       Int?    @map("seat_row")
+  seatCol       Int?    @map("seat_col")
+  isActive      Int     @default(1) @map("is_active")
+
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  group            Group?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  groupMemberships GroupMember[]
+  attendance       Attendance[]
+  scoreLogs        ScoreLog[]
+  qualitativeNotes QualitativeNote[]
+
+  @@map("students")
+}
+
+model Attendance {
+  id        Int      @id @default(autoincrement())
+  courseId  Int      @map("course_id")
+  studentId Int      @map("student_id")
+  date      String
+  status    String   @default("present")
+  updatedAt String   @map("updated_at")
+
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, studentId, date])
+  @@map("attendance")
+}
+
+model EvaluationRule {
+  id         Int     @id @default(autoincrement())
+  courseId   Int     @map("course_id")
+  title      String
+  category   String  @default("positive")
+  scoreValue Int     @map("score_value")
+  icon       String  @default("⭐")
+  isDefault  Int     @default(0) @map("is_default")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("evaluation_rules")
+}
+
+model ScoreLog {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  studentId Int     @map("student_id")
+  ruleId    Int?    @map("rule_id")
+  ruleTitle String  @map("rule_title")
+  score     Int
+  category  String
+  date      String
+  timestamp String
+  isUndone  Int     @default(0) @map("is_undone")
+  planId    Int?    @map("plan_id")
+  groupId   Int?    @map("group_id")
+
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("score_logs")
+}
+
+model QualitativeNote {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  studentId Int     @map("student_id")
+  noteText  String  @map("note_text")
+  date      String
+  mediaUrl  String? @map("media_url")
+  mediaType String? @map("media_type")
+  timestamp String
+
+  course  Course  @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@map("qualitative_notes")
+}
+
+model UndoLog {
+  id          Int     @id @default(autoincrement())
+  actionType  String  @map("action_type")
+  targetId    Int     @map("target_id")
+  payloadJson String  @map("payload_json")
+  createdAt   String  @map("created_at")
+  isUndone    Int     @default(0) @map("is_undone")
+
+  @@map("undo_logs")
+}
+
+model SystemSetting {
+  key   String @id
+  value String
+
+  @@map("system_settings")
+}
+
+model SystemSession {
+  token       String @id
+  createdDate String @map("created_date")
+  expiresAt   String @map("expires_at")
+  createdAt   String @map("created_at")
+
+  @@map("system_sessions")
+}

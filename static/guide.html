@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>教師操作手冊與使用說明 · 國小課堂即時記錄系統 (Teacher User Manual)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="/api/system/logo">
+  <style>
+    :root {
+      --bg-gradient: radial-gradient(circle at 50% 0%, #1e293b 0%, #0f172a 100%);
+      --card-bg: rgba(30, 41, 59, 0.75);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --accent-positive: #10b981;
+      --accent-negative: #ef4444;
+      --accent-warning: #f59e0b;
+      --accent-purple: #8b5cf6;
+      --input-bg: rgba(15, 23, 42, 0.65);
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 20px;
+      --radius-full: 9999px;
+      --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.25), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', 'Noto Sans TC', sans-serif;
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.65;
+      padding: 24px 20px 80px;
+    }
+
+    .guide-container {
+      max-width: 1060px;
+      margin: 0 auto;
+    }
+
+    /* Top Sticky Action Bar */
+    .guide-top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 30px;
+      padding: 12px 20px;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-xl);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 15px;
+      z-index: 1000;
+      box-shadow: var(--shadow-md);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .guide-header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .guide-header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 14px;
+      background: rgba(37, 99, 235, 0.18);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      border-radius: var(--radius-full);
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      margin-bottom: 12px;
+    }
+
+    .guide-title {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .guide-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    .guide-nav-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-xl);
+      padding: 18px 24px;
+      margin-bottom: 36px;
+      backdrop-filter: blur(12px);
+    }
+
+    .guide-nav-title {
+      font-size: 0.92rem;
+      font-weight: 800;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .guide-nav-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .guide-nav-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      background: var(--input-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-md);
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: all var(--transition-normal);
+      cursor: pointer;
+    }
+
+    .guide-nav-pill:hover {
+      background: var(--primary);
+      border-color: var(--primary-light);
+      color: #ffffff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+    }
+
+    .guide-section {
+      margin-bottom: 44px;
+      scroll-margin-top: 90px;
+    }
+
+    .guide-section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .guide-section-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius-lg);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(37, 99, 235, 0.4));
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .guide-section-title {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .guide-item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .guide-item-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-xl);
+      padding: 22px 26px;
+      backdrop-filter: blur(12px);
+      transition: all var(--transition-normal);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .guide-item-card:hover {
+      border-color: rgba(96, 165, 250, 0.35);
+      box-shadow: var(--shadow-md);
+    }
+
+    .guide-item-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .guide-item-badge {
+      font-size: 0.8rem;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: var(--text-muted);
+    }
+
+    .guide-item-badge.badge-primary { background: rgba(59, 130, 246, 0.2); border-color: rgba(59, 130, 246, 0.4); color: #93c5fd; }
+    .guide-item-badge.badge-success { background: rgba(16, 185, 129, 0.2); border-color: rgba(16, 185, 129, 0.4); color: #6ee7b7; }
+    .guide-item-badge.badge-warning { background: rgba(245, 158, 11, 0.2); border-color: rgba(245, 158, 11, 0.4); color: #fcd34d; }
+    .guide-item-badge.badge-purple { background: rgba(139, 92, 246, 0.2); border-color: rgba(139, 92, 246, 0.4); color: #c4b5fd; }
+
+    .guide-item-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-main);
+    }
+
+    .guide-item-body {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      line-height: 1.7;
+    }
+
+    .guide-item-body b {
+      color: #ffffff;
+      font-weight: 700;
+    }
+
+    .guide-item-body code {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 2px 7px;
+      border-radius: 6px;
+      color: #38bdf8;
+      font-size: 0.88rem;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    .guide-tip-box {
+      margin-top: 14px;
+      padding: 12px 16px;
+      border-radius: var(--radius-md);
+      background: rgba(59, 130, 246, 0.12);
+      border-left: 4px solid var(--primary-light);
+      font-size: 0.9rem;
+      color: #bfdbfe;
+    }
+
+    .guide-tip-box.tip-success {
+      background: rgba(16, 185, 129, 0.12);
+      border-left-color: var(--accent-positive);
+      color: #a7f3d0;
+    }
+
+    .guide-tip-box.tip-warning {
+      background: rgba(245, 158, 11, 0.12);
+      border-left-color: var(--accent-warning);
+      color: #fde68a;
+    }
+
+    .guide-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 0.9rem;
+      background: rgba(15, 23, 42, 0.5);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--card-border);
+    }
+
+    .guide-table th, .guide-table td {
+      padding: 10px 14px;
+      border: 1px solid var(--card-border);
+      text-align: left;
+    }
+
+    .guide-table th {
+      background: rgba(255, 255, 255, 0.06);
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .guide-step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 0.82rem;
+      font-weight: 800;
+      margin-right: 6px;
+    }
+
+    /* Light Mode Theme */
+    [data-theme="light"], body.theme-light {
+      --bg-gradient: linear-gradient(135deg, #eff6ff 0%, #f8fafc 45%, #f5f3ff 100%);
+      --card-bg: #ffffff;
+      --card-border: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --input-bg: #f8fafc;
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    body.theme-light {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+    }
+
+    body.theme-light .guide-top-bar {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: #e2e8f0;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+    }
+
+    body.theme-light .guide-title {
+      background: linear-gradient(135deg, #0f172a 0%, #2563eb 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    body.theme-light .guide-header {
+      border-bottom-color: #e2e8f0;
+    }
+
+    body.theme-light .guide-header-badge {
+      background: rgba(37, 99, 235, 0.1);
+      border-color: rgba(37, 99, 235, 0.25);
+      color: var(--primary-dark);
+    }
+
+    body.theme-light .guide-nav-card {
+      background: #ffffff;
+      border-color: #e2e8f0;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+    }
+
+    body.theme-light .guide-nav-pill {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #334155;
+    }
+
+    body.theme-light .guide-nav-pill:hover {
+      background: var(--primary);
+      border-color: var(--primary-light);
+      color: #ffffff;
+    }
+
+    body.theme-light .guide-item-card {
+      background: #ffffff;
+      border-color: #e2e8f0;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+    }
+
+    body.theme-light .guide-item-card:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.08);
+    }
+
+    body.theme-light .guide-item-body {
+      color: #475569;
+    }
+
+    body.theme-light .guide-item-body b {
+      color: #0f172a;
+    }
+
+    body.theme-light .guide-item-body code {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #0284c7;
+    }
+
+    body.theme-light .guide-tip-box {
+      background: #eff6ff;
+      color: #1e40af;
+      border-left-color: #3b82f6;
+    }
+
+    body.theme-light .guide-tip-box.tip-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border-left-color: #10b981;
+    }
+
+    body.theme-light .guide-tip-box.tip-warning {
+      background: #fffbeb;
+      color: #92400e;
+      border-left-color: #f59e0b;
+    }
+
+    body.theme-light .guide-table {
+      background: #ffffff;
+      border-color: #e2e8f0;
+    }
+
+    body.theme-light .guide-table th {
+      background: #f8fafc;
+      color: #1e293b;
+      border-color: #e2e8f0;
+    }
+
+    body.theme-light .guide-table td {
+      border-color: #e2e8f0;
+      color: #334155;
+    }
+
+    body.theme-light .guide-item-badge {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #64748b;
+    }
+
+    body.theme-light .guide-item-badge.badge-primary {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    body.theme-light .guide-item-badge.badge-success {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #047857;
+    }
+
+    body.theme-light .guide-item-badge.badge-warning {
+      background: #fffbeb;
+      border-color: #fde68a;
+      color: #b45309;
+    }
+
+    body.theme-light .guide-item-badge.badge-purple {
+      background: #f5f3ff;
+      border-color: #ddd6fe;
+      color: #6d28d9;
+    }
+
+    /* Language display switcher styles */
+    [data-lang="en"] { display: none; }
+    body.lang-en [data-lang="zh"] { display: none !important; }
+    body.lang-en [data-lang="en"] { display: block !important; }
+    body.lang-en span[data-lang="en"], 
+    body.lang-en a[data-lang="en"], 
+    body.lang-en b[data-lang="en"] { display: inline !important; }
+    body.lang-en div.guide-nav-grid [data-lang="en"],
+    body.lang-en div.guide-header-badge[data-lang="en"] { display: inline-flex !important; }
+  </style>
+</head>
+<body>
+
+  <div class="guide-container">
+
+    <!-- Top Sticky Bar -->
+    <div class="guide-top-bar">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="/" class="guide-nav-pill" style="background: var(--primary); border-color: var(--primary-light); color: #fff; font-weight: 700;">
+          <span data-lang="zh">⬅️ 回到即時記錄系統</span>
+          <span data-lang="en">⬅️ Return to App</span>
+        </a>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button id="btn-guide-toggle-theme" class="guide-nav-pill" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); font-weight: 800; font-size: 0.92rem;">
+          <span data-lang="zh" id="guide-theme-label-zh">☀️ 淺色模式</span>
+          <span data-lang="en" id="guide-theme-label-en">☀️ Light Mode</span>
+        </button>
+        <button id="btn-guide-toggle-lang" class="guide-nav-pill" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); font-weight: 800; font-size: 0.92rem;">
+          🌐 繁中 / English
+        </button>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <header class="guide-header">
+      <div class="guide-header-badge" data-lang="zh">📖 國小課堂教學全功能手冊</div>
+      <div class="guide-header-badge" data-lang="en">📖 Comprehensive Teacher User Manual</div>
+
+      <h1 class="guide-title" data-lang="zh">國小課堂即時記錄系統 · 操作使用指南</h1>
+      <h1 class="guide-title" data-lang="en">Classroom Live Tracker · Teacher User Guide</h1>
+
+      <p class="guide-subtitle" data-lang="zh">
+        專為國小導師與科任教師設計的現代化數位課堂管理工具。涵蓋「即時評分、快速加減分、5大假別點名、座位拖曳、彈性分組、質性影音筆記、大螢幕頒獎台與雙語系支援」。
+      </p>
+      <p class="guide-subtitle" data-lang="en">
+        Designed for modern elementary homeroom & subject teachers. Features live scoring, quick +/- mode, attendance tracking, drag-and-drop seating, flexible grouping, multimedia notes, big-screen Olympic podium, and full bilingual support.
+      </p>
+    </header>
+
+    <!-- Table of Contents -->
+    <nav class="guide-nav-card">
+      <div class="guide-nav-title">
+        <span data-lang="zh">📌 目錄導覽 (點擊快速跳轉)</span>
+        <span data-lang="en">📌 Table of Contents (Click to jump)</span>
+      </div>
+      <div class="guide-nav-grid">
+        <a href="#quickstart" class="guide-nav-pill"><span data-lang="zh">🚀 3 步驟快速上手</span><span data-lang="en">🚀 3-Step Quick Start</span></a>
+        <a href="#scoring" class="guide-nav-pill"><span data-lang="zh">⭐ 1. 即時評分與快速加減分</span><span data-lang="en">⭐ 1. Live Scoring & Quick +/- Mode</span></a>
+        <a href="#attendance" class="guide-nav-pill"><span data-lang="zh">📋 2. 出缺席點名與雙語日期</span><span data-lang="en">📋 2. Attendance & Bilingual Dates</span></a>
+        <a href="#seating" class="guide-nav-pill"><span data-lang="zh">🪑 3. 教室座位表與自動編排</span><span data-lang="en">🪑 3. Seating Chart & Auto-Layout</span></a>
+        <a href="#grouping" class="guide-nav-pill"><span data-lang="zh">🧩 4. 彈性分組與動物圖示</span><span data-lang="en">🧩 4. Team Grouping & Animal Icons</span></a>
+        <a href="#notes" class="guide-nav-pill"><span data-lang="zh">📝 5. 特殊表現質性紀錄與影音</span><span data-lang="en">📝 5. Qualitative Notes & Media</span></a>
+        <a href="#dashboard" class="guide-nav-pill"><span data-lang="zh">📊 6. 儀表板、排行榜與座號總覽</span><span data-lang="en">📊 6. Dashboard & Number Roster</span></a>
+        <a href="#projection" class="guide-nav-pill"><span data-lang="zh">📺 7. 大螢幕投影與奧運頒獎台</span><span data-lang="en">📺 7. Big Screen & Olympic Podium</span></a>
+        <a href="#admin" class="guide-nav-pill"><span data-lang="zh">⚙️ 8. 系統管理、名冊與報表匯出</span><span data-lang="en">⚙️ 8. Admin, Roster & Excel Export</span></a>
+        <a href="#toolkit" class="guide-nav-pill"><span data-lang="zh">🧰 9. 課堂教學輔助工具箱</span><span data-lang="en">🧰 9. Teaching Toolkit</span></a>
+        <a href="#security-i18n" class="guide-nav-pill"><span data-lang="zh">🔐 10. 安全密碼與中英雙語系切換</span><span data-lang="en">🔐 10. Security & Bilingual Mode</span></a>
+        <a href="#faq" class="guide-nav-pill"><span data-lang="zh">💡 11. 常見問題與教學技巧</span><span data-lang="en">💡 11. FAQ & Teaching Tips</span></a>
+      </div>
+    </nav>
+
+    <!-- Section: Quickstart -->
+    <section id="quickstart" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">🚀</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">快速上手 3 步驟 (Quick Start)</span>
+          <span data-lang="en">3-Step Quick Start Guide</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary">STEP 1</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">建立課程或班級</span>
+              <span data-lang="en">Create a Class or Subject Course</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">點擊頁面頂部的 <b>➕（新增課程）</b> 按鈕，輸入班級名稱（例如：<code>五年二班 社會</code>），選擇教師角色（<b>導師班級</b> 或 <b>科任課程</b>），確認後即可立即建立並切換至該班級。</span>
+            <span data-lang="en">Click the <b>➕ (Add Course)</b> button in the top navigation bar. Enter the course title (e.g., <code>Grade 5-2 Social Studies</code>), select role (<b>Homeroom Class</b> or <b>Subject Course</b>), and click confirm.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">STEP 2</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">匯入學生名冊（支援中文與英文姓名）</span>
+              <span data-lang="en">Import Student Roster (Supports English Names)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">進入 <b>⚙️ 系統與後台 ➔ 🧑‍🎓 學生名冊管理</b>，點擊 <b>📥 學生名單批次匯入</b>。您可以下載標準 Excel 範本，填入「座號、學號、中文姓名、英文姓名、性別」，或直接在文字框中貼上名單，一鍵匯入全班學生。</span>
+            <span data-lang="en">Navigate to <b>⚙️ Admin ➔ 🧑‍🎓 Student Roster</b>, then click <b>📥 Batch Import</b>. Download the Excel template, fill in "Seat No., Student ID, Chinese Name, English Name, Gender", or paste text directly for 1-click import.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-purple">STEP 3</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">開始課堂即時記錄與大螢幕激勵</span>
+              <span data-lang="en">Start Live Scoring & Big Screen Motivation</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">切換到 <b>⭐ 即時評分</b> 即可點擊學生給予加扣分；或切換 <b>⚡ 快速加減分模式</b> 直接於卡片上點擊加減號！點擊 <b>📺 進入大螢幕投影模式</b> 投放到電子白板，呈現奧運頒獎台與座號總覽！</span>
+            <span data-lang="en">Go to <b>⭐ Live Scoring</b> to award points with popup rules or toggle <b>⚡ Quick +/- Mode</b> to score directly on cards with one tap! Open <b>📺 Projector View</b> on your classroom screen for the Olympic podium and scoreboard!</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 1: Scoring -->
+    <section id="scoring" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">⭐</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">1. 即時評分、小組加分與紀錄回復 (Scoring & Logs)</span>
+          <span data-lang="en">1. Live Scoring, Group Scoring & Log Restore</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">⚡ 快速評分</span><span data-lang="en">⚡ QUICK SCORING</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">快速加減分切換模式 (Quick Scoring Mode)</span>
+              <span data-lang="en">Quick +/- Scoring Toggle Mode</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">在即時評分頁面上方，點擊 <b>⚡ 快速加減分：開啟/關閉</b> 按鈕：<br>
+            • <b>開啟狀態</b>：學生卡片上會直接常駐顯示 <code>+1</code>（綠色加分）與 <code>-1</code>（紅色扣分）按鈕，點擊後<b>無需跳出選單，1 秒直接完成評分</b>。<br>
+            • <b>手機自適應</b>：在手機或平板直向螢幕上，加減按鈕具備最佳間距與防誤觸設計，操作流暢不重疊。<br>
+            • <b>關閉狀態</b>：恢復標準模式，點擊學生卡片跳出詳細評分規則選單（熱心助人、發言踴躍等）。</span>
+            <span data-lang="en">Click the <b>⚡ Quick Scoring: On/Off</b> button on the top right of the scoring pane:<br>
+            • <b>Enabled</b>: Permanent <code>+1</code> (Green) and <code>-1</code> (Red) buttons appear directly on student cards for instantaneous 1-tap scoring.<br>
+            • <b>Mobile Optimized</b>: Layout adapts perfectly to smartphone touch screens with anti-overlap spacing.<br>
+            • <b>Disabled</b>: Standard popover menu mode opens when clicking student cards.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary"><span data-lang="zh">小組與多選</span><span data-lang="en">Team & Batch</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">小組即時加分、多選批次評分與 2.5 秒撤銷 (Undo)</span>
+              <span data-lang="en">Team Scoring, Batch Award & 2.5s Undo</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>小組即時加分</b>：點選上方快捷小組標籤或整組成員進行評分時，系統會<b>同步為全組學生加分，並為該小組累積「小組獨立得分」</b>，卡片上即時呈現當前累積組分。<br>
+            • <b>多選批次評分</b>：長按或點選多位學生卡片進入多選狀態，點選評分項目可同時為多位同學加減分。<br>
+            • <b>秒級撤銷 (Undo)</b>：評分完成後，螢幕下方會跳出 <b>2.5 秒 Undo 提示框</b>，若誤觸可立即點擊「↩️ 復原撤銷」回到評分前狀態。</span>
+            <span data-lang="en">• <b>Team Live Scoring</b>: Awarding points to a team adds points to all members and accumulates <b>Isolated Group Points</b> simultaneously with live score badges on student cards.<br>
+            • <b>Batch Scoring</b>: Select multiple students by tapping cards to award points in batches.<br>
+            • <b>Instant Undo</b>: A <b>2.5s Undo toast</b> appears at the bottom after scoring; tap "↩️ Undo" anytime to revert accidental scores.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success"><span data-lang="zh">日誌管理</span><span data-lang="en">Log Manager</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">評分歷程分組標籤、記錄刪除與一鍵回復 (Restore)</span>
+              <span data-lang="en">Score Logs with Group Tags & 1-Click Restore</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>分組模式與組別標籤</b>：在學生個人評分歷程中，每筆加扣分皆完整註記評分時所屬的「分組模式」與「小組名稱」（例如：<code>國語分組 · 第 2 組</code>）。<br>
+            • <b>誤刪一鍵回復</b>：若教師在日誌中不小心刪除分數，可隨時點擊 <b>↩️ 恢復紀錄</b>，系統會立即回補分數，確保學期歷程數據精準無虞。</span>
+            <span data-lang="en">• <b>Group & Plan Tags</b>: Each score entry in student history logs tracks its exact Grouping Plan and Team Name (e.g., <code>Chinese Reading · Team 2</code>).<br>
+            • <b>1-Click Log Restore</b>: If a score record is accidentally deleted, click <b>↩️ Restore Record</b> to instantly restore the score.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Attendance -->
+    <section id="attendance" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">📋</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">2. 出缺席點名與雙語日期選擇 (Attendance)</span>
+          <span data-lang="en">2. Attendance Management & Bilingual Dates</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">5 LEAVE TYPES</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">6 大出缺席假別與一鍵全班出席</span>
+              <span data-lang="en">6 Attendance Statuses & 1-Click All Present</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">系統支援 <b>出席 (Present)</b>、<b>病假 (Sick Leave)</b>、<b>事假 (Personal Leave)</b>、<b>公假 (Official Leave)</b>、<b>喪假 (Bereavement Leave)</b>、<b>遲到 (Late)</b> 6 種出缺席狀態。<br>
+            • 上課開始時點擊 <b>✅ 全班出席</b> 即可秒速完成點名。<br>
+            • 點名請假之學生在評分卡片與排行榜上會標註 <code>(請假)</code>，避免課堂計分誤判。</span>
+            <span data-lang="en">Supports <b>Present</b>, <b>Sick Leave</b>, <b>Personal Leave</b>, <b>Official Leave</b>, <b>Bereavement Leave</b>, and <b>Late</b>.<br>
+            • Click <b>✅ All Present</b> for 1-click full class attendance.<br>
+            • Absent students automatically show a <code>(Leave)</code> badge on scoring cards to prevent scoring confusion.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning">NEW</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">全客製化雙語日期選擇器 (Custom DatePicker)</span>
+              <span data-lang="en">Custom Bilingual DatePicker Component</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">點名日期選擇器採用專屬雙語 DatePicker 元件：在英文語系下顯示 <code>YYYY-MM-DD</code> 與完整英文月曆（<code>January ~ December</code>、<code>Su ~ Sa</code>）；在繁中語系下顯示 <code>年/月/日</code> 與中文月曆。</span>
+            <span data-lang="en">The date picker uses a customized bilingual component: shows <code>YYYY-MM-DD</code> with English calendar (<code>January ~ December</code>, <code>Su ~ Sa</code>) in English mode, and <code>年/月/日</code> in Traditional Chinese mode.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Seating -->
+    <section id="seating" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">🪑</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">3. 教室座位表編排與智慧排座 (Seating)</span>
+          <span data-lang="en">3. Seating Chart & Smart Arrangement</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-purple">ARRANGEMENT</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">自訂行列數、講台方位與 3 種自動排座</span>
+              <span data-lang="en">Custom Grid, Podium Position & 3 Auto-Seat Modes</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>講台方位</b>：可自訂黑板/講台在 <b>上(前)、下(後)、左、右</b> 4 種視角。<br>
+            • <b>🔢 依座號依序編排</b>：自動依照 1 號 ~ N 號由左至右、由前至後排位。<br>
+            • <b>⚖️ 性別平均排位</b>：男女生交叉梅花座智慧編排。<br>
+            • <b>🎲 隨機排位</b>：全班同學隨機抽籤入座。<br>
+            • <b>自由拖曳</b>：任何座位卡片皆可自由拖拉交換，或拖曳至下方未入座區。</span>
+            <span data-lang="en">• <b>Podium Position</b>: Configure blackboard / teacher podium at <b>Top (Front), Bottom (Back), Left, or Right</b>.<br>
+            • <b>🔢 Seat by Number</b>: Ordered consecutively from seat 1 to N.<br>
+            • <b>⚖️ Gender Balance</b>: Alternates male and female students in a checkerboard pattern.<br>
+            • <b>🎲 Randomize</b>: Shuffles all students randomly.<br>
+            • <b>Drag & Drop</b>: Drag any seat card to swap positions or unseat students seamlessly.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Grouping -->
+    <section id="grouping" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">🧩</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">4. 多重分組模式記憶與小組獨立積分 (Grouping)</span>
+          <span data-lang="en">4. Multi-Plan Grouping & Isolated Team Scores</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">多模式記憶</span><span data-lang="en">MULTI-PLAN</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">多分組模式隨選切換與複製 (Multi-Plan Grouping Plans)</span>
+              <span data-lang="en">Flexible Multi-Plan Grouping & Cloning</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>多模式記憶保存</b>：支援為不同學科或課堂活動建立專屬分組（如：<code>國語分組</code>、<code>數學討論</code>、<code>自然實驗組</code>、<code>綜合活動</code>）。<br>
+            • <b>一鍵切換啟用</b>：隨堂切換模式，系統自動載入對應的小組成員架構與圖示。<br>
+            • <b>模式複製與自訂</b>：可將現有分組架構快速複製為新模式，大幅省去重複排組時間。</span>
+            <span data-lang="en">• <b>Multi-Plan Memory</b>: Create distinct grouping plans for different subjects and activities (e.g., <code>Chinese Reading</code>, <code>Math Discussion</code>, <code>Science Lab</code>).<br>
+            • <b>Instant Plan Switching</b>: Switch active plans with one click; team structures and icons load automatically.<br>
+            • <b>Plan Cloning</b>: Clone existing grouping structures to new plans in seconds.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">AVATARS & SCORING</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">小組獨立得分計算、拖曳分組與 25 款動物圖示</span>
+              <span data-lang="en">Isolated Group Scoring, Drag Assignment & 25 Animal Icons</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>小組獨立積分機制</b>：當教師為小組加分時，小組擁有專屬的「小組獨立總分」，小組排行榜直接以此分數排序，不再受個別組員個別調分或換組影響。<br>
+            • <b>即時組分標示</b>：評分介面之小組快捷列與學生卡片標籤即時顯示當前小組得分（如 <code>🏷️ 第 2 組 4 分</code>）。<br>
+            • <b>🦁 25 款可愛動物圖示</b>：內建企鵝、黑熊、石虎、海獺、海豚、貓頭鷹等 25 款可愛動物頭像；支援上傳自訂隊徽。<br>
+            • <b>智慧分組與自由拖曳</b>：支援輸入組數自動隨機/性別平衡編組，學生卡片可自由跨組拖曳調整。</span>
+            <span data-lang="en">• <b>Isolated Group Scoring</b>: Teams accumulate their own independent team scores; group leaderboards rank teams directly by this isolated score.<br>
+            • <b>Real-Time Group Score Badges</b>: Quick team selection bar and student card badges show live group scores (e.g., <code>🏷️ Team 2 (4 pts)</code>).<br>
+            • <b>🦁 25 Animal Icons</b>: Built-in animal avatars (Penguin, Bear, Otter, Dolphin, Owl, etc.) + custom team logo uploads.<br>
+            • <b>Smart Auto-Grouping & Drag</b>: Balanced or random auto-grouping with intuitive drag-and-drop member assignments.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Notes -->
+    <section id="notes" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">📝</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">5. 特殊表現質性紀錄與影音上傳 (Notes)</span>
+          <span data-lang="en">5. Qualitative Notes & Multimedia Logs</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary">MULTIMEDIA</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">質性行為觀察、拍照錄影與歷史時間軸</span>
+              <span data-lang="en">Behavior Observations, Photo/Video & Timeline</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">除了量化加減分外，教師可針對學生的特殊課堂表現、情緒狀態或學習亮點撰寫文字觀察筆記，並直接上傳現場照片（JPG/PNG）或錄影短片（MP4/WebM）。系統會自動以 <code>班級-座號-日期</code> 歸檔，隨時於時間軸回溯查閱。</span>
+            <span data-lang="en">Beyond quantitative scores, record qualitative text notes on student behavior, emotions, or achievements. Attach classroom photos (JPG/PNG) and videos (MP4/WebM) auto-archived as <code>Class-SeatNo-Date</code> for easy timeline review.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Dashboard -->
+    <section id="dashboard" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">📊</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">6. 實時儀表板、個人小組排行與座號總覽 (Dashboard)</span>
+          <span data-lang="en">6. Real-Time Dashboard & Number Roster</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">3 種檢視模式</span><span data-lang="en">3 VIEW MODES</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">個人排行、小組獨立積分排行與座號得分一覽表</span>
+              <span data-lang="en">Individual Rank, Group Isolated Rank & Student Number Roster</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>🧑 個人排行 (Top 10)</b>：前三名金銀銅牌榮譽徽章，激勵學生自主向學。<br>
+            • <b>🚩 小組排行</b>：展示各小組專屬獨立得分與成員名單，精準呈現團隊競賽榮譽。<br>
+            • <b>📋 座號得分總覽</b>：依 1 號 ~ N 號座號依序排列全班所有同學的即時累積總分，方便全班總體掌握。<br>
+            • <b>時段篩選</b>：支援 <b>當天、當週、當月、指定日期區間、學期總計</b> 5 大時段。</span>
+            <span data-lang="en">• <b>🧑 Individual Rank (Top 10)</b>: Gold, Silver, and Bronze badges for top performers.<br>
+            • <b>🚩 Group Rank</b>: Displays isolated group scores and roster to motivate team spirit.<br>
+            • <b>📋 Number Roster</b>: Complete list of all students sorted by seat number 1 ~ N with real-time cumulative scores.<br>
+            • <b>Date Filter</b>: Filter by <b>Today, This Week, This Month, Custom Date Range, or Semester Total</b>.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 7: Projection -->
+    <section id="projection" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">📺</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">7. 大螢幕奧運頒獎台投影模式 (Projector View)</span>
+          <span data-lang="en">7. Big Screen Projector & Olympic Podium</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-purple">OLYMPIC PODIUM</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">專為教室電子白板設計的大字體視覺投影</span>
+              <span data-lang="en">Classroom Smartboard View with Instant Synchronization</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">點擊 <b>📺 進入大螢幕投影模式</b> 可全螢幕投影：<br>
+            • <b>奧運頒獎台</b>：前三名金（🥇 冠軍）、銀（🥈 亞軍）、銅（🥉 季軍）大型獎台視覺動畫。<br>
+            • <b>無刷新即時同步</b>：教師在手機或平板上加分，大螢幕無需重新整理，0.1 秒自動平滑同步更新！<br>
+            • <b>獨立網址投影</b>：支援直接在新分頁開啟 <code>/projection.html</code>，並可點擊 <code>⛶ 全螢幕</code> 模式。</span>
+            <span data-lang="en">Open <b>📺 Projector View</b> for classroom electronic displays:<br>
+            • <b>Olympic Podium</b>: Animated 3D-styled podium for 1st (🥇 Gold), 2nd (🥈 Silver), and 3rd (🥉 Bronze).<br>
+            • <b>No-Flash Live Sync</b>: Score changes on teachers' mobile devices reflect instantly on screen in 0.1s.<br>
+            • <b>Standalone Projector Page</b>: Open <code>/projection.html</code> in a dedicated window with fullscreen ⛶ toggle.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 8: Admin -->
+    <section id="admin" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">⚙️</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">8. 系統後台、4 大 Excel 匯出與淡色系分組 (Admin & Reports)</span>
+          <span data-lang="en">8. System Admin, 4-Sheet Excel Export & Pastel Groups</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary">EXCEL REPORTS</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">4 大 Excel 工作表匯出與淡色系模式填充</span>
+              <span data-lang="en">4 Comprehensive Excel Sheets with Pastel Color Mode Fills</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">進入後台 <b>📊 報表資料匯出</b>，選擇日期區間即可一鍵下載包含 4 大專業工作表的試算表：<br>
+            • <b>工作表 1【出缺席統計】</b>：全班出席、各假別次數完整匯總。<br>
+            • <b>工作表 2【量化成績統計與明細】</b>：學生個人座號姓名加扣分總計與明細表。<br>
+            • <b>工作表 3【小組分數成員與得分一覽】</b>：完整輸出各分組模式名稱、小組名稱、小組獨立得分、組內人數，<b>成員名單依序分欄（成員 1、成員 2…）</b>，並為<b>不同分組模式填充柔和淡色系（Pastel Colors）背景底色</b>，層次清晰不刺眼。<br>
+            • <b>工作表 4【質性紀錄明細】</b>：日期時間、學生姓名與特殊課堂表現文字紀錄。</span>
+            <span data-lang="en">Navigate to <b>📊 Export Reports</b> to download an enriched 4-sheet Excel workbook:<br>
+            • <b>Sheet 1 [Attendance Summary]</b>: Complete count of present days and leave types per student.<br>
+            • <b>Sheet 2 [Quantitative Score Breakdown]</b>: Clean individual student score summaries and event logs.<br>
+            • <b>Sheet 3 [Team Scores & Member Overview]</b>: Displays grouping plan names, team names, isolated group scores, member count, <b>individual member columns (Member 1, Member 2...)</b>, and <b>alternating soft pastel background colors</b> per grouping plan for enhanced readability.<br>
+            • <b>Sheet 4 [Qualitative Notes]</b>: Timeline logs of student behavior and classroom observations.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">PHOTOS & LOGO</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">學生大頭照資料夾設定與自訂系統 Logo</span>
+              <span data-lang="en">Student Photo Folder Setup & Custom System Logo</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>大頭照放置</b>：將學生的 JPG 照片放入系統目錄下的 <code>bin/photo/</code> 資料夾，檔名命名為 <code>學號.jpg</code>（例如 <code>112001.jpg</code>），系統會自動讀取載入；若無照片將自動以男女生頭像呈現。<br>
+            • <b>自訂評分項目與 Logo</b>：可增修自訂評分規則與加扣分數，並支援上傳學校/班級專屬 Logo 與 Favicon，亦可隨時一鍵恢復預設。</span>
+            <span data-lang="en">• <b>Photo Folder</b>: Place student JPG photos into <code>bin/photo/</code> named as <code>StudentID.jpg</code> (e.g. <code>112001.jpg</code>). Default avatars are used if photos are absent.<br>
+            • <b>Custom Rules & Logo</b>: Add or edit evaluation rules and upload custom school / class logos with 1-click restore default.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 9: Toolkit -->
+    <section id="toolkit" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">🧰</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">9. 課堂教學互動輔助工具箱 (Teaching Toolkit)</span>
+          <span data-lang="en">9. Classroom Interactive Teaching Toolkit</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary">📌 BULLETIN BOARD</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">課堂即時公布欄 (富文字、顏色與黑板投影)</span>
+              <span data-lang="en">Classroom Live Bulletin Board (Rich Styles & Themes)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>多種字體大小與色彩</b>：支援 小、中、大、特大 4 種字體縮放，可自選 白、黃、綠、藍、粉 5 色文字、粗體與清單列表。<br>
+            • <b>3 大黑板主題</b>：提供「黑板綠」、「科技黑」、「極簡白」三種底色風格。<br>
+            • <b>自動保存與全螢幕</b>：內容依班級自動記憶於瀏覽器，並支援 <b>⛶ 全螢幕投影</b> 投放電子白板。</span>
+            <span data-lang="en">• <b>Font Scaling & Colors</b>: 4 font sizes (Small, Medium, Large, Extra Large), 5 text colors, bold, and bulleted lists.<br>
+            • <b>3 Board Themes</b>: Chalk Green, Slate Dark, and Clean Whiteboard.<br>
+            • <b>Auto-Save & Fullscreen</b>: Auto-saved per class; supports <b>⛶ Fullscreen Projector</b> mode for smartboards.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning">🎲 LUCKY DRAW</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">隨機抽籤 (挑選學生上台、隨堂發表與小組抽籤)</span>
+              <span data-lang="en">Random Picker (Student Presentation, On-Stage & Group Selection)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>個人與小組模式</b>：支援指定抽取 1 ~ N 位學生或隨機抽選小組代表上台發表。<br>
+            • <b>排除已中籤機制</b>：勾選「排除本次已抽中者」，抽籤池將自動扣除已抽中同學，保障全班每位同學都有上台發表的均等機會。<br>
+            • <b>洗牌動畫與提示徽章</b>：具備緊張刺激的洗牌滾動動畫與提示音效，中籤彈窗清晰醒目顯示座號、姓名與「🎤 請上台 / 發表」提示。</span>
+            <span data-lang="en">• <b>Student & Group Modes</b>: Select 1 ~ N individual students or team representatives for presentations.<br>
+            • <b>Exclude Already Picked</b>: Non-repeating draw pool ensures every student gets an equal opportunity to present.<br>
+            • <b>Shuffle Animation & Presenter Badge</b>: Dynamic shuffle animation with audio cue; clearly highlights chosen students with a "🎤 Presenter" badge.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-purple">⏱️ TIMER & STOPWATCH</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">倒數計時器、正計時碼錶、隨機背景音樂 (BGM) 與浮動視窗</span>
+              <span data-lang="en">Countdown Timer, Stopwatch, Random BGM & Mini Widget</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>倒數計時器</b>：內建 30秒 ~ 15分鐘快捷按鈕與自訂分秒，最後 5 秒倒數視覺警示，<b>時間歸零時自動暫停音樂並播放清脆響鈴 3 次</b>。<br>
+            • <b>🎵 隨機背景音樂 (BGM)</b>：進入計時器時<b>自動隨機挑選曲目並單曲循環播放</b>，提供「播放 / 暫停」、「🔀 隨機換曲」與音量微調控制；切換離開分頁或關閉頁面時自動暫停，營造專注舒適的課堂氛圍。<br>
+            • <b>正計時碼錶</b>：精確至百分秒，支援計圈 (Lap Time) 記錄。<br>
+            • <b>浮動迷你視窗與全螢幕</b>：點擊「📌 浮動迷你視窗」可在右下角縮小懸浮，或點擊「⛶ 全螢幕投影」在電子白板以特大字體投影倒數。</span>
+            <span data-lang="en">• <b>Countdown Timer</b>: Quick presets (30s ~ 15m) + custom input, last-5-second warning, and <b>automatically pauses music & rings the alarm 3 times upon completion</b>.<br>
+            • <b>🎵 Background Music (BGM)</b>: Automatically selects a <b>random looping track</b> upon entering the timer, complete with Play/Pause, "🔀 Next Track", and volume controls; automatically pauses when switching away or closing the page.<br>
+            • <b>Stopwatch</b>: Centisecond precision with lap time records.<br>
+            • <b>Mini Floating Widget & Fullscreen</b>: Pin a mini widget on the bottom-right corner or project in fullscreen mode with giant digits.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 10: Security & i18n -->
+    <section id="security-i18n" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">🔐</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">10. 系統密碼安全與全系統中英雙語系切換 (Security & i18n)</span>
+          <span data-lang="en">10. Security Password Formula & Bilingual Mode</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning">SECURITY</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">每日密碼公式與安全防護機制</span>
+              <span data-lang="en">Daily Password Formula & Unauthorized Access Prevention</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>防護機制</b>：未登入的瀏覽器即使直接輸入網址亦會被系統拒絕，必須通過密碼驗證。<br>
+            • <b>預設密碼公式</b>：<code>密碼字頭 (預設 Admin) + 當天月日 (MMDD)</code>。<br>
+            &nbsp;&nbsp;例如：8月26日的預設密碼為 <b><code>Admin0826</code></b>。<br>
+            • <b>自訂密碼字頭</b>：教師可於後台 <b>🔐 密碼安全</b> 自訂專屬字頭；若遺忘密碼可使用忘記密碼對話框一鍵重置為預設。</span>
+            <span data-lang="en">• <b>Access Control</b>: Any direct URL request from an unauthenticated browser is blocked until password verification.<br>
+            • <b>Password Formula</b>: <code>Password Prefix (Default: Admin) + Today's MMDD</code>.<br>
+            &nbsp;&nbsp;Example: On August 26, the default password is <b><code>Admin0826</code></b>.<br>
+            • <b>Custom Prefix & Reset</b>: Customize the prefix in <b>🔐 Security Admin</b>; easily reset to default if forgotten.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">BILINGUAL i18n</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">全系統雙語切換與學生中英文姓名顯示</span>
+              <span data-lang="en">Full System Bilingual Toggle & Student Name Display</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>🌐 繁中 / EN 語系切換</b>：點擊頂部語言按鈕，全系統導覽、評分項目、所有彈窗、大螢幕投影及此操作手冊皆即時切換為流暢英文。<br>
+            • <b>👤 姓名顯示切換</b>：在中文語系下，教師可點擊按鈕自由切換顯示「中文姓名」或「英文姓名」；在英文語系下系統預設優先顯示學生的英文姓名。</span>
+            <span data-lang="en">• <b>🌐 Traditional Chinese / English</b>: Click the language toggle button to switch all UI labels, rules, modals, projector screens, and this manual into English.<br>
+            • <b>👤 Name Display Mode</b>: In Chinese mode, toggle between Chinese and English student names; in English mode, English names are displayed by default.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 11: FAQ -->
+    <section id="faq" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">💡</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">11. 常見問題與教學使用技巧 (FAQ & Tips)</span>
+          <span data-lang="en">11. FAQ & Classroom Teaching Tips</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary">Q&A</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">手機掃描 QR Code 連線時無法開啟網頁？</span>
+              <span data-lang="en">Mobile QR Code Cannot Open the Webpage?</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">請確認手機或平板與電腦是否已連上<b>相同的教室 Wi-Fi 區域網路</b>。若校園網路有訪客隔離 (AP Isolation) 設定，可開啟手機熱點供電腦與手機連線即可順暢操作。</span>
+            <span data-lang="en">Please make sure the mobile device is connected to the <b>same classroom Wi-Fi network</b> as the host computer. If AP isolation is enabled, connect both to a personal smartphone hotspot.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success">Q&A</span>
+            <div class="guide-item-title">
+              <span data-lang="zh">如何快速進行期末總結算或成績結算？</span>
+              <span data-lang="en">How to Perform End-of-Semester Score Calculations?</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">進入 <b>⚙️ 系統與後台 ➔ 📊 報表資料匯出</b>，選擇日期範圍或留空（匯出全學期），點擊 <b>📥 下載 Excel 完整報表</b>，系統會自動產出含有每位學生各評分項目得分次數、扣分次數與出缺席統計的完整統計表。</span>
+            <span data-lang="en">Go to <b>⚙️ Admin ➔ 📊 Export Reports</b>, select a date range or leave empty for full semester, and click <b>📥 Download Full Excel Report</b> to export complete breakdown sheets with score frequencies and attendance.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    (function () {
+      // 1. Language logic
+      const urlParams = new URLSearchParams(window.location.search);
+      let currentGuideLang = urlParams.get('lang') || localStorage.getItem('app_lang') || 'zh-TW';
+      if (!['zh-TW', 'en'].includes(currentGuideLang)) currentGuideLang = 'zh-TW';
+
+      function applyGuideLang(lang) {
+        currentGuideLang = lang;
+        localStorage.setItem('app_lang', lang);
+        localStorage.removeItem('guide_lang');
+
+        if (lang === 'en') {
+          document.documentElement.lang = 'en-US';
+          document.body.classList.add('lang-en');
+        } else {
+          document.documentElement.lang = 'zh-TW';
+          document.body.classList.remove('lang-en');
+        }
+
+        const btnLang = document.getElementById('btn-guide-toggle-lang');
+        if (btnLang) {
+          btnLang.innerHTML = lang === 'en' ? '🌐 English / 繁中' : '🌐 繁中 / English';
+        }
+      }
+
+      // 2. Theme logic (Dark / Light)
+      let currentTheme = localStorage.getItem('app_theme') || 'dark';
+
+      function applyGuideTheme(theme) {
+        currentTheme = theme;
+        localStorage.setItem('app_theme', theme);
+        localStorage.removeItem('guide_theme');
+
+        const labelZh = document.getElementById('guide-theme-label-zh');
+        const labelEn = document.getElementById('guide-theme-label-en');
+
+        if (theme === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+          document.body.classList.add('theme-light');
+          if (labelZh) labelZh.textContent = '🌙 深色模式';
+          if (labelEn) labelEn.textContent = '🌙 Dark Mode';
+        } else {
+          document.documentElement.setAttribute('data-theme', 'dark');
+          document.body.classList.remove('theme-light');
+          if (labelZh) labelZh.textContent = '☀️ 淺色模式';
+          if (labelEn) labelEn.textContent = '☀️ Light Mode';
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+        applyGuideLang(currentGuideLang);
+        applyGuideTheme(currentTheme);
+
+        const btnLang = document.getElementById('btn-guide-toggle-lang');
+        if (btnLang) {
+          btnLang.addEventListener('click', () => {
+            const nextLang = currentGuideLang === 'en' ? 'zh-TW' : 'en';
+            applyGuideLang(nextLang);
+          });
+        }
+
+        const btnTheme = document.getElementById('btn-guide-toggle-theme');
+        if (btnTheme) {
+          btnTheme.addEventListener('click', () => {
+            const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+            applyGuideTheme(nextTheme);
+          });
+        }
+      });
+
+      // Synchronize in real-time across open tabs
+      window.addEventListener('storage', (e) => {
+        if (e.key === 'app_lang' && e.newValue && ['zh-TW', 'en'].includes(e.newValue)) {
+          applyGuideLang(e.newValue);
+        }
+        if (e.key === 'app_theme' && e.newValue && ['dark', 'light'].includes(e.newValue)) {
+          applyGuideTheme(e.newValue);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

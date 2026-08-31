@@ -1,0 +1,58 @@
+// Socket.io replacement for app/ws_manager.py + the /api/system/ws/{course_id}
+// endpoint. Each course gets its own room (`course:{id}`); joining requires the
+// same session-cookie/token auth as every REST call. Two message shapes:
+//   - server -> clients: { event, course_id }                (score/attendance/groups changed)
+//   - phone -> server -> other clients: { event: "toolkit_action", action, payload }
+//     (remote-control taps relayed to the projection screen, no persistence)
+import type { Server as HttpServer } from "http";
+import { Server, Socket } from "socket.io";
+import { validateSessionToken } from "./middleware/auth";
+
+let io: Server | undefined;
+
+function courseRoom(courseId: number): string {
+  return `course:${courseId}`;
+}
+
+export function setupRealtime(httpServer: HttpServer): Server {
+  io = new Server(httpServer, {
+    cors: { origin: true, credentials: true },
+  });
+
+  io.on("connection", async (socket: Socket) => {
+    const courseId = Number(socket.handshake.query.course_id);
+    const token =
+      (socket.handshake.query.token as string | undefined) ||
+      parseCookieToken(socket.handshake.headers.cookie);
+
+    if (!Number.isInteger(courseId) || !(await validateSessionToken(token))) {
+      socket.disconnect(true);
+      return;
+    }
+
+    socket.join(courseRoom(courseId));
+
+    socket.on("toolkit_action", (data: { action?: string; payload?: unknown }) => {
+      if (!data || !data.action) return;
+      socket.to(courseRoom(courseId)).emit("server_event", {
+        event: "toolkit_action",
+        action: data.action,
+        payload: data.payload ?? null,
+      });
+    });
+  });
+
+  return io;
+}
+
+function parseCookieToken(cookieHeader?: string): string | undefined {
+  if (!cookieHeader) return undefined;
+  const match = cookieHeader.split(";").map((c) => c.trim()).find((c) => c.startsWith("auth_session="));
+  return match ? decodeURIComponent(match.split("=").slice(1).join("=")) : undefined;
+}
+
+/** Broadcasts a named event to every client subscribed to this course's room
+ *  (score/attendance/group changes, etc.) — call after every mutating write. */
+export function broadcastToCourse(courseId: number, event: string): void {
+  io?.to(courseRoom(courseId)).emit("server_event", { event, course_id: courseId });
+}
