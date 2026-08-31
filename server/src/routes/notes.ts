@@ -6,8 +6,9 @@ import multer from "multer";
 import { prisma } from "../db";
 import { getUploadsDir } from "../paths";
 import { getNowStrTaipei, getTodayStrTaipei } from "../timezone";
+import { autoCatch } from "../asyncRoute";
 
-export const notesRouter = Router();
+export const notesRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
 
 function sanitizeFilenamePart(text: string): string {

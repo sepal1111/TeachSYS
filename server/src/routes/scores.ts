@@ -3,8 +3,9 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { getNowStrTaipei, getTodayStrTaipei } from "../timezone";
 import { broadcastToCourse } from "../realtime";
+import { autoCatch } from "../asyncRoute";
 
-export const scoresRouter = Router();
+export const scoresRouter = autoCatch(Router());
 
 const DEFAULT_RULES = [
   { title: "熱心助人", category: "positive", score_value: 1, icon: "🤝" },

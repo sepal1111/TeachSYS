@@ -64,12 +64,19 @@ export async function isRequestAuthenticated(req: Request): Promise<boolean> {
   return validateSessionToken(getCurrentSessionToken(req));
 }
 
-/** Express middleware that mirrors the FastAPI `require_auth` dependency. */
+/** Express middleware that mirrors the FastAPI `require_auth` dependency.
+ *  Applied directly via `app.use(requireAuth, ...)`, so it isn't covered by
+ *  autoCatch() — guard it explicitly to avoid a DB hiccup crashing the process. */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = getCurrentSessionToken(req);
-  if (!(await validateSessionToken(token))) {
-    res.status(401).json({ detail: "未登入或身分驗證已逾期，請先登入系統！" });
-    return;
+  try {
+    const token = getCurrentSessionToken(req);
+    if (!(await validateSessionToken(token))) {
+      res.status(401).json({ detail: "未登入或身分驗證已逾期，請先登入系統！" });
+      return;
+    }
+    next();
+  } catch (err) {
+    next(err);
   }
-  next();
+  return;
 }

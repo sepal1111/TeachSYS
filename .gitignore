@@ -76,3 +76,13 @@ desktop.ini
 .pytest_cache/
 .coverage
 htmlcov/
+
+# ==========================================
+# Node.js 後端 (server/) 編譯與快取檔案
+# ==========================================
+node_modules/
+server/dist/
+server/dev.db
+server/dev.db-shm
+server/dev.db-wal
+*.tsbuildinfo

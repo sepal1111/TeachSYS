@@ -1,8 +1,9 @@
 // Port of app/routers/seating.py
 import { Router } from "express";
 import { prisma } from "../db";
+import { autoCatch } from "../asyncRoute";
 
-export const seatingRouter = Router();
+export const seatingRouter = autoCatch(Router());
 
 function shuffled<T>(arr: T[]): T[] {
   const a = [...arr];

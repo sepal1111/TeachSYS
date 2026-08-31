@@ -3,8 +3,11 @@ import { Router } from "express";
 import { prisma } from "../db";
 import { getNowStrTaipei, getTodayStrTaipei } from "../timezone";
 import { broadcastToCourse } from "../realtime";
+import { autoCatch } from "../asyncRoute";
 
-export const attendanceRouter = Router();
+// autoCatch must wrap the router BEFORE any routes are registered on it below —
+// it only patches future .get/.post/... calls, not ones already made.
+export const attendanceRouter = autoCatch(Router());
 
 attendanceRouter.get("/:courseId", async (req, res) => {
   const courseId = Number(req.params.courseId);

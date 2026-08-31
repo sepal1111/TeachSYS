@@ -71,6 +71,7 @@
       <button class="nav-tab" data-tab="grouping">🧩 彈性分組</button>
       <button class="nav-tab" data-tab="notes">📝 特殊表現紀錄</button>
       <button class="nav-tab" data-tab="dashboard">📊 儀表板與排行榜</button>
+      <button class="nav-tab" data-tab="materials">📚 課程素材(LMS)</button>
       <button class="nav-tab" data-tab="toolkit">🧰 教學小工具</button>
       <button class="nav-tab" data-tab="admin">⚙️ 系統與後台</button>
     </div>
@@ -85,6 +86,7 @@
         <option value="grouping">🧩 彈性分組</option>
         <option value="notes">📝 特殊表現紀錄</option>
         <option value="dashboard">📊 儀表板與排行榜</option>
+        <option value="materials">📚 課程素材(LMS)</option>
         <option value="toolkit">🧰 教學小工具</option>
         <option value="admin">⚙️ 系統與後台</option>
       </select>
@@ -330,6 +332,26 @@
           </div>
           <div id="all-students-score-grid" class="students-score-grid"></div>
         </div>
+      </div>
+    </section>
+
+    <!-- 6.5 課程素材 (LMS Materials & Units) Pane -->
+    <section id="pane-materials" class="tab-pane">
+      <div class="glass-card">
+        <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <div class="glass-card-title">📚 課程素材與單元</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
+              建立單元／小單元、上傳教材，學生可從 <b>/student</b> 頁面用「座號 + 密碼」或課堂 QR Code 登入瀏覽（預設密碼＝座號四碼，如 1 號為 0001）
+            </div>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button id="btn-materials-join-qr" class="btn btn-secondary" style="font-size: 0.85rem;">📱 開啟課堂 QR 登入</button>
+            <button id="btn-materials-reset-passwords" class="btn btn-secondary" style="font-size: 0.85rem;">🔑 重設全班密碼</button>
+            <button id="btn-materials-add-unit" class="btn" style="font-size: 0.85rem;">➕ 新增單元</button>
+          </div>
+        </div>
+        <div id="materials-units-list"><!-- Units rendered by materials.js --></div>
       </div>
     </section>
 
@@ -1440,6 +1462,84 @@
     </div>
   </div>
 
+  <!-- Modal: 新增單元 (LMS) -->
+  <div id="modal-lms-new-unit" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增單元</h3>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">單元標題：</label>
+        <input type="text" id="input-lms-unit-title" class="input-control" style="width: 100%;" placeholder="例：第一單元 認識植物" maxlength="60" autocomplete="off">
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary close-modal">取消</button>
+        <button type="button" id="btn-submit-lms-unit" class="btn">建立單元</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 新增小單元 (LMS) -->
+  <div id="modal-lms-new-subunit" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增小單元</h3>
+      <input type="hidden" id="input-lms-subunit-unit-id">
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">小單元標題：</label>
+        <input type="text" id="input-lms-subunit-title" class="input-control" style="width: 100%;" placeholder="例：1-1 植物的構造" maxlength="60" autocomplete="off">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">說明文字 (可選)：</label>
+        <textarea id="input-lms-subunit-desc" class="input-control" style="width: 100%; min-height: 70px; resize: vertical;" placeholder="給學生的導讀說明或任務提示"></textarea>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary close-modal">取消</button>
+        <button type="button" id="btn-submit-lms-subunit" class="btn">建立小單元</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 新增教材 (LMS) -->
+  <div id="modal-lms-new-material" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增教材</h3>
+      <input type="hidden" id="input-lms-material-subunit-id">
+      <div style="margin-bottom: 14px; display: flex; gap: 16px;">
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="file" checked> 📄 上傳檔案</label>
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="link"> 🔗 外部連結</label>
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="youtube"> ▶️ YouTube</label>
+      </div>
+      <div id="wrap-lms-material-file" style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">選擇檔案：</label>
+        <input type="file" id="input-lms-material-file" class="input-control" style="width: 100%;">
+      </div>
+      <div id="wrap-lms-material-url" style="margin-bottom: 14px; display: none;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">網址連結：</label>
+        <input type="text" id="input-lms-material-url" class="input-control" style="width: 100%;" placeholder="https://...">
+      </div>
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">顯示名稱 (可選，預設用檔名/網址)：</label>
+        <input type="text" id="input-lms-material-title" class="input-control" style="width: 100%;" maxlength="60">
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary close-modal">取消</button>
+        <button type="button" id="btn-submit-lms-material" class="btn">新增教材</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 課堂 QR Code 登入 (LMS) -->
+  <div id="modal-lms-join-qr" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 420px; padding: 28px 24px; text-align: center; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <h3 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📱 課堂 QR Code 登入</h3>
+      <p style="margin: 0 0 16px 0; font-size: 0.85rem; color: var(--text-muted);">學生用手機掃描後點選自己的名字即可登入（4 小時內有效）</p>
+      <img id="img-lms-join-qr" src="" alt="Join QR Code" style="width: 220px; height: 220px; border-radius: 12px; background: #fff; padding: 8px; margin: 0 auto 14px;">
+      <div id="text-lms-join-url" style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; margin-bottom: 16px;"></div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" class="btn btn-secondary close-modal">關閉</button>
+        <button type="button" id="btn-refresh-lms-join-qr" class="btn">🔄 重新產生</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Mini Timer Widget (右下角常駐浮動迷你計時器) -->
   <div id="floating-mini-timer-widget" class="floating-mini-timer-widget" style="display: none;">
     <div class="floating-timer-drag-handle">
@@ -1449,12 +1549,14 @@
     </div>
   </div>
 
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/api.js?v=3.0"></script>
   <script src="/static/js/i18n.js?v=3.0"></script>
   <script src="/static/js/datepicker.js?v=3.0"></script>
   <script src="/static/js/audio-engine.js?v=3.0"></script>
   <script src="/static/js/toolkit.js?v=3.0"></script>
   <script src="/static/js/realtime.js?v=3.0"></script>
+  <script src="/static/js/materials.js?v=1.0"></script>
   <script src="/static/js/app.js?v=3.0"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>
 </body>

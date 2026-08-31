@@ -6,8 +6,9 @@ import multer from "multer";
 import { prisma } from "../db";
 import { getUploadsDir } from "../paths";
 import { broadcastToCourse } from "../realtime";
+import { autoCatch } from "../asyncRoute";
 
-export const groupsRouter = Router();
+export const groupsRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
 
 const ANIMAL_ICONS = [
@@ -108,9 +109,7 @@ async function buildCourseGroupsPayload(courseId: number, planId?: number | null
   );
 
   const assignedIds = new Set(
-    (await prisma.groupMember.findMany({ where: { planId: targetPlanId, groupId: { not: undefined } } })).map(
-      (m) => m.studentId
-    )
+    (await prisma.groupMember.findMany({ where: { planId: targetPlanId } })).map((m) => m.studentId)
   );
   const allActive = await prisma.student.findMany({
     where: { courseId, isActive: 1 },

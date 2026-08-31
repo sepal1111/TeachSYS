@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>學生課程入口 - TeachSYS</title>
+<link rel="stylesheet" href="/static/css/style.css">
+<style>
+  body {
+    background: var(--bg-gradient);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 60px;
+  }
+  .student-shell { width: 100%; max-width: 640px; }
+  .student-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .student-title { font-size: 1.4rem; font-weight: 800; color: var(--text-main); margin: 0 0 4px; }
+  .student-subtitle { color: var(--text-muted); font-size: 0.9rem; margin: 0 0 20px; }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+  .field select, .field input {
+    width: 100%; padding: 10px 12px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--input-text);
+    font-size: 1rem; box-sizing: border-box;
+  }
+  .error-box {
+    background: var(--accent-negative-bg); border: 1px solid var(--accent-negative-border);
+    color: var(--accent-negative); border-radius: var(--radius-sm); padding: 10px 12px;
+    font-size: 0.9rem; margin-bottom: 14px; display: none;
+  }
+  .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
+  .roster-item {
+    border: 1.5px solid var(--card-border); border-radius: var(--radius-md); padding: 12px 8px;
+    text-align: center; cursor: pointer; background: var(--input-bg); transition: var(--transition-normal);
+  }
+  .roster-item:hover { border-color: var(--primary-light); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+  .roster-num { font-size: 0.75rem; color: var(--text-subtle); }
+  .roster-name { font-weight: 700; color: var(--text-main); margin-top: 2px; }
+
+  .unit-block { margin-bottom: 18px; }
+  .unit-title { font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0 0 10px; }
+  .subunit-card {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-xs);
+  }
+  .subunit-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .subunit-title { font-weight: 700; color: var(--text-main); font-size: 1.02rem; }
+  .viewed-badge {
+    font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-full);
+    background: var(--accent-positive-bg); color: var(--accent-positive); border: 1px solid var(--accent-positive-border);
+  }
+  .subunit-desc { color: var(--text-muted); font-size: 0.9rem; white-space: pre-wrap; margin: 8px 0; }
+  .material-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .material-link {
+    display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: var(--radius-sm);
+    border: 1px solid var(--card-border); text-decoration: none; color: var(--text-main); font-size: 0.92rem;
+  }
+  .material-link:hover { background: #f1f5f9; }
+  .yt-embed { position: relative; width: 100%; padding-top: 56.25%; border-radius: var(--radius-sm); overflow: hidden; margin-top: 8px; }
+  .yt-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .topbar .who { font-weight: 700; color: var(--text-main); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+  <div class="student-shell">
+
+    <div id="loginView" class="student-card">
+      <p class="student-title">📚 學生課程入口</p>
+      <p class="student-subtitle">選擇你的班級課程並登入，瀏覽課程素材</p>
+      <div id="loginError" class="error-box"></div>
+
+      <div id="joinPickView" hidden>
+        <div class="field"><label id="joinCourseLabel"></label></div>
+        <p class="student-subtitle" style="margin-bottom:12px;">點選你自己的名字即可登入</p>
+        <div id="rosterGrid" class="roster-grid"></div>
+      </div>
+
+      <form id="passwordLoginForm">
+        <div class="field">
+          <label for="courseSelect">班級 / 課程</label>
+          <select id="courseSelect" required></select>
+        </div>
+        <div class="field">
+          <label for="studentNumberInput">座號</label>
+          <input id="studentNumberInput" type="number" min="1" inputmode="numeric" required>
+        </div>
+        <div class="field">
+          <label for="passwordInput">密碼</label>
+          <input id="passwordInput" type="password" required>
+        </div>
+        <button type="submit" class="btn" style="width:100%;">登入</button>
+      </form>
+    </div>
+
+    <div id="contentView" hidden>
+      <div class="student-card topbar">
+        <span class="who" id="whoLabel"></span>
+        <button id="logoutBtn" class="btn btn-secondary">登出</button>
+      </div>
+      <div id="unitsContainer"></div>
+      <div id="emptyState" class="student-card" hidden>老師尚未發布任何課程素材。</div>
+    </div>
+
+  </div>
+
+  <script src="/static/js/student.js?v=1.0"></script>
+</body>
+</html>

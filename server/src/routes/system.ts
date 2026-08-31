@@ -1,7 +1,6 @@
 // Port of app/routers/system.py (minus the WebSocket endpoint, now handled by
 // src/realtime.ts via Socket.io — see setupRealtime()).
 import fs from "fs";
-import os from "os";
 import path from "path";
 import { Router } from "express";
 import multer from "multer";
@@ -10,23 +9,13 @@ import { prisma } from "../db";
 import { getBinDir, getBundleDir } from "../paths";
 import { getTodayMMDDTaipei, getTodayStrTaipei } from "../timezone";
 import { createSession, getCurrentSessionToken, isRequestAuthenticated, requireAuth } from "../middleware/auth";
+import { autoCatch } from "../asyncRoute";
+import { getLocalIp } from "../utils/network";
 
-export const systemRouter = Router();
+export const systemRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
 
 // --- Network & System Info ---
-
-function getLocalIp(): string {
-  const nets = os.networkInterfaces();
-  for (const name of Object.keys(nets)) {
-    for (const net of nets[name] ?? []) {
-      if (net.family === "IPv4" && !net.internal) {
-        return net.address;
-      }
-    }
-  }
-  return "127.0.0.1";
-}
 
 systemRouter.get("/info", async (req, res) => {
   const port = Number(req.query.port ?? 8000);

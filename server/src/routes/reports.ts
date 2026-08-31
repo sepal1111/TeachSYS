@@ -4,8 +4,9 @@ import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getTodayStrTaipei, getTodayTaipei } from "../timezone";
+import { autoCatch } from "../asyncRoute";
 
-export const reportsRouter = Router();
+export const reportsRouter = autoCatch(Router());
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year.toString().padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;

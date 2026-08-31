@@ -5,8 +5,13 @@ import ExcelJS from "exceljs";
 import { prisma } from "../db";
 import { parseTextImport } from "../utils/textImport";
 import { parseCsvStudents, parseXlsxStudents } from "../utils/fileImport";
+import { autoCatch } from "../asyncRoute";
+import { defaultStudentPassword, hashPassword } from "../utils/studentPassword";
+import { getLocalIp } from "../utils/network";
+import QRCode from "qrcode";
+import crypto from "crypto";
 
-export const coursesRouter = Router();
+export const coursesRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
 
 const DEFAULT_RULES = [
@@ -143,6 +148,7 @@ coursesRouter.post("/:courseId/students", async (req, res) => {
       gender,
       groupId: group_id,
       studentCode: student_code,
+      passwordHash: hashPassword(defaultStudentPassword(student_number)),
     },
   });
   res.json({ id: student.id, message: "Student created" });
@@ -170,6 +176,7 @@ coursesRouter.post("/:courseId/students/batch", async (req, res) => {
         englishName: item.english_name ?? null,
         gender,
         studentCode: item.student_code ?? null,
+        passwordHash: hashPassword(defaultStudentPassword(item.student_number)),
       },
     });
     count++;
@@ -192,6 +199,7 @@ coursesRouter.post("/:courseId/students/text_import", async (req, res) => {
         name: s.name,
         englishName: s.english_name,
         gender: s.gender,
+        passwordHash: hashPassword(defaultStudentPassword(s.student_number)),
       },
     });
     count++;
@@ -228,6 +236,7 @@ coursesRouter.post("/:courseId/students/upload", upload.single("file"), async (r
         name: s.name,
         englishName: s.english_name,
         gender: s.gender,
+        passwordHash: hashPassword(defaultStudentPassword(s.student_number)),
       },
     });
     count++;
@@ -262,6 +271,64 @@ coursesRouter.delete("/:courseId/students/:studentId", async (req, res) => {
     where: { id: Number(req.params.studentId), courseId: Number(req.params.courseId) },
   });
   res.json({ message: "Student deleted" });
+});
+
+// --- LMS 學生登入帳密管理（教師端；學生本人登入見 src/routes/studentAuth.ts）---
+
+coursesRouter.put("/:courseId/students/:studentId/password", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const studentId = Number(req.params.studentId);
+  const student = await prisma.student.findFirst({ where: { id: studentId, courseId } });
+  if (!student) {
+    res.status(404).json({ detail: "Student not found" });
+    return;
+  }
+
+  const customPassword: string | undefined = req.body?.password;
+  const effectivePassword = customPassword?.trim() ? customPassword.trim() : defaultStudentPassword(student.studentNumber);
+
+  await prisma.student.update({ where: { id: studentId }, data: { passwordHash: hashPassword(effectivePassword) } });
+  res.json({
+    message: customPassword ? "密碼已更新" : "密碼已重設為預設值（座號四碼）",
+    password: effectivePassword,
+  });
+});
+
+coursesRouter.post("/:courseId/students/passwords/reset_all", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const students = await prisma.student.findMany({ where: { courseId, isActive: 1 } });
+  for (const s of students) {
+    await prisma.student.update({
+      where: { id: s.id },
+      data: { passwordHash: hashPassword(defaultStudentPassword(s.studentNumber)) },
+    });
+  }
+  res.json({ message: `已將 ${students.length} 位學生的密碼重設為預設值（座號四碼）`, count: students.length });
+});
+
+// --- LMS 課堂 QR Code 免密碼登入（教師開課時產生短效期 join token）---
+
+coursesRouter.post("/:courseId/join_qr", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) {
+    res.status(404).json({ detail: "Course not found" });
+    return;
+  }
+
+  const joinToken = crypto.randomBytes(16).toString("hex");
+  const expiresInMs = 4 * 60 * 60 * 1000; // 4 hours — long enough for one school day's classes.
+  const joinTokenExpiresAt = new Date(Date.now() + expiresInMs).toISOString();
+  await prisma.course.update({ where: { id: courseId }, data: { joinToken, joinTokenExpiresAt } });
+
+  // Always encode the LAN IP (not req.hostname) so the QR works from a
+  // student's phone even when the teacher's own browser is on localhost.
+  const port = req.socket.localPort;
+  const host = getLocalIp();
+  const joinUrl = `http://${host}${port ? `:${port}` : ""}/student?course_id=${courseId}&join=${joinToken}`;
+  const qrDataUrl = await QRCode.toDataURL(joinUrl, { errorCorrectionLevel: "L", margin: 2, scale: 8 });
+
+  res.json({ join_token: joinToken, expires_at: joinTokenExpiresAt, join_url: joinUrl, qr_code: qrDataUrl });
 });
 
 // --- 範本檔案下載 ---

@@ -512,6 +512,9 @@ function refreshActiveTab(tabName) {
     case 'dashboard':
       loadDashboardData();
       break;
+    case 'materials':
+      if (window.LmsMaterials) window.LmsMaterials.load();
+      break;
     case 'toolkit':
       loadToolkitData();
       break;

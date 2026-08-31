@@ -13,6 +13,7 @@ import { initSchema } from "./db";
 import { getBinDir, getBundleDir, getUploadsDir } from "./paths";
 import { isRequestAuthenticated, requireAuth } from "./middleware/auth";
 import { setupRealtime } from "./realtime";
+import { autoCatch } from "./asyncRoute";
 
 import { systemRouter } from "./routes/system";
 import { coursesRouter } from "./routes/courses";
@@ -22,6 +23,9 @@ import { seatingRouter } from "./routes/seating";
 import { scoresRouter } from "./routes/scores";
 import { notesRouter } from "./routes/notes";
 import { reportsRouter } from "./routes/reports";
+import { unitsRouter } from "./routes/units";
+import { studentAuthRouter } from "./routes/studentAuth";
+import { studentContentRouter } from "./routes/studentContent";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
 const bundleDir = getBundleDir();
@@ -34,6 +38,7 @@ fs.mkdirSync(path.join(uploadsDir, "groups"), { recursive: true });
 fs.mkdirSync(photoDir, { recursive: true });
 
 const app = express();
+autoCatch(app);
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(express.json());
@@ -45,7 +50,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (
     p.startsWith("/static") ||
     /\.(html|js|css|json)$/.test(p) ||
-    ["", "/", "/projection", "/guide", "/favicon.ico"].includes(p)
+    ["", "/", "/projection", "/guide", "/student", "/favicon.ico"].includes(p)
   ) {
     res.set({
       "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
@@ -164,7 +169,19 @@ app.get("/projection", async (req, res) => {
   }
 });
 
-// --- API Routers ---
+// --- LMS 學生入口頁（Phase 2）：公開頁面，不需要教師系統密碼登入 ---
+app.get("/student", (_req, res) => {
+  const studentFile = path.join(staticDir, "student.html");
+  if (fs.existsSync(studentFile)) {
+    renderCachedHtml(res, studentFile);
+  } else {
+    res.json({ message: "Student page is missing" });
+  }
+});
+
+// --- API Routers (each router self-wraps via autoCatch() at construction time,
+// in its own file, so a rejected promise in a handler reaches the error
+// middleware below instead of crashing the whole server) ---
 app.use("/api/system", systemRouter);
 app.use("/api/courses", requireAuth, coursesRouter);
 app.use("/api/attendance", requireAuth, attendanceRouter);
@@ -173,6 +190,21 @@ app.use("/api/seating", requireAuth, seatingRouter);
 app.use("/api/scores", requireAuth, scoresRouter);
 app.use("/api/notes", requireAuth, notesRouter);
 app.use("/api/reports", requireAuth, reportsRouter);
+app.use("/api/units", requireAuth, unitsRouter);
+
+// --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
+app.use("/api/auth/student", studentAuthRouter);
+app.use("/api/student", studentContentRouter);
+
+// --- Global error handler: isolate a single request's failure instead of
+// letting an unhandled rejection crash the whole process (all other teachers'
+// live connections included). Must be registered last, after every route. ---
+app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  console.error("[Request Error]", err);
+  if (res.headersSent) return;
+  const message = err instanceof Error ? err.message : "Internal Server Error";
+  res.status(500).json({ detail: message });
+});
 
 // --- Startup: find an available port, boot the DB schema, then listen ---
 
@@ -252,6 +284,12 @@ async function printBanner(port: number) {
   }
   console.log("=".repeat(60));
 }
+
+// Last-resort safety net: log and keep running rather than let a stray rejection
+// (e.g. inside a Socket.io event handler, outside Express's request lifecycle)
+// take down every connected teacher/classroom's session.
+process.on("unhandledRejection", (err) => console.error("[Unhandled Rejection]", err));
+process.on("uncaughtException", (err) => console.error("[Uncaught Exception]", err));
 
 async function main() {
   await initSchema();

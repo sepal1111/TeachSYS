@@ -3,6 +3,7 @@
 // `CREATE TABLE IF NOT EXISTS` / best-effort `ALTER TABLE ADD COLUMN`, run on
 // every startup. We deliberately do NOT use `prisma migrate` because the
 // database file's location is only known at runtime (portable USB/bin dir).
+import crypto from "crypto";
 import { PrismaClient } from "@prisma/client";
 import { getDbPath } from "./paths";
 
@@ -22,7 +23,8 @@ async function tryAlter(sql: string): Promise<void> {
 
 export async function initSchema(): Promise<void> {
   await prisma.$executeRawUnsafe("PRAGMA foreign_keys = ON;");
-  await prisma.$executeRawUnsafe("PRAGMA journal_mode = WAL;");
+  // journal_mode=WAL returns the resulting mode as a row, so SQLite rejects it via $executeRaw.
+  await prisma.$queryRawUnsafe("PRAGMA journal_mode = WAL;");
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS courses (
@@ -33,7 +35,7 @@ export async function initSchema(): Promise<void> {
       seat_rows INTEGER DEFAULT 5,
       seat_cols INTEGER DEFAULT 6,
       blackboard_position TEXT DEFAULT 'top',
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
   `);
 
@@ -43,7 +45,7 @@ export async function initSchema(): Promise<void> {
       course_id INTEGER NOT NULL,
       name TEXT NOT NULL,
       is_active INTEGER DEFAULT 1,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
     );
   `);
@@ -98,7 +100,7 @@ export async function initSchema(): Promise<void> {
       student_id INTEGER NOT NULL,
       date TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'present',
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
       FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
       UNIQUE(course_id, student_id, date)
@@ -128,7 +130,7 @@ export async function initSchema(): Promise<void> {
       score INTEGER NOT NULL,
       category TEXT NOT NULL,
       date TEXT NOT NULL,
-      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
       is_undone INTEGER DEFAULT 0,
       plan_id INTEGER NULL,
       group_id INTEGER NULL,
@@ -146,7 +148,7 @@ export async function initSchema(): Promise<void> {
       date TEXT NOT NULL,
       media_url TEXT NULL,
       media_type TEXT NULL,
-      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
       FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE
     );
@@ -158,7 +160,7 @@ export async function initSchema(): Promise<void> {
       action_type TEXT NOT NULL,
       target_id INTEGER NOT NULL,
       payload_json TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       is_undone INTEGER DEFAULT 0
     );
   `);
@@ -172,13 +174,74 @@ export async function initSchema(): Promise<void> {
   await prisma.$executeRawUnsafe(
     "INSERT OR IGNORE INTO system_settings (key, value) VALUES ('password_prefix', 'Admin');"
   );
+  // Generated once per install and persisted in the DB (never in a config file), since a
+  // portable USB/bin deployment has no durable place for a server-side env secret — this
+  // signs/verifies student LMS JWTs (see src/middleware/studentAuth.ts).
+  const jwtSecretExists = await prisma.systemSetting.findUnique({ where: { key: "jwt_secret" } });
+  if (!jwtSecretExists) {
+    await prisma.systemSetting.create({ data: { key: "jwt_secret", value: crypto.randomBytes(48).toString("hex") } });
+  }
 
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS system_sessions (
       token TEXT PRIMARY KEY,
       created_date TEXT NOT NULL,
-      expires_at TIMESTAMP NOT NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      expires_at TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+
+  // --- Phase 2: 課程素材與單元結構模組 (units -> sub_units -> materials) + reading progress ---
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      order_index INTEGER DEFAULT 0,
+      is_hidden INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS sub_units (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unit_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      order_index INTEGER DEFAULT 0,
+      is_hidden INTEGER DEFAULT 0,
+      category TEXT NOT NULL DEFAULT 'material',
+      description TEXT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(unit_id) REFERENCES units(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS materials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sub_unit_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      order_index INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS reading_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sub_unit_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      first_viewed_at TEXT NOT NULL,
+      last_viewed_at TEXT NOT NULL,
+      view_count INTEGER DEFAULT 1,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      UNIQUE(sub_unit_id, student_id)
     );
   `);
 
@@ -190,10 +253,13 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE courses ADD COLUMN seat_rows INTEGER DEFAULT 5;");
   await tryAlter("ALTER TABLE courses ADD COLUMN seat_cols INTEGER DEFAULT 6;");
   await tryAlter("ALTER TABLE courses ADD COLUMN blackboard_position TEXT DEFAULT 'top';");
+  await tryAlter("ALTER TABLE courses ADD COLUMN join_token TEXT NULL;");
+  await tryAlter("ALTER TABLE courses ADD COLUMN join_token_expires_at TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN student_code TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN english_name TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN seat_row INTEGER NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN seat_col INTEGER NULL;");
+  await tryAlter("ALTER TABLE students ADD COLUMN password_hash TEXT NULL;");
   await tryAlter("ALTER TABLE qualitative_notes ADD COLUMN media_url TEXT NULL;");
   await tryAlter("ALTER TABLE qualitative_notes ADD COLUMN media_type TEXT NULL;");
 
