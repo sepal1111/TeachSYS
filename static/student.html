@@ -32,20 +32,34 @@
     border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--input-text);
     font-size: 1rem; box-sizing: border-box;
   }
+  .content-tab-switch { display: flex; gap: 8px; margin-bottom: 14px; }
+  .content-tab-btn {
+    flex: 1; padding: 10px 12px; border-radius: var(--radius-md); border: 1.5px solid var(--card-border);
+    background: var(--card-bg); color: var(--text-muted); font-size: 0.92rem; font-weight: 700; cursor: pointer;
+    transition: var(--transition-normal);
+  }
+  .content-tab-btn.active { border-color: var(--primary-light); color: var(--primary); background: rgba(37, 99, 235, 0.08); }
+
+  .score-summary-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 12px; text-align: center; }
+  .score-summary-value { font-size: 1.6rem; font-weight: 800; color: var(--text-main); }
+  .score-summary-value.positive { color: var(--accent-positive); }
+  .score-summary-value.negative { color: var(--accent-negative); }
+  .score-summary-label { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+
+  .score-log-item {
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .score-log-title { font-weight: 700; color: var(--text-main); font-size: 0.92rem; }
+  .score-log-meta { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+  .score-log-value { font-size: 1.1rem; font-weight: 800; white-space: nowrap; }
+  .score-log-value.positive { color: var(--accent-positive); }
+  .score-log-value.negative { color: var(--accent-negative); }
   .error-box {
     background: var(--accent-negative-bg); border: 1px solid var(--accent-negative-border);
     color: var(--accent-negative); border-radius: var(--radius-sm); padding: 10px 12px;
     font-size: 0.9rem; margin-bottom: 14px; display: none;
   }
-  .roster-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
-  .roster-item {
-    border: 1.5px solid var(--card-border); border-radius: var(--radius-md); padding: 12px 8px;
-    text-align: center; cursor: pointer; background: var(--input-bg); transition: var(--transition-normal);
-  }
-  .roster-item:hover { border-color: var(--primary-light); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-  .roster-num { font-size: 0.75rem; color: var(--text-subtle); }
-  .roster-name { font-weight: 700; color: var(--text-main); margin-top: 2px; }
-
   .unit-block { margin-bottom: 18px; }
   .unit-title { font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0 0 10px; }
   .subunit-card {
@@ -70,6 +84,36 @@
   .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
   .topbar .who { font-weight: 700; color: var(--text-main); }
   [hidden] { display: none !important; }
+
+  .assignment-panel { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--card-border); }
+  .assignment-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; }
+  .assignment-status { font-size: 0.88rem; font-weight: 700; margin-bottom: 8px; }
+  .assignment-status.muted { color: var(--text-muted); }
+  .assignment-status.positive { color: var(--accent-positive); }
+  .assignment-status.warning { color: var(--accent-warning); }
+  .assignment-status.negative { color: var(--accent-negative); }
+  .assignment-files { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+  .assignment-file-row { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
+  .assignment-file-row a { color: var(--text-main); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .assignment-file-del {
+    border: none; background: none; color: var(--accent-negative); cursor: pointer; font-size: 0.9rem; padding: 2px 6px;
+  }
+  .assignment-form { display: flex; flex-direction: column; gap: 8px; }
+  .assignment-form input[type="file"] { font-size: 0.85rem; }
+  .assignment-textarea, .assignment-link-input {
+    width: 100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1.5px solid var(--input-border);
+    background: var(--input-bg); color: var(--input-text); font-size: 0.92rem; box-sizing: border-box;
+  }
+  .assignment-textarea { min-height: 70px; resize: vertical; }
+
+  .toast-stack { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
+  .toast-item {
+    padding: 10px 16px; border-radius: var(--radius-sm); font-size: 0.88rem; font-weight: 600; color: #fff;
+    background: var(--text-main); box-shadow: var(--shadow-md); opacity: 0; transform: translateY(8px); transition: var(--transition-normal);
+  }
+  .toast-item.show { opacity: 1; transform: translateY(0); }
+  .toast-item.error { background: var(--accent-negative); }
+  .toast-item.success { background: var(--accent-positive); }
 </style>
 </head>
 <body>
@@ -77,27 +121,17 @@
 
     <div id="loginView" class="student-card">
       <p class="student-title">📚 學生課程入口</p>
-      <p class="student-subtitle">選擇你的班級課程並登入，瀏覽課程素材</p>
+      <p class="student-subtitle">輸入老師提供的登入帳號與密碼，瀏覽課程素材</p>
       <div id="loginError" class="error-box"></div>
 
-      <div id="joinPickView" hidden>
-        <div class="field"><label id="joinCourseLabel"></label></div>
-        <p class="student-subtitle" style="margin-bottom:12px;">點選你自己的名字即可登入</p>
-        <div id="rosterGrid" class="roster-grid"></div>
-      </div>
-
-      <form id="passwordLoginForm">
+      <form id="accountLoginForm">
         <div class="field">
-          <label for="courseSelect">班級 / 課程</label>
-          <select id="courseSelect" required></select>
+          <label for="accountInput">帳號</label>
+          <input id="accountInput" type="text" autocomplete="username" required>
         </div>
         <div class="field">
-          <label for="studentNumberInput">座號</label>
-          <input id="studentNumberInput" type="number" min="1" inputmode="numeric" required>
-        </div>
-        <div class="field">
-          <label for="passwordInput">密碼</label>
-          <input id="passwordInput" type="password" required>
+          <label for="accountPasswordInput">密碼</label>
+          <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
         </div>
         <button type="submit" class="btn" style="width:100%;">登入</button>
       </form>
@@ -108,12 +142,45 @@
         <span class="who" id="whoLabel"></span>
         <button id="logoutBtn" class="btn btn-secondary">登出</button>
       </div>
-      <div id="unitsContainer"></div>
-      <div id="emptyState" class="student-card" hidden>老師尚未發布任何課程素材。</div>
+
+      <div class="content-tab-switch">
+        <button type="button" id="btnContentTabMaterials" class="content-tab-btn active">📚 課程素材</button>
+        <button type="button" id="btnContentTabScores" class="content-tab-btn">🌟 我的點數</button>
+      </div>
+
+      <div id="materialsTabPane">
+        <div id="unitsContainer"></div>
+        <div id="emptyState" class="student-card" hidden>老師尚未發布任何課程素材。</div>
+      </div>
+
+      <div id="scoresTabPane" hidden>
+        <div class="student-card score-summary-card">
+          <div class="score-summary-item">
+            <div class="score-summary-value" id="scoreTotalValue">0</div>
+            <div class="score-summary-label">累積總分</div>
+          </div>
+          <div class="score-summary-item">
+            <div class="score-summary-value positive" id="scoreTodayValue">0</div>
+            <div class="score-summary-label">今日獲得</div>
+          </div>
+          <div class="score-summary-item">
+            <div class="score-summary-value positive" id="scorePositiveValue">0</div>
+            <div class="score-summary-label">正向加分</div>
+          </div>
+          <div class="score-summary-item">
+            <div class="score-summary-value negative" id="scoreNegativeValue">0</div>
+            <div class="score-summary-label">負向扣分</div>
+          </div>
+        </div>
+        <div id="scoreLogsList"></div>
+        <div id="scoreEmptyState" class="student-card" hidden>目前還沒有任何點數紀錄。</div>
+      </div>
     </div>
 
   </div>
 
-  <script src="/static/js/student.js?v=1.0"></script>
+  <div id="toastStack" class="toast-stack"></div>
+
+  <script src="/static/js/student.js?v=1.3"></script>
 </body>
 </html>

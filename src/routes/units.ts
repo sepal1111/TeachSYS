@@ -8,9 +8,64 @@ import multer from "multer";
 import { prisma } from "../db";
 import { autoCatch } from "../asyncRoute";
 import { getUploadsDir } from "../paths";
+import { getNowStrTaipei } from "../timezone";
+import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
 
 export const unitsRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
+
+/** "file,text,link" (as stored) <-> ["file","text","link"] (as sent/returned over the API). */
+function parseSubmissionTypes(csv: string | null): string[] {
+  return csv ? csv.split(",").filter(Boolean) : [];
+}
+function serializeSubmissionTypes(types: unknown): string | null {
+  if (!Array.isArray(types)) return null;
+  const clean = types.filter((t) => typeof t === "string" && t.trim());
+  return clean.length ? clean.join(",") : null;
+}
+
+function withAssignmentFields<T extends { submissionTypes: string | null; quizQuestions: string | null }>(su: T) {
+  return {
+    ...su,
+    submissionTypes: parseSubmissionTypes(su.submissionTypes),
+    quizQuestions: su.quizQuestions ? JSON.parse(su.quizQuestions) : [],
+  };
+}
+
+interface QuizQuestion {
+  id: string;
+  type: "multiple_choice" | "true_false" | "short_answer";
+  question_text: string;
+  options: string[];
+  correct_answer: string;
+  points: number;
+}
+
+const QUESTION_TYPES = new Set(["multiple_choice", "true_false", "short_answer"]);
+
+/** Light validation/coercion of teacher-submitted quiz questions — trusts shape but
+ *  never trusts types, since this JSON round-trips straight into the DB (and, unlike
+ *  material/assignment fields, gets served back to students verbatim minus correct_answer). */
+function sanitizeQuizQuestions(raw: unknown): QuizQuestion[] | null {
+  if (!Array.isArray(raw) || raw.length === 0) return null;
+  const out: QuizQuestion[] = [];
+  for (const item of raw) {
+    if (!item || typeof item !== "object") continue;
+    const q = item as Record<string, unknown>;
+    const type = QUESTION_TYPES.has(q.type as string) ? (q.type as QuizQuestion["type"]) : "multiple_choice";
+    const questionText = typeof q.question_text === "string" ? q.question_text.trim() : "";
+    if (!questionText) continue;
+    const options =
+      type === "multiple_choice" && Array.isArray(q.options)
+        ? q.options.filter((o): o is string => typeof o === "string" && o.trim() !== "")
+        : [];
+    const correctAnswer = typeof q.correct_answer === "string" ? q.correct_answer.trim() : "";
+    const points = Number(q.points) > 0 ? Math.round(Number(q.points)) : 10;
+    const id = typeof q.id === "string" && q.id ? q.id : `q_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    out.push({ id, type, question_text: questionText, options, correct_answer: correctAnswer, points });
+  }
+  return out.length ? out : null;
+}
 
 async function fetchUnitsTree(courseId: number) {
   const units = await prisma.unit.findMany({
@@ -23,7 +78,7 @@ async function fetchUnitsTree(courseId: number) {
       },
     },
   });
-  return units;
+  return units.map((u) => ({ ...u, subUnits: u.subUnits.map(withAssignmentFields) }));
 }
 
 // --- Units ---
@@ -94,9 +149,37 @@ unitsRouter.post("/:courseId/:unitId/subunits", async (req, res) => {
   const category: string = req.body?.category ?? "material";
   const description: string | null = req.body?.description ?? null;
 
+  const data: Record<string, unknown> = { unitId, title, category, description };
+  if (category === "assignment") {
+    const assignmentType: string = req.body?.assignment_type === "group" ? "group" : "individual";
+    let groupPlanId: number | null = null;
+    if (assignmentType === "group") {
+      groupPlanId = Number(req.body?.group_plan_id) || null;
+      if (!groupPlanId || !(await prisma.groupPlan.findFirst({ where: { id: groupPlanId, courseId } }))) {
+        res.status(400).json({ detail: "小組作業請指定有效的分組方案" });
+        return;
+      }
+    }
+    data.submissionTypes = serializeSubmissionTypes(req.body?.submission_types) ?? "file";
+    data.assignmentType = assignmentType;
+    data.groupPlanId = groupPlanId;
+    data.dueDate = (req.body?.due_date as string | undefined)?.trim() || null;
+    data.autoLockOverdue = req.body?.auto_lock_overdue ? 1 : 0;
+  } else if (category === "quiz") {
+    const questions = sanitizeQuizQuestions(req.body?.quiz_questions);
+    if (!questions) {
+      res.status(400).json({ detail: "請至少新增一道測驗題目" });
+      return;
+    }
+    data.quizQuestions = JSON.stringify(questions);
+    data.revealAnswersAfterSubmit = req.body?.reveal_answers_after_submit === false ? 0 : 1;
+    data.dueDate = (req.body?.due_date as string | undefined)?.trim() || null;
+    data.autoLockOverdue = req.body?.auto_lock_overdue ? 1 : 0;
+  }
+
   const maxOrder = await prisma.subUnit.aggregate({ where: { unitId }, _max: { orderIndex: true } });
   const subUnit = await prisma.subUnit.create({
-    data: { unitId, title, category, description, orderIndex: (maxOrder._max.orderIndex ?? 0) + 1 },
+    data: { ...data, orderIndex: (maxOrder._max.orderIndex ?? 0) + 1 } as Parameters<typeof prisma.subUnit.create>[0]["data"],
   });
   res.json({ id: subUnit.id, message: "小單元建立成功！" });
 });
@@ -111,6 +194,7 @@ unitsRouter.put("/:courseId/:unitId/subunits/reorder", async (req, res) => {
 });
 
 unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId", async (req, res) => {
+  const courseId = Number(req.params.courseId);
   const unitId = Number(req.params.unitId);
   const subUnitId = Number(req.params.subUnitId);
   const data: Record<string, unknown> = {};
@@ -118,6 +202,31 @@ unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId", async (req, res) => {
   if (typeof req.body?.description === "string") data.description = req.body.description;
   if (typeof req.body?.is_hidden === "boolean") data.isHidden = req.body.is_hidden ? 1 : 0;
   if (typeof req.body?.order_index === "number") data.orderIndex = req.body.order_index;
+  if (Array.isArray(req.body?.submission_types)) data.submissionTypes = serializeSubmissionTypes(req.body.submission_types);
+  if (req.body?.assignment_type === "individual" || req.body?.assignment_type === "group") {
+    data.assignmentType = req.body.assignment_type;
+  }
+  if (req.body?.group_plan_id !== undefined) {
+    const groupPlanId = Number(req.body.group_plan_id) || null;
+    if (groupPlanId && !(await prisma.groupPlan.findFirst({ where: { id: groupPlanId, courseId } }))) {
+      res.status(400).json({ detail: "指定的分組方案不存在" });
+      return;
+    }
+    data.groupPlanId = groupPlanId;
+  }
+  if (typeof req.body?.due_date === "string") data.dueDate = req.body.due_date.trim() || null;
+  if (typeof req.body?.auto_lock_overdue === "boolean") data.autoLockOverdue = req.body.auto_lock_overdue ? 1 : 0;
+  if (req.body?.quiz_questions !== undefined) {
+    const questions = sanitizeQuizQuestions(req.body.quiz_questions);
+    if (!questions) {
+      res.status(400).json({ detail: "請至少保留一道測驗題目" });
+      return;
+    }
+    data.quizQuestions = JSON.stringify(questions);
+  }
+  if (typeof req.body?.reveal_answers_after_submit === "boolean") {
+    data.revealAnswersAfterSubmit = req.body.reveal_answers_after_submit ? 1 : 0;
+  }
 
   const result = await prisma.subUnit.updateMany({ where: { id: subUnitId, unitId }, data });
   if (result.count === 0) {
@@ -216,4 +325,263 @@ unitsRouter.get("/:courseId/reading_progress", async (req, res) => {
       })),
     }))
   );
+});
+
+// --- 作業繳交與評分（教師端） ---
+// Phase 3: node_migration_and_lms_plan.md 模組 2「作業與小組共同作業」。個人與小組
+// 兩條路徑都經過 recordGradeScoreLog()/undoScoreLogIds()，讓評分直接觸發 score_logs，
+// 與現有排行榜/儀表板共用同一份資料，重新評分不會重複累計（見 utils/submissionGrading.ts）。
+
+type SubmissionRow = Awaited<ReturnType<typeof prisma.submission.findFirst>>;
+
+function serializeSubmission(s: SubmissionRow) {
+  if (!s) return null;
+  return {
+    id: s.id,
+    files: s.filesJson ? (JSON.parse(s.filesJson) as unknown[]) : [],
+    link: s.link,
+    text_content: s.textContent,
+    submitted_at: s.submittedAt,
+    is_late: !!s.isLate,
+    turned_in: !!s.turnedIn,
+    locked: !!s.locked,
+    teacher_reopened: !!s.teacherReopened,
+    resubmit_requested: !!s.resubmitRequested,
+    score: s.score,
+    feedback: s.feedback,
+    member_scores: s.memberScoresJson ? JSON.parse(s.memberScoresJson) : {},
+    graded_at: s.gradedAt,
+    answers: s.answersJson ? JSON.parse(s.answersJson) : null,
+    max_score: s.maxScore,
+  };
+}
+
+/** Both assignment and quiz sub-units share the submissions list/grade/lock endpoints below —
+ *  quiz submissions just arrive pre-graded (see studentContent.ts's /submit_quiz auto-grading). */
+async function loadAssignment(courseId: number, unitId: number, subUnitId: number) {
+  const subUnit = await prisma.subUnit.findFirst({ where: { id: subUnitId, unitId, unit: { courseId } } });
+  return subUnit && (subUnit.category === "assignment" || subUnit.category === "quiz") ? subUnit : null;
+}
+
+unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+
+  const submissions = await prisma.submission.findMany({ where: { subUnitId } });
+  const isQuiz = subUnit.category === "quiz";
+  const base = {
+    category: subUnit.category,
+    assignment_type: subUnit.assignmentType,
+    due_date: subUnit.dueDate,
+    submission_types: parseSubmissionTypes(subUnit.submissionTypes),
+    auto_lock_overdue: !!subUnit.autoLockOverdue,
+    ...(isQuiz ? { quiz_questions: subUnit.quizQuestions ? JSON.parse(subUnit.quizQuestions) : [] } : {}),
+  };
+
+  if (subUnit.assignmentType === "group") {
+    const groups = await prisma.group.findMany({
+      where: { planId: subUnit.groupPlanId ?? -1 },
+      orderBy: [{ orderIndex: "asc" }, { id: "asc" }],
+      include: { members: { include: { student: true } } },
+    });
+    res.json({
+      ...base,
+      groups: groups.map((g) => ({
+        group_id: g.id,
+        group_name: g.groupName,
+        member_names: g.members.map((m) => m.student.name),
+        submission: serializeSubmission(submissions.find((s) => s.groupId === g.id) ?? null),
+      })),
+    });
+    return;
+  }
+
+  const students = await prisma.student.findMany({ where: { courseId, isActive: 1 }, orderBy: { studentNumber: "asc" } });
+  res.json({
+    ...base,
+    students: students.map((s) => ({
+      student_id: s.id,
+      student_number: s.studentNumber,
+      name: s.name,
+      submission: serializeSubmission(submissions.find((sub) => sub.studentId === s.id) ?? null),
+    })),
+  });
+});
+
+unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/:studentId/grade", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const studentId = Number(req.params.studentId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+
+  const { score, feedback } = req.body ?? {};
+  const hasScore = score !== undefined && score !== null && String(score).trim() !== "";
+
+  const existing = await prisma.submission.findUnique({ where: { subUnitId_studentId: { subUnitId, studentId } } });
+  await undoScoreLogIds(prisma, existing?.scoreLogIdsJson ?? null);
+
+  let scoreLogIdsJson: string | null = null;
+  if (hasScore) {
+    const logId = await recordGradeScoreLog(prisma, {
+      courseId,
+      studentId,
+      ruleTitle: `作業評分：${subUnit.title}`,
+      score: Number(score),
+    });
+    scoreLogIdsJson = JSON.stringify([logId]);
+  }
+
+  await prisma.submission.upsert({
+    where: { subUnitId_studentId: { subUnitId, studentId } },
+    create: {
+      subUnitId,
+      studentId,
+      score: hasScore ? Number(score) : null,
+      feedback: feedback || null,
+      gradedAt: getNowStrTaipei(),
+      scoreLogIdsJson,
+      locked: hasScore ? 1 : 0,
+    },
+    update: {
+      score: hasScore ? Number(score) : null,
+      feedback: feedback || null,
+      gradedAt: getNowStrTaipei(),
+      scoreLogIdsJson,
+      ...(hasScore ? { locked: 1 } : {}),
+    },
+  });
+
+  res.json({ message: "評分已送出" });
+});
+
+unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId/submissions/:studentId/lock", async (req, res) => {
+  const subUnitId = Number(req.params.subUnitId);
+  const studentId = Number(req.params.studentId);
+  const locked = !!req.body?.locked;
+  await prisma.submission.upsert({
+    where: { subUnitId_studentId: { subUnitId, studentId } },
+    create: { subUnitId, studentId, locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
+    update: { locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
+  });
+  res.json({ message: locked ? "作業已鎖定" : "作業已解鎖，學生可重新繳交" });
+});
+
+unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/batch_request_resubmit", async (req, res) => {
+  const subUnitId = Number(req.params.subUnitId);
+  const studentIds: number[] = req.body?.student_ids ?? [];
+  const feedback: string = (req.body?.feedback as string | undefined)?.trim() || "";
+
+  for (const studentId of studentIds) {
+    const existing = await prisma.submission.findUnique({ where: { subUnitId_studentId: { subUnitId, studentId } } });
+    await undoScoreLogIds(prisma, existing?.scoreLogIdsJson ?? null);
+    await prisma.submission.upsert({
+      where: { subUnitId_studentId: { subUnitId, studentId } },
+      create: {
+        subUnitId,
+        studentId,
+        locked: 0,
+        teacherReopened: 1,
+        resubmitRequested: 0,
+        turnedIn: 0,
+        score: null,
+        scoreLogIdsJson: null,
+        feedback: feedback || null,
+      },
+      update: {
+        locked: 0,
+        teacherReopened: 1,
+        resubmitRequested: 0,
+        turnedIn: 0,
+        score: null,
+        scoreLogIdsJson: null,
+        ...(feedback ? { feedback } : {}),
+      },
+    });
+  }
+  res.json({ message: `已退回 ${studentIds.length} 份作業，學生可重新繳交` });
+});
+
+unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/group/:groupId/grade", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const groupId = Number(req.params.groupId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+
+  const { score, feedback, member_scores } = req.body ?? {};
+  const hasScore = score !== undefined && score !== null && String(score).trim() !== "";
+  const memberScoreMap: Record<string, number> = member_scores && typeof member_scores === "object" ? member_scores : {};
+
+  const existing = await prisma.submission.findUnique({ where: { subUnitId_groupId: { subUnitId, groupId } } });
+  await undoScoreLogIds(prisma, existing?.scoreLogIdsJson ?? null);
+
+  let scoreLogIdsJson: string | null = null;
+  if (hasScore) {
+    const members = await prisma.groupMember.findMany({ where: { groupId } });
+    const logIds: number[] = [];
+    for (const m of members) {
+      const override = memberScoreMap[String(m.studentId)];
+      const finalScore = override !== undefined && String(override).trim() !== "" ? Number(override) : Number(score);
+      const logId = await recordGradeScoreLog(prisma, {
+        courseId,
+        studentId: m.studentId,
+        ruleTitle: `小組作業評分：${subUnit.title}`,
+        score: finalScore,
+        groupId,
+      });
+      logIds.push(logId);
+    }
+    scoreLogIdsJson = JSON.stringify(logIds);
+  }
+
+  await prisma.submission.upsert({
+    where: { subUnitId_groupId: { subUnitId, groupId } },
+    create: {
+      subUnitId,
+      groupId,
+      score: hasScore ? Number(score) : null,
+      feedback: feedback || null,
+      memberScoresJson: Object.keys(memberScoreMap).length ? JSON.stringify(memberScoreMap) : null,
+      gradedAt: getNowStrTaipei(),
+      scoreLogIdsJson,
+      locked: hasScore ? 1 : 0,
+    },
+    update: {
+      score: hasScore ? Number(score) : null,
+      feedback: feedback || null,
+      memberScoresJson: Object.keys(memberScoreMap).length ? JSON.stringify(memberScoreMap) : null,
+      gradedAt: getNowStrTaipei(),
+      scoreLogIdsJson,
+      ...(hasScore ? { locked: 1 } : {}),
+    },
+  });
+
+  res.json({ message: "評分已送出" });
+});
+
+unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId/submissions/group/:groupId/lock", async (req, res) => {
+  const subUnitId = Number(req.params.subUnitId);
+  const groupId = Number(req.params.groupId);
+  const locked = !!req.body?.locked;
+  await prisma.submission.upsert({
+    where: { subUnitId_groupId: { subUnitId, groupId } },
+    create: { subUnitId, groupId, locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
+    update: { locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
+  });
+  res.json({ message: locked ? "小組作業已鎖定" : "小組作業已解鎖" });
 });

@@ -12,6 +12,7 @@ import QRCode from "qrcode";
 import { initSchema } from "./db";
 import { getBinDir, getBundleDir, getUploadsDir } from "./paths";
 import { isRequestAuthenticated, requireAuth } from "./middleware/auth";
+import { getBearerToken, verifyStudentToken } from "./middleware/studentAuth";
 import { setupRealtime } from "./realtime";
 import { autoCatch } from "./asyncRoute";
 
@@ -102,7 +103,11 @@ app.get("/photo/*", async (req, res) => {
 });
 
 app.get("/uploads/*", async (req, res) => {
-  if (!(await isRequestAuthenticated(req))) {
+  // 教材/作業附件同時給教師（系統 session）與學生（LMS JWT）存取，兩種驗證只要其一成立即可。
+  // 學生端也接受 ?token= query（<img src>/<a href> 無法附加 Authorization header）。
+  const token = getBearerToken(req) || (typeof req.query.token === "string" ? req.query.token : undefined);
+  const isStudent = token ? Boolean(await verifyStudentToken(token)) : false;
+  if (!isStudent && !(await isRequestAuthenticated(req))) {
     res.status(401).json({ detail: "未登入無法讀取系統附件" });
     return;
   }

@@ -466,9 +466,11 @@ function switchTab(tabName) {
     }
   }
 
-  if (AppState.currentCourseId) {
-    refreshActiveTab(tabName);
-  }
+  // Always refresh — every case in refreshActiveTab() already guards for a missing
+  // course itself (inline empty-course notice, or for 'toolkit' a prompt + redirect
+  // to the course-independent Timer sub-tab). Gating this call on currentCourseId
+  // used to skip that per-tab handling entirely whenever no course existed yet.
+  refreshActiveTab(tabName);
 }
 
 function initNavTabs() {
@@ -525,7 +527,12 @@ function refreshActiveTab(tabName) {
 }
 
 async function loadToolkitData() {
-  if (!AppState.currentCourseId) return;
+  if (!AppState.currentCourseId) {
+    // 課堂公布欄／隨機抽籤子分頁需要課程資料，改為顯示跟其他分頁一致的「尚無班級」提示卡；
+    // 計時器與碼錶不受影響，維持可用，不強制切換子分頁。
+    if (window.TeachingToolkit) window.TeachingToolkit.setCourseAvailability(false);
+    return;
+  }
   try {
     // Use the dashboard endpoint (not the plain roster) so each student
     // carries today's is_absent flag — Lucky Draw depends on it to exclude
@@ -546,7 +553,7 @@ async function loadToolkitData() {
 
 // Global Quick Award Score (Used by Lucky Draw, etc.)
 window.quickAwardScore = async function(targetId, type, points = 1, ruleTitle = '🎲 抽籤表現優良') {
-  if (!AppState.currentCourseId) return;
+  if (!ensureCourseSelected()) return;
   try {
     if (type === 'student') {
       const student = AppState.students.find(s => s.id === targetId);
@@ -692,6 +699,8 @@ function renderActiveTabEmptyNotice() {
   renderEmptyCourseNotice(document.getElementById('all-students-score-grid'));
   renderEmptyCourseNotice(document.getElementById('individual-leaderboard'));
   renderEmptyCourseNotice(document.getElementById('admin-students-list-container'));
+  renderEmptyCourseNotice(document.getElementById('materials-units-list'));
+  if (window.TeachingToolkit) window.TeachingToolkit.setCourseAvailability(false);
 }
 
 function renderCourseSelectOptions() {
@@ -1385,6 +1394,20 @@ function showToast(message, type = 'info') {
 }
 window.showToast = showToast;
 
+// --- Shared guard for feature entry points that require an existing class ---
+// Passive background data-loaders (loadScoringData, loadAttendanceData, ...) already
+// render an inline "no class yet" card via renderEmptyCourseNotice()/renderActiveTabEmptyNotice()
+// and should keep silently no-op'ing — this helper is only for direct user-triggered actions
+// (button clicks, opening a creation modal, etc.) that would otherwise fail invisibly.
+function ensureCourseSelected() {
+  if (AppState.currentCourseId && AppState.courses && AppState.courses.length > 0) return true;
+  const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+  showToast(isEn ? 'Please create a class first!' : '請先建立班級課程！', 'error');
+  openModal('modal-add-course');
+  return false;
+}
+window.ensureCourseSelected = ensureCourseSelected;
+
 // --- Attendance Pane ---
 async function loadAttendanceData() {
   if (!AppState.currentCourseId || (AppState.courses && AppState.courses.length === 0)) {
@@ -1501,6 +1524,7 @@ function setAllAttendancePresent() {
 }
 
 async function saveAttendance() {
+  if (!ensureCourseSelected()) return;
   const dateStr = document.getElementById('attendance-date').value;
   const items = AppState.attendanceRecords.map(r => ({
     student_id: r.student_id,
@@ -1521,7 +1545,10 @@ async function saveAttendance() {
 
 // --- Grouping Pane & Drag & Drop ---
 async function loadGroupingData(targetPlanId) {
-  if (!AppState.currentCourseId) return;
+  if (!AppState.currentCourseId) {
+    renderEmptyCourseNotice(document.getElementById('grouping-grid-container'));
+    return;
+  }
   try {
     const planParam = targetPlanId || AppState.currentGroupPlanId;
     const url = `/api/groups/${AppState.currentCourseId}` + (planParam ? `?plan_id=${planParam}` : '');
@@ -1689,7 +1716,7 @@ function renderGroupColumns(data) {
 
 // --- Group Plans Management Functions ---
 function openCreateGroupPlanModal(copyCurrent = false) {
-  if (!AppState.currentCourseId) return;
+  if (!ensureCourseSelected()) return;
   const selectCopy = document.getElementById('select-copy-from-plan');
   const nameInput = document.getElementById('input-create-plan-name');
   if (selectCopy) {
@@ -1827,10 +1854,7 @@ let currentSelectedGroupIcon = null;
 let currentPendingGroupIconFile = null;
 
 function openAddGroupModal() {
-  if (!AppState.currentCourseId) {
-    alert(window.I18n && window.I18n.getLanguage() === 'en' ? 'Please select a course first!' : '請先選擇班級課程！');
-    return;
-  }
+  if (!ensureCourseSelected()) return;
   currentEditingGroup = null;
   currentPendingGroupIconFile = null;
 
@@ -2119,6 +2143,7 @@ function renderSeatingGrid(data) {
 }
 
 async function saveSeatConfig() {
+  if (!ensureCourseSelected()) return;
   const rows = parseInt(document.getElementById('seat-rows-input').value);
   const cols = parseInt(document.getElementById('seat-cols-input').value);
   const bbPos = document.getElementById('seat-blackboard-pos-input').value;
@@ -2141,6 +2166,7 @@ async function saveSeatConfig() {
 }
 
 async function autoArrangeSeats(mode) {
+  if (!ensureCourseSelected()) return;
   try {
     await API.post(`/api/seating/${AppState.currentCourseId}/auto`, { mode: mode });
     loadSeatingData();
@@ -2150,6 +2176,7 @@ async function autoArrangeSeats(mode) {
 }
 
 async function runAutoGrouping() {
+  if (!ensureCourseSelected()) return;
   const targetType = document.getElementById('group-target-type').value;
   const targetVal = parseInt(document.getElementById('group-target-value').value);
   const mode = document.getElementById('group-mode').value;
@@ -2273,6 +2300,7 @@ function renderNotesList(notes) {
 }
 
 async function saveNote() {
+  if (!ensureCourseSelected()) return;
   const studentId = document.getElementById('note-student-select').value;
   const noteText = document.getElementById('note-text-input').value.trim();
   const dateStr = document.getElementById('note-date').value;
@@ -2586,10 +2614,7 @@ function renderLeaderboards(data) {
 
 // --- Big Screen Projection View (📺 大螢幕即時看板 - 獨立純淨 App 應用程式新視窗) ---
 function openBigScreenProjection() {
-  if (!AppState.currentCourseId) {
-    alert('請先選擇或建立班級課程！');
-    return;
-  }
+  if (!ensureCourseSelected()) return;
   const url = `/projection?course_id=${AppState.currentCourseId}&period=${AppState.dashboardPeriod}&mode=${AppState.dashboardViewMode}`;
   const width = screen.availWidth || 1920;
   const height = screen.availHeight || 1080;
@@ -2905,7 +2930,10 @@ async function refreshProjectionData(force = false) {
 
 // --- Admin & Export Pane ---
 async function loadAdminData() {
-  if (!AppState.currentCourseId) return;
+  if (!AppState.currentCourseId) {
+    renderEmptyCourseNotice(document.getElementById('admin-students-list-container'));
+    return;
+  }
   loadAdminStudentsData();
   loadAdminRulesData();
 }
@@ -2944,6 +2972,7 @@ async function loadAdminStudentsData() {
       const codeStr = s.student_code ? (isEn ? ` (ID: ${s.student_code})` : ` (學號: ${s.student_code})`) : '';
       const numText = isEn ? `No. ${s.student_number}` : `${s.student_number}號`;
       const noCodeText = isEn ? 'No ID set' : '未設定學號';
+      const accountStr = s.login_account ? (isEn ? ` · 🔑 Login: ${s.login_account}` : ` · 🔑 登入帳號: ${s.login_account}`) : '';
 
       item.innerHTML = `
         <div style="display: flex; align-items: center; gap: 10px; flex: 1;">
@@ -2952,7 +2981,7 @@ async function loadAdminStudentsData() {
           </div>
           <div>
             <div style="font-weight: bold; font-size: 0.95rem;">${numText} ${getStudentDisplayName(s)}${engStr}</div>
-            <div style="font-size: 0.78rem; color: var(--text-muted);">${codeStr ? codeStr : noCodeText}</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">${codeStr ? codeStr : noCodeText}${accountStr}</div>
           </div>
         </div>
         <div style="display: flex; gap: 6px;">
@@ -2987,9 +3016,14 @@ async function loadAdminStudentsData() {
 }
 
 function openAddStudentModal() {
+  if (!ensureCourseSelected()) return;
+  const nextNumber = AppState.students.length + 1;
   document.getElementById('edit-student-id').value = '';
-  document.getElementById('edit-student-number').value = (AppState.students.length + 1);
+  document.getElementById('edit-student-number').value = nextNumber;
   document.getElementById('edit-student-code').value = '';
+  // 帳號必填——預先帶入建議值（{課程ID}-{座號4碼}），教師可直接沿用或自行改成好記的帳號。
+  document.getElementById('edit-student-login-account').value = `${AppState.currentCourseId}-${String(nextNumber).padStart(4, '0')}`;
+  document.getElementById('edit-student-password').value = '';
   document.getElementById('edit-student-name').value = '';
   const engInput = document.getElementById('edit-student-english-name');
   if (engInput) engInput.value = '';
@@ -3002,6 +3036,8 @@ function openEditStudentModal(s) {
   document.getElementById('edit-student-id').value = s.id;
   document.getElementById('edit-student-number').value = s.student_number;
   document.getElementById('edit-student-code').value = s.student_code || '';
+  document.getElementById('edit-student-login-account').value = s.login_account || '';
+  document.getElementById('edit-student-password').value = '';
   document.getElementById('edit-student-name').value = s.name;
   const engInput = document.getElementById('edit-student-english-name');
   if (engInput) engInput.value = s.english_name || '';
@@ -3015,6 +3051,8 @@ async function confirmSaveStudent() {
   const sid = document.getElementById('edit-student-id').value;
   const num = parseInt(document.getElementById('edit-student-number').value);
   const code = document.getElementById('edit-student-code').value.trim();
+  const loginAccount = document.getElementById('edit-student-login-account').value.trim();
+  const password = document.getElementById('edit-student-password').value.trim();
   const name = document.getElementById('edit-student-name').value.trim();
   const engInput = document.getElementById('edit-student-english-name');
   const englishName = engInput ? engInput.value.trim() : '';
@@ -3024,20 +3062,31 @@ async function confirmSaveStudent() {
     alert(window.I18n && window.I18n.getLanguage() === 'en' ? 'Please fill in Seat No. and Name!' : '請填寫座號與姓名！');
     return;
   }
+  if (!loginAccount) {
+    alert(window.I18n && window.I18n.getLanguage() === 'en' ? 'Please fill in the login account!' : '請填寫學生登入帳號！');
+    return;
+  }
 
   try {
     if (sid) {
       await API.put(`/api/courses/${AppState.currentCourseId}/students/${sid}`, {
         student_number: num,
         student_code: code || null,
+        login_account: loginAccount,
         name: name,
         english_name: englishName || null,
         gender: gender
       });
+      // 密碼欄位留空＝不修改；有值才呼叫專屬的密碼端點更新。
+      if (password) {
+        await API.put(`/api/courses/${AppState.currentCourseId}/students/${sid}/password`, { password: password });
+      }
     } else {
       await API.post(`/api/courses/${AppState.currentCourseId}/students`, {
         student_number: num,
         student_code: code || null,
+        login_account: loginAccount,
+        password: password || undefined,
         name: name,
         english_name: englishName || null,
         gender: gender
@@ -3105,6 +3154,7 @@ async function loadAdminRulesData() {
 }
 
 function openAddRuleModal() {
+  if (!ensureCourseSelected()) return;
   document.getElementById('editing-rule-id').value = '';
   document.getElementById('modal-rule-title').textContent = window.I18n ? window.I18n.t('rule_modal_title_add') : '➕ 新增自訂評分項目';
   document.getElementById('new-rule-title').value = '';
@@ -3127,6 +3177,7 @@ function openEditRuleModal(rule) {
 }
 
 async function resetRulesDefault() {
+  if (!ensureCourseSelected()) return;
   const isEn = window.I18n && window.I18n.getLanguage() === 'en';
   if (!await showConfirmModal({
     icon: '🔄',
@@ -3204,6 +3255,7 @@ async function uploadStudentFile() {
 }
 
 function exportExcel() {
+  if (!ensureCourseSelected()) return;
   const startDate = document.getElementById('export-start-date').value;
   const endDate = document.getElementById('export-end-date').value;
 
@@ -3693,7 +3745,7 @@ function initEventListeners() {
 
   const btnImportModal = document.getElementById('btn-open-import-modal');
   if (btnImportModal) {
-    btnImportModal.addEventListener('click', () => openModal('modal-import-students'));
+    btnImportModal.addEventListener('click', () => { if (ensureCourseSelected()) openModal('modal-import-students'); });
   }
 
   // Import Modal Tabs

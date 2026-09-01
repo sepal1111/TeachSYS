@@ -5,6 +5,11 @@ export interface ParsedStudent {
   name: string;
   english_name: string | null;
   gender: "M" | "F";
+  // Only ever set by the structured CSV/Excel column parser (fileImport.ts) — the free-text
+  // paste heuristics below stay 5-token-max, positional account/password strings would be too
+  // ambiguous to parse reliably. Null means "let courses.ts auto-generate one".
+  login_account?: string | null;
+  password?: string | null;
 }
 
 function isGenderToken(token: string): boolean {

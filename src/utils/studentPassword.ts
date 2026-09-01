@@ -7,6 +7,14 @@ export function defaultStudentPassword(studentNumber: number): string {
   return String(studentNumber).padStart(4, "0");
 }
 
+// Default login account: {course_id}-{4-digit padded student number}. Deterministic and
+// collision-free across courses in the same deployment (login_account is unique system-wide,
+// not per-course, so it doubles as the "which course" lookup — see routes/studentAuth.ts
+// login_by_account). Teachers can still override it with anything memorable per student.
+export function defaultStudentAccount(courseId: number, studentNumber: number): string {
+  return `${courseId}-${String(studentNumber).padStart(4, "0")}`;
+}
+
 export function hashPassword(plain: string): string {
   return bcrypt.hashSync(plain, 10);
 }

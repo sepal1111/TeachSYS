@@ -1797,9 +1797,33 @@
     },
 
     onCourseLoaded(courseId, students, groups) {
+      this.setCourseAvailability(true);
       this.bulletin.loadCourse(courseId);
       this.luckyDraw.setStudents(students);
       this.luckyDraw.setGroups(groups);
+    },
+
+    // 課堂公布欄／隨機抽籤都需要課程資料（公告存在 localStorage 的課程 key 下、抽籤池來自班級名冊），
+    // 尚未建立班級時分別在這兩個子分頁裡顯示跟其他分頁一致的「尚無班級」提示卡，取代原本的內容；
+    // 計時器與碼錶不受影響，維持可用。
+    setCourseAvailability(hasCourse) {
+      const pairs = [
+        ['toolkit-bulletin-empty-notice', 'toolkit-bulletin-content'],
+        ['toolkit-draw-empty-notice', 'toolkit-draw-content'],
+      ];
+      pairs.forEach(([noticeId, contentId]) => {
+        const notice = document.getElementById(noticeId);
+        const content = document.getElementById(contentId);
+        if (!notice || !content) return;
+        if (hasCourse) {
+          notice.style.display = 'none';
+          content.style.display = '';
+        } else {
+          if (window.renderEmptyCourseNotice) window.renderEmptyCourseNotice(notice);
+          notice.style.display = 'block';
+          content.style.display = 'none';
+        }
+      });
     }
   };
 

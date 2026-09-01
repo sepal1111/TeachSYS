@@ -6,13 +6,41 @@ import { prisma } from "../db";
 import { parseTextImport } from "../utils/textImport";
 import { parseCsvStudents, parseXlsxStudents } from "../utils/fileImport";
 import { autoCatch } from "../asyncRoute";
-import { defaultStudentPassword, hashPassword } from "../utils/studentPassword";
-import { getLocalIp } from "../utils/network";
-import QRCode from "qrcode";
+import { defaultStudentAccount, defaultStudentPassword, hashPassword } from "../utils/studentPassword";
 import crypto from "crypto";
 
 export const coursesRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
+
+// login_account is unique system-wide (see prisma schema comment). The deterministic
+// default is already collision-free by construction (course_id + student_number is a
+// natural key), so a collision only happens if a teacher manually claimed that exact
+// string for a different student — rare, handled defensively rather than left to crash.
+async function generateUniqueAccount(courseId: number, studentNumber: number): Promise<string> {
+  const base = defaultStudentAccount(courseId, studentNumber);
+  const existing = await prisma.student.findUnique({ where: { loginAccount: base } });
+  if (!existing) return base;
+  return `${base}-${crypto.randomBytes(2).toString("hex")}`;
+}
+
+/** Uses an explicit account from an import row/payload if given (e.g. the CSV/Excel
+ *  template's 帳號 column), otherwise falls back to the deterministic auto-generated one. */
+async function resolveImportedAccount(
+  explicit: string | null | undefined,
+  courseId: number,
+  studentNumber: number
+): Promise<string> {
+  const trimmed = explicit?.trim();
+  if (!trimmed) return generateUniqueAccount(courseId, studentNumber);
+  const taken = await prisma.student.findUnique({ where: { loginAccount: trimmed } });
+  return taken ? generateUniqueAccount(courseId, studentNumber) : trimmed;
+}
+
+/** Uses an explicit password from an import row/payload if given (e.g. the CSV/Excel
+ *  template's 密碼 column), otherwise falls back to the default (座號四碼). */
+function resolveImportedPassword(explicit: string | null | undefined, studentNumber: number): string {
+  return explicit?.trim() || defaultStudentPassword(studentNumber);
+}
 
 const DEFAULT_RULES = [
   { title: "熱心助人", category: "positive", score_value: 1, icon: "🤝" },
@@ -128,17 +156,38 @@ coursesRouter.get("/:courseId/students", async (req, res) => {
     include: { group: { select: { groupName: true } } },
   });
   res.json(
-    students.map((s) => {
-      const { group, ...rest } = s;
-      return { ...rest, group_name: group?.groupName ?? null };
-    })
+    students.map((s) => ({
+      id: s.id,
+      student_number: s.studentNumber,
+      student_code: s.studentCode,
+      login_account: s.loginAccount,
+      name: s.name,
+      english_name: s.englishName,
+      gender: s.gender,
+      group_id: s.groupId,
+      group_name: s.group?.groupName ?? null,
+      seat_row: s.seatRow,
+      seat_col: s.seatCol,
+    }))
   );
 });
 
 coursesRouter.post("/:courseId/students", async (req, res) => {
   const courseId = Number(req.params.courseId);
-  const { student_number, name, english_name = null, gender = "M", group_id = null, student_code = null } =
+  const { student_number, name, english_name = null, gender = "M", group_id = null, student_code = null, login_account = null, password = null } =
     req.body ?? {};
+
+  const loginAccount: string = (login_account as string | null)?.trim() || "";
+  if (!loginAccount) {
+    res.status(400).json({ detail: "請輸入學生登入帳號" });
+    return;
+  }
+  const taken = await prisma.student.findUnique({ where: { loginAccount } });
+  if (taken) {
+    res.status(400).json({ detail: "此帳號已被使用，請換一個" });
+    return;
+  }
+
   const student = await prisma.student.create({
     data: {
       courseId,
@@ -148,10 +197,11 @@ coursesRouter.post("/:courseId/students", async (req, res) => {
       gender,
       groupId: group_id,
       studentCode: student_code,
-      passwordHash: hashPassword(defaultStudentPassword(student_number)),
+      loginAccount,
+      passwordHash: hashPassword((password as string | null)?.trim() || defaultStudentPassword(student_number)),
     },
   });
-  res.json({ id: student.id, message: "Student created" });
+  res.json({ id: student.id, login_account: loginAccount, message: "Student created" });
 });
 
 coursesRouter.post("/:courseId/students/batch", async (req, res) => {
@@ -162,6 +212,8 @@ coursesRouter.post("/:courseId/students/batch", async (req, res) => {
     english_name?: string | null;
     gender?: string | null;
     student_code?: string | null;
+    login_account?: string | null;
+    password?: string | null;
   }> = req.body?.students ?? [];
 
   let count = 0;
@@ -176,7 +228,8 @@ coursesRouter.post("/:courseId/students/batch", async (req, res) => {
         englishName: item.english_name ?? null,
         gender,
         studentCode: item.student_code ?? null,
-        passwordHash: hashPassword(defaultStudentPassword(item.student_number)),
+        loginAccount: await resolveImportedAccount(item.login_account, courseId, item.student_number),
+        passwordHash: hashPassword(resolveImportedPassword(item.password, item.student_number)),
       },
     });
     count++;
@@ -199,7 +252,8 @@ coursesRouter.post("/:courseId/students/text_import", async (req, res) => {
         name: s.name,
         englishName: s.english_name,
         gender: s.gender,
-        passwordHash: hashPassword(defaultStudentPassword(s.student_number)),
+        loginAccount: await resolveImportedAccount(s.login_account, courseId, s.student_number),
+        passwordHash: hashPassword(resolveImportedPassword(s.password, s.student_number)),
       },
     });
     count++;
@@ -236,7 +290,8 @@ coursesRouter.post("/:courseId/students/upload", upload.single("file"), async (r
         name: s.name,
         englishName: s.english_name,
         gender: s.gender,
-        passwordHash: hashPassword(defaultStudentPassword(s.student_number)),
+        loginAccount: await resolveImportedAccount(s.login_account, courseId, s.student_number),
+        passwordHash: hashPassword(resolveImportedPassword(s.password, s.student_number)),
       },
     });
     count++;
@@ -252,7 +307,25 @@ coursesRouter.put("/:courseId/students/:studentId", async (req, res) => {
     res.status(404).json({ detail: "Student not found" });
     return;
   }
-  const { student_number, student_code, name, english_name, gender } = req.body ?? {};
+  const { student_number, student_code, name, english_name, gender, login_account } = req.body ?? {};
+
+  let loginAccount = student.loginAccount;
+  if (typeof login_account === "string") {
+    const trimmed = login_account.trim();
+    if (!trimmed) {
+      res.status(400).json({ detail: "帳號不可留空" });
+      return;
+    }
+    if (trimmed !== student.loginAccount) {
+      const taken = await prisma.student.findUnique({ where: { loginAccount: trimmed } });
+      if (taken) {
+        res.status(400).json({ detail: "此帳號已被使用，請換一個" });
+        return;
+      }
+      loginAccount = trimmed;
+    }
+  }
+
   await prisma.student.update({
     where: { id: studentId },
     data: {
@@ -261,6 +334,7 @@ coursesRouter.put("/:courseId/students/:studentId", async (req, res) => {
       name: name ?? student.name,
       englishName: english_name ?? student.englishName,
       gender: gender ?? student.gender,
+      loginAccount,
     },
   });
   res.json({ message: "Student updated successfully" });
@@ -294,52 +368,23 @@ coursesRouter.put("/:courseId/students/:studentId/password", async (req, res) =>
   });
 });
 
-coursesRouter.post("/:courseId/students/passwords/reset_all", async (req, res) => {
-  const courseId = Number(req.params.courseId);
-  const students = await prisma.student.findMany({ where: { courseId, isActive: 1 } });
-  for (const s of students) {
-    await prisma.student.update({
-      where: { id: s.id },
-      data: { passwordHash: hashPassword(defaultStudentPassword(s.studentNumber)) },
-    });
-  }
-  res.json({ message: `已將 ${students.length} 位學生的密碼重設為預設值（座號四碼）`, count: students.length });
-});
-
-// --- LMS 課堂 QR Code 免密碼登入（教師開課時產生短效期 join token）---
-
-coursesRouter.post("/:courseId/join_qr", async (req, res) => {
-  const courseId = Number(req.params.courseId);
-  const course = await prisma.course.findUnique({ where: { id: courseId } });
-  if (!course) {
-    res.status(404).json({ detail: "Course not found" });
-    return;
-  }
-
-  const joinToken = crypto.randomBytes(16).toString("hex");
-  const expiresInMs = 4 * 60 * 60 * 1000; // 4 hours — long enough for one school day's classes.
-  const joinTokenExpiresAt = new Date(Date.now() + expiresInMs).toISOString();
-  await prisma.course.update({ where: { id: courseId }, data: { joinToken, joinTokenExpiresAt } });
-
-  // Always encode the LAN IP (not req.hostname) so the QR works from a
-  // student's phone even when the teacher's own browser is on localhost.
-  const port = req.socket.localPort;
-  const host = getLocalIp();
-  const joinUrl = `http://${host}${port ? `:${port}` : ""}/student?course_id=${courseId}&join=${joinToken}`;
-  const qrDataUrl = await QRCode.toDataURL(joinUrl, { errorCorrectionLevel: "L", margin: 2, scale: 8 });
-
-  res.json({ join_token: joinToken, expires_at: joinTokenExpiresAt, join_url: joinUrl, qr_code: qrDataUrl });
-});
-
 // --- 範本檔案下載 ---
 
-const TEMPLATE_HEADERS = ["座號", "學號", "中文姓名", "英文姓名", "性別"];
+const TEMPLATE_HEADERS = [
+  "座號",
+  "學號",
+  "中文姓名",
+  "英文姓名",
+  "性別",
+  "帳號 (可選，留空由系統自動產生)",
+  "密碼 (可選，留空預設為座號四碼)",
+];
 const TEMPLATE_SAMPLE: (string | number)[][] = [
-  [1, "112001", "王小明", "David", "男"],
-  [2, "112002", "李小華", "Emily", "女"],
-  [3, "112003", "張大同", "Tom", "男"],
-  [4, "112004", "陳雅婷", "Grace", "女"],
-  [5, "112005", "林志豪", "Leo", "男"],
+  [1, "112001", "王小明", "David", "男", "", ""],
+  [2, "112002", "李小華", "Emily", "女", "", ""],
+  [3, "112003", "張大同", "Tom", "男", "", ""],
+  [4, "112004", "陳雅婷", "Grace", "女", "", ""],
+  [5, "112005", "林志豪", "Leo", "男", "", ""],
 ];
 
 coursesRouter.get("/template/students_excel", async (_req, res) => {
@@ -348,16 +393,16 @@ coursesRouter.get("/template/students_excel", async (_req, res) => {
   ws.addRow(TEMPLATE_HEADERS);
   for (const row of [
     ...TEMPLATE_SAMPLE,
-    [6, "112006", "黃美玲", "May", "女"],
-    [7, "112007", "趙子龍", "Alex", "男"],
-    [8, "112008", "周雅玲", "Chloe", "女"],
-    [9, "112009", "孫悟空", "Sam", "男"],
-    [10, "112010", "吳小雯", "Wendy", "女"],
+    [6, "112006", "黃美玲", "May", "女", "", ""],
+    [7, "112007", "趙子龍", "Alex", "男", "", ""],
+    [8, "112008", "周雅玲", "Chloe", "女", "", ""],
+    [9, "112009", "孫悟空", "Sam", "男", "", ""],
+    [10, "112010", "吳小雯", "Wendy", "女", "", ""],
   ]) {
     ws.addRow(row);
   }
 
-  ws.columns = [{ width: 12 }, { width: 16 }, { width: 18 }, { width: 18 }, { width: 12 }];
+  ws.columns = [{ width: 12 }, { width: 16 }, { width: 18 }, { width: 18 }, { width: 12 }, { width: 30 }, { width: 30 }];
   const headerRow = ws.getRow(1);
   headerRow.eachCell((cell) => {
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2563EB" } };

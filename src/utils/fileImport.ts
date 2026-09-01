@@ -41,6 +41,10 @@ function rowToStudent(rowStr: string[]): ParsedStudent | null {
   let name = "";
   let englishName: string | null = null;
   let gender: "M" | "F" = "M";
+  // Optional trailing 6th/7th columns (登入帳號／密碼) — only the structured CSV/Excel
+  // template has enough columns for this to be unambiguous; shorter rows are untouched.
+  const loginAccount: string | null = rowStr.length >= 6 ? rowStr[5] || null : null;
+  const password: string | null = rowStr.length >= 7 ? rowStr[6] || null : null;
 
   const isF = (s: string) => s.toUpperCase().includes("女") || s.toUpperCase() === "F";
   const isM = (s: string) => s.toUpperCase().includes("男") || s.toUpperCase() === "M";
@@ -71,7 +75,7 @@ function rowToStudent(rowStr: string[]): ParsedStudent | null {
     name = rowStr[1] ?? "";
   }
 
-  return { student_number: num, student_code: code, name, english_name: englishName, gender };
+  return { student_number: num, student_code: code, name, english_name: englishName, gender, login_account: loginAccount, password };
 }
 
 export function parseCsvStudents(text: string): ParsedStudent[] {

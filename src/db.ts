@@ -245,6 +245,39 @@ export async function initSchema(): Promise<void> {
     );
   `);
 
+  // --- Phase 3: 作業與小組共同作業模組 (submissions) ---
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sub_unit_id INTEGER NOT NULL,
+      student_id INTEGER NULL,
+      group_id INTEGER NULL,
+      submitter_id INTEGER NULL,
+      files_json TEXT NULL,
+      link TEXT NULL,
+      text_content TEXT NULL,
+      submitted_at TEXT NULL,
+      is_late INTEGER DEFAULT 0,
+      turned_in INTEGER DEFAULT 0,
+      locked INTEGER DEFAULT 0,
+      teacher_reopened INTEGER DEFAULT 0,
+      resubmit_requested INTEGER DEFAULT 0,
+      resubmit_requested_at TEXT NULL,
+      score INTEGER NULL,
+      feedback TEXT NULL,
+      member_scores_json TEXT NULL,
+      graded_at TEXT NULL,
+      score_log_ids_json TEXT NULL,
+      answers_json TEXT NULL,
+      max_score INTEGER NULL,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
+      UNIQUE(sub_unit_id, student_id),
+      UNIQUE(sub_unit_id, group_id)
+    );
+  `);
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");
   await tryAlter("ALTER TABLE groups ADD COLUMN plan_id INTEGER NULL;");
@@ -253,15 +286,26 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE courses ADD COLUMN seat_rows INTEGER DEFAULT 5;");
   await tryAlter("ALTER TABLE courses ADD COLUMN seat_cols INTEGER DEFAULT 6;");
   await tryAlter("ALTER TABLE courses ADD COLUMN blackboard_position TEXT DEFAULT 'top';");
-  await tryAlter("ALTER TABLE courses ADD COLUMN join_token TEXT NULL;");
-  await tryAlter("ALTER TABLE courses ADD COLUMN join_token_expires_at TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN student_code TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN english_name TEXT NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN seat_row INTEGER NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN seat_col INTEGER NULL;");
   await tryAlter("ALTER TABLE students ADD COLUMN password_hash TEXT NULL;");
+  await tryAlter("ALTER TABLE students ADD COLUMN login_account TEXT NULL;");
+  await prisma.$executeRawUnsafe(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_students_login_account ON students(login_account);"
+  );
   await tryAlter("ALTER TABLE qualitative_notes ADD COLUMN media_url TEXT NULL;");
   await tryAlter("ALTER TABLE qualitative_notes ADD COLUMN media_type TEXT NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN submission_types TEXT NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN assignment_type TEXT NOT NULL DEFAULT 'individual';");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN group_plan_id INTEGER NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN due_date TEXT NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN auto_lock_overdue INTEGER DEFAULT 0;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN quiz_questions TEXT NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN reveal_answers_after_submit INTEGER DEFAULT 1;");
+  await tryAlter("ALTER TABLE submissions ADD COLUMN answers_json TEXT NULL;");
+  await tryAlter("ALTER TABLE submissions ADD COLUMN max_score INTEGER NULL;");
 
   // Ensure every course has an active group_plan, and backfill group_members from
   // legacy students.group_id, exactly like the Python auto-migration block.

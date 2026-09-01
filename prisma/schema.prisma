@@ -27,9 +27,6 @@ model Course {
   seatCols           Int      @default(6) @map("seat_cols")
   blackboardPosition String   @default("top") @map("blackboard_position")
   createdAt          String?  @map("created_at")
-  // LMS 課堂 QR Code 免密碼登入：短效期一次性 join token（見第三節架構決策）。
-  joinToken          String?  @map("join_token")
-  joinTokenExpiresAt String?  @map("join_token_expires_at")
 
   students         Student[]
   groups           Group[]
@@ -50,9 +47,10 @@ model GroupPlan {
   isActive  Int      @default(1) @map("is_active")
   createdAt String?  @map("created_at")
 
-  course  Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  groups  Group[]
-  members GroupMember[]
+  course   Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  groups   Group[]
+  members  GroupMember[]
+  subUnits SubUnit[]
 
   @@map("group_plans")
 }
@@ -69,6 +67,7 @@ model Group {
   plan          GroupPlan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
   members       GroupMember[]
   directStudents Student[]
+  submissions   Submission[]
 
   @@map("groups")
 }
@@ -101,6 +100,9 @@ model Student {
   isActive      Int     @default(1) @map("is_active")
   // LMS 學生登入帳密（見第三節架構決策：完全自建，不依賴 Google）。null 代表尚未設定密碼。
   passwordHash  String? @map("password_hash")
+  // 獨立自訂登入帳號（與座號/學號無關，教師可自行設定或系統自動產生），全系統唯一，
+  // 讓學生免選課程即可直接用「帳號＋密碼」登入（見 routes/studentAuth.ts login_by_account）。
+  loginAccount  String? @unique @map("login_account")
 
   course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
   group            Group?            @relation(fields: [groupId], references: [id], onDelete: SetNull)
@@ -109,6 +111,7 @@ model Student {
   scoreLogs        ScoreLog[]
   qualitativeNotes QualitativeNote[]
   readingProgress  ReadingProgress[]
+  submissions      Submission[]
 
   @@map("students")
 }
@@ -235,11 +238,80 @@ model SubUnit {
   description String?
   createdAt   String? @map("created_at")
 
+  // --- Phase 3：作業欄位（category = "assignment" 時才有意義） ---
+  // 逗號分隔："file,text,link" 的子集，決定學生繳交表單顯示哪些輸入方式。
+  submissionTypes String? @map("submission_types")
+  // individual（個人）｜ group（小組，需搭配 groupPlanId 指定沿用哪套分組方案）。quiz 恆為 individual。
+  assignmentType  String  @default("individual") @map("assignment_type")
+  groupPlanId     Int?    @map("group_plan_id")
+  // YYYY-MM-DD（比照系統其他日期欄位僅到「天」，比對用 getTodayStrTaipei()）。assignment/quiz 皆可用。
+  dueDate         String? @map("due_date")
+  // 開啟後，超過 dueDate 即拒絕（重新）繳交，除非教師手動解鎖（teacher_reopened）
+  autoLockOverdue Int     @default(0) @map("auto_lock_overdue")
+
+  // --- Phase 3：測驗欄位（category = "quiz" 時才有意義） ---
+  // JSON: [{ id, type: multiple_choice|true_false|short_answer, question_text, options[], correct_answer, points }]
+  // 學生尚未作答前，API 絕不能回傳 correct_answer（見 studentContent.ts）。
+  quizQuestions             String? @map("quiz_questions")
+  revealAnswersAfterSubmit  Int     @default(1) @map("reveal_answers_after_submit")
+
   unit            Unit              @relation(fields: [unitId], references: [id], onDelete: Cascade)
+  groupPlan       GroupPlan?        @relation(fields: [groupPlanId], references: [id], onDelete: SetNull)
   materials       Material[]
   readingProgress ReadingProgress[]
+  submissions     Submission[]
 
   @@map("sub_units")
+}
+
+// ==========================================================================
+// Phase 3 — 作業與小組共同作業模組 (Assignments & Group Collaboration)
+// ==========================================================================
+
+model Submission {
+  id        Int @id @default(autoincrement())
+  subUnitId Int @map("sub_unit_id")
+
+  // 個人作業：studentId 有值、groupId 為 null。小組作業：groupId 有值、studentId 為 null，
+  // 實際代表小組送出的學生記在 submitterId。兩個 @@unique 各自允許另一欄為 null
+  // （SQLite 視多個 NULL 為互不相同），因此同一張表能同時滿足「一生一筆」與「一組一筆」。
+  studentId   Int? @map("student_id")
+  groupId     Int? @map("group_id")
+  submitterId Int? @map("submitter_id")
+
+  filesJson   String? @map("files_json") // JSON: [{ file_name, url }]
+  link        String?
+  textContent String? @map("text_content")
+  // 測驗作答（category = "quiz" 時才有意義）：JSON { [questionId]: studentAnswer }
+  answersJson String? @map("answers_json")
+  // 測驗滿分（自動批改當下依 quiz_questions 加總算出，questions 事後被教師編輯也不會變動舊紀錄）
+  maxScore    Int?    @map("max_score")
+
+  submittedAt String? @map("submitted_at")
+  isLate      Int     @default(0) @map("is_late")
+  turnedIn    Int     @default(0) @map("turned_in")
+  locked      Int     @default(0)
+  // 教師手動解鎖／退回過，即使已逾期也視為允許重新繳交
+  teacherReopened     Int     @default(0) @map("teacher_reopened")
+  resubmitRequested   Int     @default(0) @map("resubmit_requested")
+  resubmitRequestedAt String? @map("resubmit_requested_at")
+
+  score    Int?
+  feedback String?
+  // 小組作業教師微調個別組員分數：JSON { [studentId]: score }
+  memberScoresJson String? @map("member_scores_json")
+  gradedAt         String? @map("graded_at")
+  // 本次評分寫入 score_logs 的 id 清單（JSON number[]），重新評分時先沖銷舊的再建新的，
+  // 避免總分因反覆評分而重複累計。
+  scoreLogIdsJson String? @map("score_log_ids_json")
+
+  subUnit   SubUnit  @relation(fields: [subUnitId], references: [id], onDelete: Cascade)
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group     Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([subUnitId, studentId])
+  @@unique([subUnitId, groupId])
+  @@map("submissions")
 }
 
 model Material {

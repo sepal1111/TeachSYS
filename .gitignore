@@ -2,6 +2,8 @@
 # 應用程式資料庫與使用者動態檔案 (機密/學生隱私)
 # ==========================================
 *.db
+*.db-shm
+*.db-wal
 *.sqlite
 *.sqlite3
 bin/classroom_record.db

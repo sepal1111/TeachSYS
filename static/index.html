@@ -342,12 +342,10 @@
           <div>
             <div class="glass-card-title">📚 課程素材與單元</div>
             <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
-              建立單元／小單元、上傳教材，學生可從 <b>/student</b> 頁面用「座號 + 密碼」或課堂 QR Code 登入瀏覽（預設密碼＝座號四碼，如 1 號為 0001）
+              建立單元／小單元、上傳教材，學生可從 <b>/student</b> 頁面用「帳號 + 密碼」登入瀏覽（帳號可於「學生管理」分頁查看或設定）
             </div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="btn-materials-join-qr" class="btn btn-secondary" style="font-size: 0.85rem;">📱 開啟課堂 QR 登入</button>
-            <button id="btn-materials-reset-passwords" class="btn btn-secondary" style="font-size: 0.85rem;">🔑 重設全班密碼</button>
             <button id="btn-materials-add-unit" class="btn" style="font-size: 0.85rem;">➕ 新增單元</button>
           </div>
         </div>
@@ -370,6 +368,8 @@
 
         <!-- 1. 公布欄 Subpane -->
         <div id="toolkit-subpane-bulletin" class="toolkit-subpane" style="display: block;">
+          <div id="toolkit-bulletin-empty-notice" style="display: none;"></div>
+          <div id="toolkit-bulletin-content">
           <!-- Multi-Bulletin Posts Bar (多佈告切換與管理列) -->
           <div class="bulletin-posts-bar" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; padding: 10px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -433,10 +433,13 @@
           <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);" data-i18n="bulletin_hint">
             💡 教師可在此書寫注意事項、學習任務或隨堂提示，內容依班級自動儲存。
           </div>
+          </div>
         </div>
 
         <!-- 2. 隨機抽籤 Subpane -->
         <div id="toolkit-subpane-draw" class="toolkit-subpane" style="display: none;">
+          <div id="toolkit-draw-empty-notice" style="display: none;"></div>
+          <div id="toolkit-draw-content">
           <div class="draw-config-bar">
             <div class="draw-control-item">
               <label for="lucky-draw-mode" data-i18n="draw_mode_label">抽籤類型：</label>
@@ -481,6 +484,7 @@
                 🎲 開始抽籤
               </button>
             </div>
+          </div>
           </div>
         </div>
 
@@ -762,6 +766,14 @@
         <div>
           <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;" data-i18n="admin_student_code">學號（對應 photo/<學號>.jpg 照片）：</label>
           <input type="text" id="edit-student-code" class="input-control" placeholder="例如：112001 (可選)">
+        </div>
+        <div>
+          <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;" data-i18n="admin_student_login_account">學生登入帳號（LMS 用，與座號/學號無關，必填）：</label>
+          <input type="text" id="edit-student-login-account" class="input-control" placeholder="例如：1-0001" required>
+        </div>
+        <div>
+          <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;" data-i18n="admin_student_password">登入密碼：</label>
+          <input type="password" id="edit-student-password" class="input-control" placeholder="留空則沿用預設值（座號四碼）／不修改現有密碼" autocomplete="new-password">
         </div>
         <div>
           <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 4px;" data-i18n="admin_student_name">中文姓名：</label>
@@ -1479,20 +1491,77 @@
 
   <!-- Modal: 新增小單元 (LMS) -->
   <div id="modal-lms-new-subunit" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow-y: auto;">
       <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增小單元</h3>
       <input type="hidden" id="input-lms-subunit-unit-id">
+      <div style="margin-bottom: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="material" checked> 📄 教學素材</label>
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="assignment"> 📝 作業</label>
+        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="quiz"> ✅ 線上測驗</label>
+      </div>
       <div style="margin-bottom: 14px;">
         <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">小單元標題：</label>
         <input type="text" id="input-lms-subunit-title" class="input-control" style="width: 100%;" placeholder="例：1-1 植物的構造" maxlength="60" autocomplete="off">
       </div>
-      <div style="margin-bottom: 20px;">
+      <div style="margin-bottom: 14px;">
         <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">說明文字 (可選)：</label>
         <textarea id="input-lms-subunit-desc" class="input-control" style="width: 100%; min-height: 70px; resize: vertical;" placeholder="給學生的導讀說明或任務提示"></textarea>
       </div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+      <div id="wrap-lms-subunit-assignment" style="display: none;">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">學生繳交方式（可複選）：</label>
+          <div style="display: flex; gap: 14px; flex-wrap: wrap;">
+            <label style="font-size: 0.88rem;"><input type="checkbox" name="lms-submission-type" value="file" checked> 📄 上傳檔案</label>
+            <label style="font-size: 0.88rem;"><input type="checkbox" name="lms-submission-type" value="text"> ✏️ 文字輸入</label>
+            <label style="font-size: 0.88rem;"><input type="checkbox" name="lms-submission-type" value="link"> 🔗 網址連結</label>
+          </div>
+        </div>
+        <div style="margin-bottom: 14px; display: flex; gap: 16px;">
+          <label style="font-size: 0.88rem;"><input type="radio" name="lms-assignment-type" value="individual" checked> 👤 個人作業</label>
+          <label style="font-size: 0.88rem;"><input type="radio" name="lms-assignment-type" value="group"> 👥 小組作業</label>
+        </div>
+        <div id="wrap-lms-assignment-group-plan" style="margin-bottom: 14px; display: none;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">套用分組方案：</label>
+          <select id="select-lms-assignment-group-plan" class="input-control" style="width: 100%;"></select>
+        </div>
+      </div>
+      <div id="wrap-lms-subunit-duedate" style="display: none; margin-bottom: 14px; gap: 12px; align-items: flex-end; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 160px;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">繳交期限（可選）：</label>
+          <input type="date" id="input-lms-subunit-duedate" class="input-control" style="width: 100%;">
+        </div>
+        <label style="font-size: 0.85rem; padding-bottom: 10px;"><input type="checkbox" id="input-lms-subunit-autolock"> 逾期自動鎖定</label>
+      </div>
+      <div id="wrap-lms-subunit-quiz" style="display: none;">
+        <div style="margin-bottom: 14px;">
+          <label style="font-size: 0.88rem;"><input type="checkbox" id="input-lms-quiz-reveal" checked> 送出後公布詳解（關閉則只顯示總分）</label>
+        </div>
+        <div style="margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
+          <button type="button" id="btn-lms-quiz-download-template" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">📥 下載匯入範本（CSV）</button>
+          <button type="button" id="btn-lms-quiz-import" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">📤 匯入題目（CSV）</button>
+          <input type="file" id="input-lms-quiz-import-file" accept=".csv" style="display: none;">
+        </div>
+        <div id="list-lms-quiz-questions" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
+        <button type="button" id="btn-lms-quiz-add-question" class="btn btn-secondary" style="font-size: 0.85rem;">➕ 新增題目</button>
+      </div>
+      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
         <button type="button" class="btn btn-secondary close-modal">取消</button>
         <button type="button" id="btn-submit-lms-subunit" class="btn">建立小單元</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 作業繳交與評分 (LMS) -->
+  <div id="modal-lms-grading" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 720px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; display: flex; flex-direction: column;">
+      <h3 id="text-lms-grading-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📋 作業繳交與評分</h3>
+      <div id="text-lms-grading-meta" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;"></div>
+      <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
+        <button type="button" id="btn-lms-grading-batch-resubmit" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">🔁 全部退回重新繳交</button>
+      </div>
+      <div id="list-lms-grading" style="overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 10px;"></div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+        <button type="button" class="btn btn-secondary close-modal">關閉</button>
       </div>
     </div>
   </div>
@@ -1526,20 +1595,6 @@
     </div>
   </div>
 
-  <!-- Modal: 課堂 QR Code 登入 (LMS) -->
-  <div id="modal-lms-join-qr" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 420px; padding: 28px 24px; text-align: center; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin: 0 0 6px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📱 課堂 QR Code 登入</h3>
-      <p style="margin: 0 0 16px 0; font-size: 0.85rem; color: var(--text-muted);">學生用手機掃描後點選自己的名字即可登入（4 小時內有效）</p>
-      <img id="img-lms-join-qr" src="" alt="Join QR Code" style="width: 220px; height: 220px; border-radius: 12px; background: #fff; padding: 8px; margin: 0 auto 14px;">
-      <div id="text-lms-join-url" style="font-size: 0.8rem; color: var(--text-muted); word-break: break-all; margin-bottom: 16px;"></div>
-      <div style="display: flex; gap: 10px; justify-content: center;">
-        <button type="button" class="btn btn-secondary close-modal">關閉</button>
-        <button type="button" id="btn-refresh-lms-join-qr" class="btn">🔄 重新產生</button>
-      </div>
-    </div>
-  </div>
-
   <!-- Floating Mini Timer Widget (右下角常駐浮動迷你計時器) -->
   <div id="floating-mini-timer-widget" class="floating-mini-timer-widget" style="display: none;">
     <div class="floating-timer-drag-handle">
@@ -1556,7 +1611,7 @@
   <script src="/static/js/audio-engine.js?v=3.0"></script>
   <script src="/static/js/toolkit.js?v=3.0"></script>
   <script src="/static/js/realtime.js?v=3.0"></script>
-  <script src="/static/js/materials.js?v=1.0"></script>
+  <script src="/static/js/materials.js?v=1.3"></script>
   <script src="/static/js/app.js?v=3.0"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>
 </body>

@@ -29,7 +29,7 @@ export async function signStudentToken(payload: StudentTokenPayload): Promise<st
   return jwt.sign(payload, secret, { expiresIn: TOKEN_TTL });
 }
 
-async function verifyStudentToken(token: string): Promise<StudentTokenPayload | null> {
+export async function verifyStudentToken(token: string): Promise<StudentTokenPayload | null> {
   try {
     const secret = await getJwtSecret();
     const decoded = jwt.verify(token, secret);
@@ -51,7 +51,7 @@ declare global {
   }
 }
 
-function getBearerToken(req: Request): string | undefined {
+export function getBearerToken(req: Request): string | undefined {
   const header = req.headers.authorization;
   if (header?.startsWith("Bearer ")) return header.slice(7).trim();
   return undefined;
