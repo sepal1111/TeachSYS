@@ -1,5 +1,66 @@
 # CHANGELOG
 
+## [2026-09-02] Phase 4：即時互動牆 Live Wall（自 kyps-class 移植，改接 TeachSYS 自有架構）
+
+- **修改模組/檔案**：`prisma/schema.prisma`、`src/db.ts`、`src/realtime.ts`、`src/routes/liveWall.ts`（新增）、`src/routes/studentLiveWall.ts`（新增）、`src/index.ts`、`static/js/realtime.js`、`static/js/app.js`、`static/js/projection.js`、`static/js/toolkit.js`、`static/js/student.js`、`static/index.html`、`static/student.html`、`static/projection.html`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **設計來源**：功能行為參考 kyps-class 的 `LiveWallStudentPanel.vue`/`LiveWallTeacherPanel.vue`/`DrawingPad.vue`/`PhotoCapture.vue`，改用 TeachSYS 既有 Socket.io + Prisma 架構重新實作。調查過程中發現 `node_migration_and_lms_plan.md` 宣稱「手繪模式可重用現有手寫畫板工具」並不屬實——全專案搜尋後確認沒有任何畫板/canvas 工具存在，手繪功能為全新實作，已記錄此落差供未來規劃參考。
+  2. **安全性修正（既有問題，非本次引入）**：`src/realtime.ts` 原本無條件信任前端傳來的 `query.course_id` 決定加入哪個 Socket.io 房間；教師端因共用密碼、不分課程原本無害，但本次要讓學生首次連線 Socket.io，若沿用同一邏輯，學生可偽造 `course_id` 加入別班房間偷看內容。已改為：先嘗試以學生 JWT 驗證，成功則一律以 **JWT 內建的 courseId** 加入房間（不信任 query 參數），失敗才落回教師既有的 session token 驗證路徑。
+  3. **資料模型新增**：`live_sessions`（場次：course_id/mode[text|drawing|photo]/title/show_names/is_active）、`live_wall_posts`（貼文：session_id/student_id/text_content/image_url，`@@unique([session_id, student_id])` 限制每人每場次限交一則）。用 SQLite partial unique index（`WHERE is_active = 1`）在資料庫層強制同一課程同時只能有一個進行中場次。
+  4. **教師端**：「教學小工具」新增第 4 個子分頁「🎨 即時互動牆」，可開始場次（模式/提示文字/具名或匿名）、查看即時貼文網格、一鍵清空（只刪貼文、場次不結束，學生可重新送出）、結束場次（兩者為獨立動作）。
+  5. **學生端**：`/student` 頁面「即時互動牆」分頁從「敬請期待」佔位改為真正可用的三態介面（無場次／已送出鎖定／待送出輸入表單），並從零實作手繪畫板（600×400 canvas、6 色色票取自既有設計系統 `--accent-*` token、筆刷粗細滑桿、pointer events 驅動並處理 CSS 顯示尺寸與 canvas 內部解析度的座標換算）。學生端首次接上 Socket.io（先前完全沒有即時連線）。
+  6. **投影頁**：新增看板容器，依場次是否進行中自動顯示/隱藏，行為與現有排行榜視圖切換一致，不需教師手動開關。
+  7. `static/js/realtime.js` 的 `connectCourseRealtime()` 改為把觸發的事件名稱傳給 `onUpdate` 回呼（原本只是無參數的「有變動去重抓」訊號），並新增可選的 token 覆寫參數供學生端使用，兩者皆對既有呼叫端向下相容。
+  8. 本次已執行 `prisma generate`、`tsc --noEmit`（0 錯誤）與前端五個 JS 檔案的 `node --check`（全部通過），並交叉比對三端（教師/學生/投影）所有新增 HTML id 與 JS 引用、以及前後端 API 路徑，依使用者要求未啟動伺服器實機測試。
+
+## [2026-09-01] LMS「課程與教材」教師端介面改版 + 閱讀/完成度統計徽章
+
+- **修改模組/檔案**：`src/routes/units.ts`、`static/index.html`、`static/js/materials.js`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **介面改版**：依使用者提供的參考截圖，重新設計教師端「課程素材(LMS)」管理介面：新增「編輯課程內容」切換鈕（進入編輯模式才顯示搬移/更多選項/新增素材等操作項，一般瀏覽時畫面乾淨）、「新增章節」改為行內展開表單取代原本的彈窗、章節卡片新增拖曳排序按鈕（呼叫既有 `PUT /:courseId/reorder`）與「⋮」更多選項選單（重新命名／刪除）。資料架構維持原本三層（大單元/小單元/教材）不變，只重新設計操作介面。
+  2. **合併新增流程**：原本各自獨立的「新增小單元」與「新增教材」兩個彈窗，合併成一個「新增內容／作業」彈窗——一次送出同時建立小單元，並視需要（有上傳檔案／填連結）接續建立教材附件，支援一次選取多個檔案。作業/測驗類別原有的完整表單（繳交方式、分組、期限、測驗題目編輯器）原封不動保留在合併後的彈窗內。已知取捨：拿掉了「事後補掛教材到既有小單元」的獨立入口，附件上傳失敗只能重新整個新增。
+  3. **新按鈕**：「📊 匯出課程成績」接上既有 Excel 匯出 API；「📁 開啟班級雲端資料夾」新增後端端點 `POST /:courseId/open_materials_folder`，在**伺服器主機**上開啟該課程教材資料夾（TeachSYS 為純本機儲存，多數情況伺服器就是老師自己的電腦；若透過手機/平板遠端操作會另外提示）。
+  4. **閱讀/完成度統計**：小單元卡片標題列新增可點擊徽章——教學素材類型顯示「📊 已閱讀 X／未閱讀 Y」，點擊展開已讀/未讀學生名單（沿用既有 `reading_progress` API 早就有回傳、但先前從未被使用的逐筆明細）；作業/測驗類型顯示「✅ 已完成 X／未完成 Y」，點擊沿用既有「查看繳交/成績」彈窗。新增後端彙總端點 `GET /:courseId/submission_progress`（小組作業以組數、個人作業/測驗以學生人數為分母）。
+  5. 本次已用 `tsc --noEmit` 與前端 JS 語法檢查驗證，並交叉比對所有新增 HTML id 與 JS 引用，依使用者要求未啟動伺服器測試。
+
+## [2026-09-01] 修正小組篩選按鈕名稱顯示 undefined
+
+- **修改模組/檔案**：`src/routes/groups.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. `GET /api/groups/:courseId`（`buildCourseGroupsPayload`）直接把 Prisma 回傳的 camelCase 物件（`groupName`/`isActive`⋯）展開回傳，但前端一律用 snake_case 讀取，導致「即時評分」頁面上方的小組篩選按鈕顯示「undefined」、分組管理頁的「⭐ 目前生效方案」標記也一併失效——此為 Node 改寫時遺留、因未經前端實機測試而未被發現的既有問題（非本次對話新增功能造成）。新增 `serializeGroup`/`serializePlan` 轉換函式修正，並確認全專案無任何前端程式碼依賴舊的 camelCase 欄位。
+  2. 本次已用 `tsc --noEmit` 驗證，依使用者要求未啟動伺服器測試。
+
+## [2026-09-01] Phase 3 補完：提問串 Submission Comments + kyps-class UI 視覺/互動細節校正
+
+- **修改模組/檔案**：`prisma/schema.prisma`、`src/db.ts`、`src/routes/studentContent.ts`、`src/routes/units.ts`、`src/utils/submissionComments.ts`（新增）、`static/js/student.js`、`static/js/materials.js`、`static/student.html`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **提問串（Submission Comments）**：Phase 3 唯一還沒做的部分——作業/測驗下的師生一對一（或對小組）留言串，建立後不可編輯刪除，作為永久稽核紀錄。新增 `submission_comments` 資料表，以 `sub_unit_id + student_id`（個人）或 `sub_unit_id + group_id`（小組）定位討論串，不掛在 `submissions` 底下，讓學生在正式繳交前就能先發問。學生端在作業/測驗面板下方新增可展開的「💬 提問老師」聊天串；教師端在評分彈窗每一列新增對應的「💬 提問串」聊天串，皆含未讀留言數徽章、Enter 送出、自動捲到底部。
+  2. **UI 視覺/互動要真的比照 kyps-class**（使用者明確回饋：移植功能時外觀與操作邏輯也要一起複製，不能只做出功能對等的另一套設計，已存為專案偏好記憶）：提問串聊天泡泡改為 kyps 原設計的 280px 高度與淺灰底色（教師端因支援深色模式改沿用既有 `--nav-bg` token，非照搬固定淺色）；通知鈴鐺下拉選單改為 kyps 原本的 0.16s pop+fade 開合過場（原本只是 `display:none/block` 硬切換）；比照 kyps `style.css` 的 `min-height:44px` 明文規則，學生頁面按鈕最小可點擊高度統一調整（僅限學生頁，不影響教師端既有版面）。
+  3. 本次已用 `tsc --noEmit`、`prisma generate` 與前端 JS 語法檢查驗證，並用 headless Chrome + CDP 腳本實機驗證師生雙向留言、未讀數徽章、動畫效果皆正確運作（測試資料事後皆已清除）。
+
+## [2026-09-01] 學生入口頁全面改版：Dashboard Shell（仿 kyps-class）+ 響應式設計 + 作業系統/裝置自動偵測
+
+- **修改模組/檔案**：`static/student.html`、`static/js/student.js`、`src/routes/studentContent.ts`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **介面重建**：學生入口頁從單一平面頁面（登入 + 素材列表）改為 kyps-class 風格的 Dashboard Shell：置頂導覽列（品牌／課程徽章／通知鈴鐺 UI 佔位／學生頭像／登出）、歡迎橫幅（含「我的小組」卡片，新增 `GET /api/student/me/group` 端點取得目前生效分組方案的組員名單）、emoji 標籤分頁列（課程與作業／我的點數／班級討論區／即時互動牆，後兩者當時為 Phase 4 預留的「敬請期待」佔位分頁，即時互動牆已於後續 [2026-09-02] 補完）。學生端配色改用天藍色系（`--student-primary`），與教師端的藍紫色系做視覺區隔，比照 kyps 對教師/學生的顏色語言差異。
+  2. **響應式設計**：新增手機（<640px，分頁列 2×2 網格排列避免不對稱換行）／平板（640–759px）／桌機與 2K 大螢幕（≥760px 歡迎橫幅改左右並排佈局，≥1200px 內容欄位加寬到 1140px 避免大螢幕兩側留白過多）三級斷點。過程中順手修正兩個既有 bug：`.top-nav` 殘留的負邊界導致所有裝置尺寸都有多餘的水平捲軸；通知下拉選單原本錨定在鈴鐺按鈕本身，窄螢幕上會被裁切到畫面外，改錨定在導覽列右側容器。
+  3. **作業系統/裝置自動偵測**：新增同步執行的偵測腳本（置於 `<head>` 最前面避免畫面閃爍），透過 `navigator.userAgentData`（Chromium）或 UA 字串/`maxTouchPoints`（Safari 等不支援 Client Hints 的瀏覽器，含 iPadOS 13+ 偽裝成 MacIntel 的判斷）辨識作業系統與裝置類型，寫入 `<html data-os data-device>` 供 CSS/JS 之後判斷用途；目前唯一實際套用的判斷是修正 iOS Safari 的 `100vh` 位址列問題（`-webkit-fill-available`）。
+  4. 本次已用 `tsc --noEmit` 與前端 JS 語法檢查驗證，並用 headless Chrome + CDP 腳本模擬 5 種螢幕尺寸與 7 種瀏覽器/裝置組合實機驗證響應式斷點與裝置偵測邏輯是否正確。
+
+## [2026-09-01] 重新建立系統登入頁面：學生登入為主，教師登入改按鈕觸發
+
+- **修改模組/檔案**：`static/index.html`、`static/js/app.js`、`static/js/i18n.js`、`static/css/style.css`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. 教師端首頁原本的全螢幕登入遮罩（`#auth-overlay`）預設就是教師密碼驗證表單，改為預設顯示學生帳號密碼登入表單（登入成功導向 `/student`），教師登入收合成「🔐 教師登入」按鈕，點擊後切換顯示原本未改動的教師密碼驗證表單（含忘記密碼流程），並可用「← 返回學生登入」切回。若是從 `/guide`、`/projection` 等需要教師權限的頁面被導回登入頁，直接顯示教師登入面板，不需要老師多點一次。
+  2. 新增 `.error-box` 共用樣式（原本只在 `student.html` 內以行內 `<style>` 定義），登入失敗時顯示於學生登入表單內，不使用瀏覽器原生 `alert()`。
+  3. 本次已用 headless Chrome + CDP 腳本實機驗證登入頁切換與錯誤訊息顯示皆正確運作。
+
 ## [2026-09-01] 學生名冊匯入範例檔新增「密碼」欄
 
 - **修改模組/檔案**：`src/utils/textImport.ts`、`src/utils/fileImport.ts`、`src/routes/courses.ts`
