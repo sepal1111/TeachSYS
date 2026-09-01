@@ -4,6 +4,12 @@
    ========================================================================== */
 (function () {
   let unitsData = [];
+  let currentProgressMap = {};
+  let currentSubmissionProgressMap = {};
+  let currentCourseStudents = [];
+  // 編輯模式：僅由「✏️ 編輯課程內容」按鈕切換，load() 重新整理時刻意不重置，
+  // 讓老師新增章節/素材後仍停留在編輯模式，可以連續操作不必每次重新進入。
+  let editMode = false;
 
   function courseId() {
     return window.AppState && window.AppState.currentCourseId;
@@ -22,6 +28,13 @@
     return null;
   }
 
+  function updateCourseTitle(cid) {
+    const titleEl = document.getElementById('materials-course-title');
+    if (!titleEl) return;
+    const course = ((window.AppState && window.AppState.courses) || []).find((c) => c.id === cid);
+    titleEl.textContent = course ? `📚 ${course.name} 課程與教材` : '📚 課程與教材';
+  }
+
   async function load() {
     const cid = courseId();
     const container = document.getElementById('materials-units-list');
@@ -30,16 +43,26 @@
       if (window.renderEmptyCourseNotice) window.renderEmptyCourseNotice(container);
       return;
     }
+    updateCourseTitle(cid);
     try {
-      const [units, progress] = await Promise.all([
+      const [units, progress, submissionProgress, students] = await Promise.all([
         API.get(`/api/units/${cid}`),
         API.get(`/api/units/${cid}/reading_progress`),
+        API.get(`/api/units/${cid}/submission_progress`),
+        API.get(`/api/courses/${cid}/students`),
       ]);
       unitsData = units;
       const progressMap = {};
       progress.forEach((p) => {
         progressMap[p.sub_unit_id] = p;
       });
+      currentProgressMap = progressMap;
+      const submissionProgressMap = {};
+      submissionProgress.forEach((p) => {
+        submissionProgressMap[p.sub_unit_id] = p;
+      });
+      currentSubmissionProgressMap = submissionProgressMap;
+      currentCourseStudents = students;
       render(units, progressMap);
     } catch (err) {
       console.error('LmsMaterials.load error', err);
@@ -47,14 +70,32 @@
     }
   }
 
+  function setEditMode(on) {
+    editMode = on;
+    const toggleBtn = document.getElementById('btn-materials-toggle-edit');
+    if (toggleBtn) {
+      toggleBtn.className = on ? 'btn btn-success' : 'btn';
+      toggleBtn.textContent = on ? '✅ 完成編輯' : '✏️ 編輯課程內容';
+      toggleBtn.style.fontSize = '0.85rem';
+    }
+    const addUnitBtn = document.getElementById('btn-materials-add-unit');
+    if (addUnitBtn) addUnitBtn.style.display = on ? '' : 'none';
+    if (!on) {
+      const inlineForm = document.getElementById('materials-new-unit-inline-form');
+      if (inlineForm) inlineForm.style.display = 'none';
+    }
+    render(unitsData, currentProgressMap);
+  }
+
   function render(units, progressMap) {
     const container = document.getElementById('materials-units-list');
+    if (!container) return;
     if (!units.length) {
-      container.innerHTML = `<div style="padding: 40px 20px; text-align:center; color: var(--text-muted);">尚未建立任何單元，點選右上角「➕ 新增單元」開始建立課程素材。</div>`;
+      container.innerHTML = `<div style="padding: 40px 20px; text-align:center; color: var(--text-muted);">🎓 目前還沒有課程內容，請點選上方「✏️ 編輯課程內容」新增第一個主題。</div>`;
       return;
     }
     container.innerHTML = '';
-    units.forEach((u) => container.appendChild(renderUnit(u, progressMap)));
+    units.forEach((u, index) => container.appendChild(renderUnit(u, progressMap, index)));
   }
 
   function iconBtn(label, onClick) {
@@ -66,38 +107,161 @@
     return btn;
   }
 
-  function renderUnit(u, progressMap) {
+  /** 「⋮」更多選項選單：點外部關閉的技法比照 static/student.html 的 .notif-dropdown，
+   *  但用 inline style.display 切換（這個檔案從不新增共用 CSS class，維持既有慣例），
+   *  搭配 bindStaticUi() 註冊的「唯一一次」document 點擊監聽即時查詢目前開啟的選單。 */
+  function buildUnitMenu(u) {
+    const wrap = document.createElement('span');
+    wrap.style.cssText = 'position:relative; display:inline-block;';
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn-icon';
+    btn.title = '更多選項';
+    btn.textContent = '⋮';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'unit-menu-dropdown';
+    dropdown.style.cssText = 'display:none; position:absolute; top:calc(100% + 4px); right:0; min-width:140px; background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-sm); box-shadow:var(--shadow-lg); z-index:20; overflow:hidden;';
+
+    const renameItem = document.createElement('button');
+    renameItem.type = 'button';
+    renameItem.style.cssText = 'display:block; width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; font-size:0.85rem; color:var(--text-main);';
+    renameItem.textContent = '✏️ 重新命名';
+    renameItem.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      dropdown.style.display = 'none';
+      const cid = courseId();
+      if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+      const newTitle = prompt('新的章節名稱', u.title);
+      if (!newTitle || !newTitle.trim() || newTitle.trim() === u.title) return;
+      try {
+        await API.put(`/api/units/${cid}/${u.id}`, { title: newTitle.trim() });
+        showToast('章節已重新命名', 'success');
+        load();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    });
+
+    const deleteItem = document.createElement('button');
+    deleteItem.type = 'button';
+    deleteItem.style.cssText = 'display:block; width:100%; text-align:left; padding:8px 12px; border:none; background:none; cursor:pointer; font-size:0.85rem; color:var(--accent-negative);';
+    deleteItem.textContent = '🗑️ 刪除';
+    deleteItem.addEventListener('click', (e) => {
+      e.stopPropagation();
+      dropdown.style.display = 'none';
+      deleteUnit(u);
+    });
+
+    dropdown.appendChild(renameItem);
+    dropdown.appendChild(deleteItem);
+
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const willShow = dropdown.style.display === 'none';
+      document.querySelectorAll('.unit-menu-dropdown').forEach((d) => { d.style.display = 'none'; });
+      dropdown.style.display = willShow ? 'block' : 'none';
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(dropdown);
+    return wrap;
+  }
+
+  function renderUnit(u, progressMap, index) {
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'border:1px solid var(--card-border); border-radius: var(--radius-md); margin: 14px 0; overflow:hidden;';
+    wrap.style.cssText = 'border:1px solid var(--card-border); border-left: 4px solid #6366f1; border-radius: var(--radius-md); margin: 14px 0; overflow:hidden;';
 
     const head = document.createElement('div');
-    head.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 12px 16px; background: var(--nav-bg); cursor:pointer; flex-wrap: wrap;';
-    const titleWrap = document.createElement('div');
-    titleWrap.style.cssText = 'font-weight:800; display:flex; align-items:center; gap:8px;';
-    titleWrap.innerHTML = `<span class="unit-caret">▶</span> ${escapeHtml(u.title)} ${u.isHidden ? '<span style="font-size:0.75rem; color:var(--text-subtle); font-weight:600;">(隱藏)</span>' : ''}`;
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex; gap:6px; flex-wrap: wrap;';
-    actions.appendChild(iconBtn('➕ 小單元', (e) => { e.stopPropagation(); openNewSubUnitModal(u.id); }));
-    actions.appendChild(iconBtn(u.isHidden ? '👁️ 顯示' : '🙈 隱藏', (e) => { e.stopPropagation(); toggleUnitHidden(u); }));
-    actions.appendChild(iconBtn('🗑️ 刪除', (e) => { e.stopPropagation(); deleteUnit(u); }));
-    head.appendChild(titleWrap);
-    head.appendChild(actions);
+    head.style.cssText = 'display:flex; align-items:center; gap:10px; padding: 12px 16px; background: var(--nav-bg); flex-wrap: wrap;';
+
+    if (editMode) {
+      const moveWrap = document.createElement('div');
+      moveWrap.style.cssText = 'display:flex; flex-direction:column; line-height:1;';
+      const upBtn = document.createElement('button');
+      upBtn.type = 'button';
+      upBtn.className = 'btn-icon';
+      upBtn.title = '上移';
+      upBtn.textContent = '▲';
+      upBtn.disabled = index === 0;
+      upBtn.style.opacity = index === 0 ? '0.3' : '1';
+      upBtn.addEventListener('click', () => moveUnit(u, -1));
+      const downBtn = document.createElement('button');
+      downBtn.type = 'button';
+      downBtn.className = 'btn-icon';
+      downBtn.title = '下移';
+      downBtn.textContent = '▼';
+      downBtn.disabled = index === unitsData.length - 1;
+      downBtn.style.opacity = index === unitsData.length - 1 ? '0.3' : '1';
+      downBtn.addEventListener('click', () => moveUnit(u, 1));
+      moveWrap.appendChild(upBtn);
+      moveWrap.appendChild(downBtn);
+      head.appendChild(moveWrap);
+    }
+
+    const chip = document.createElement('span');
+    chip.style.cssText = 'display:inline-flex; align-items:center; gap:4px; background:var(--card-bg); border-radius:var(--radius-full); padding:2px 10px; font-size:0.75rem; color:var(--text-muted); flex-shrink:0;';
+    chip.textContent = '📁 章節';
+    head.appendChild(chip);
+
+    const titleSpan = document.createElement('span');
+    titleSpan.style.cssText = 'font-weight:800; flex:1; min-width:80px;';
+    titleSpan.innerHTML = `${escapeHtml(u.title)} ${u.isHidden ? '<span style="font-size:0.75rem; color:var(--text-subtle); font-weight:600;">(隱藏)</span>' : ''}`;
+    head.appendChild(titleSpan);
+
+    const badge = document.createElement('span');
+    badge.style.cssText = 'font-size:0.75rem; font-weight:700; background:rgba(99,102,241,0.12); color:#6366f1; border-radius:var(--radius-full); padding:2px 10px; flex-shrink:0;';
+    badge.textContent = `第${index + 1}課`;
+    head.appendChild(badge);
+
+    const rightCluster = document.createElement('div');
+    rightCluster.style.cssText = 'display:flex; align-items:center; gap:6px; margin-left:auto;';
+
+    if (editMode) {
+      const visBtn = document.createElement('button');
+      visBtn.type = 'button';
+      visBtn.className = 'btn btn-secondary';
+      visBtn.style.cssText = 'font-size:0.75rem; padding:4px 10px;';
+      visBtn.textContent = u.isHidden ? '🙈 隱藏中' : '👁 顯示中';
+      visBtn.addEventListener('click', () => toggleUnitHidden(u));
+      rightCluster.appendChild(visBtn);
+      rightCluster.appendChild(buildUnitMenu(u));
+    }
+
+    const collapseBtn = document.createElement('button');
+    collapseBtn.type = 'button';
+    collapseBtn.className = 'btn-icon';
+    collapseBtn.title = '展開／收合';
+    rightCluster.appendChild(collapseBtn);
+    head.appendChild(rightCluster);
 
     const body = document.createElement('div');
-    body.style.cssText = 'padding: 10px 16px 16px; display:none;';
+    body.style.cssText = 'padding: 10px 16px 16px;';
     if (u.subUnits.length) {
       u.subUnits.forEach((su) => body.appendChild(renderSubUnit(su, progressMap[su.id])));
     } else {
       const empty = document.createElement('div');
-      empty.style.cssText = 'color:var(--text-muted); font-size:0.85rem; padding: 8px 0;';
-      empty.textContent = '尚無小單元';
+      empty.style.cssText = 'color:var(--text-muted); font-size:0.85rem; padding: 16px 0; text-align:center;';
+      empty.textContent = '這個主題還沒有內容喔。';
       body.appendChild(empty);
     }
+    if (editMode) {
+      const addContentBtn = document.createElement('button');
+      addContentBtn.type = 'button';
+      addContentBtn.textContent = '➕ 新增素材';
+      addContentBtn.style.cssText = 'width:100%; margin-top:10px; padding:10px; border:1.5px dashed var(--accent-positive); border-radius:var(--radius-sm); background:transparent; color:var(--accent-positive); font-weight:700; cursor:pointer; font-size:0.9rem;';
+      addContentBtn.addEventListener('click', () => openAddContentModal(u.id));
+      body.appendChild(addContentBtn);
+    }
 
-    head.addEventListener('click', () => {
-      const isOpen = body.style.display !== 'none';
-      body.style.display = isOpen ? 'none' : 'block';
-      head.querySelector('.unit-caret').textContent = isOpen ? '▶' : '▼';
+    // 預設展開（比照截圖），▲=展開中點我收合、▼=已收合點我展開。
+    let expanded = true;
+    collapseBtn.textContent = '▲';
+    collapseBtn.addEventListener('click', () => {
+      expanded = !expanded;
+      body.style.display = expanded ? 'block' : 'none';
+      collapseBtn.textContent = expanded ? '▲' : '▼';
     });
 
     wrap.appendChild(head);
@@ -108,8 +272,6 @@
   function renderSubUnit(su, progress) {
     const card = document.createElement('div');
     card.style.cssText = 'border:1px solid var(--card-border); border-radius: var(--radius-sm); padding: 12px; margin: 8px 0; background: var(--card-bg);';
-    const viewedCount = progress ? progress.viewed_count : 0;
-    const total = progress ? progress.total_students : 0;
 
     const isAssignment = su.category === 'assignment';
     const isQuiz = su.category === 'quiz';
@@ -131,13 +293,36 @@
     card.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
         <div style="font-weight:700;">${escapeHtml(su.title)} ${su.isHidden ? '<span style="font-size:0.75rem;color:var(--text-subtle);">(隱藏)</span>' : ''}</div>
-        <div style="font-size:0.78rem; color:var(--text-muted);">👀 ${viewedCount}/${total} 已閱讀</div>
+        <div class="subunit-progress-badge"></div>
       </div>
       ${su.description ? `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:6px; white-space:pre-wrap;">${escapeHtml(su.description)}</div>` : ''}
       ${assignmentBadges}
       <div class="material-items" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
       <div class="subunit-actions" style="display:flex; gap:8px; margin-top:10px; flex-wrap: wrap;"></div>
     `;
+
+    // 進度徽章：material 顯示已閱讀／未閱讀人數，assignment/quiz 顯示已完成／未完成人數（小組作業以組數計），
+    // 點擊皆可展開查看詳細名單（material -> 已讀/未讀學生清單；assignment/quiz -> 沿用既有繳交評分彈窗）。
+    const badgeWrap = card.querySelector('.subunit-progress-badge');
+    const progressBadge = document.createElement('button');
+    progressBadge.type = 'button';
+    progressBadge.style.cssText = 'font-size:0.78rem; color:var(--text-muted); background:var(--nav-bg); border:1px solid var(--card-border); border-radius:var(--radius-full); padding:3px 10px; cursor:pointer;';
+    if (su.category === 'material') {
+      const viewedCount = progress ? progress.viewed_count : 0;
+      const total = progress ? progress.total_students : 0;
+      const notViewed = Math.max(total - viewedCount, 0);
+      progressBadge.textContent = `📊 已閱讀 ${viewedCount}／未閱讀 ${notViewed}`;
+      progressBadge.addEventListener('click', () => openReadingListModal(su, progress));
+      badgeWrap.appendChild(progressBadge);
+    } else if (isAssignment || isQuiz) {
+      const sp = currentSubmissionProgressMap[su.id];
+      const total = sp ? sp.total : 0;
+      const done = sp ? sp.turned_in_count : 0;
+      const notDone = Math.max(total - done, 0);
+      progressBadge.textContent = `✅ 已完成 ${done}／未完成 ${notDone}`;
+      progressBadge.addEventListener('click', () => openGradingModal(su));
+      badgeWrap.appendChild(progressBadge);
+    }
 
     const itemsWrap = card.querySelector('.material-items');
     su.materials.forEach((m) => itemsWrap.appendChild(renderMaterialItem(su, m)));
@@ -146,7 +331,6 @@
     if (isAssignment || isQuiz) {
       actionsWrap.appendChild(iconBtn(isQuiz ? '📋 查看成績' : '📋 查看繳交', () => openGradingModal(su)));
     }
-    actionsWrap.appendChild(iconBtn('➕ 教材', () => openNewMaterialModal(su.id)));
     actionsWrap.appendChild(iconBtn(su.isHidden ? '👁️ 顯示' : '🙈 隱藏', () => toggleSubUnitHidden(su)));
     actionsWrap.appendChild(iconBtn('🗑️ 刪除', () => deleteSubUnit(su)));
 
@@ -173,27 +357,115 @@
     return row;
   }
 
-  // --- Unit CRUD ---
+  // 已讀／未讀學生名單彈窗（material 類型小單元的進度徽章點擊後開啟）。
+  // reading_progress API 早就有回傳逐筆 details（student_id/last_viewed_at/view_count），
+  // 只是先前完全沒被用到；未讀名單 = 全班學生名冊扣掉已讀清單。
+  function openReadingListModal(su, progress) {
+    document.getElementById('text-lms-reading-list-title').textContent = `📊 ${su.title} — 閱讀狀態`;
+    const details = (progress && progress.details) || [];
+    const detailMap = new Map(details.map((d) => [d.student_id, d]));
+    const students = [...currentCourseStudents].sort((a, b) => a.student_number - b.student_number);
+    const viewed = students.filter((s) => detailMap.has(s.id));
+    const unviewed = students.filter((s) => !detailMap.has(s.id));
 
-  function openNewUnitModal() {
-    if (!courseId()) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
-    document.getElementById('input-lms-unit-title').value = '';
-    window.openModal('modal-lms-new-unit');
+    document.getElementById('text-lms-reading-list-meta').textContent =
+      `全班 ${students.length} 人｜已閱讀 ${viewed.length} 人｜未閱讀 ${unviewed.length} 人`;
+
+    const viewedWrap = document.getElementById('list-lms-reading-viewed');
+    viewedWrap.innerHTML = `<div style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:var(--accent-positive);">✅ 已閱讀（${viewed.length}）</div>`;
+    if (!viewed.length) {
+      viewedWrap.innerHTML += `<div style="color:var(--text-muted); font-size:0.85rem;">目前還沒有人閱讀。</div>`;
+    } else {
+      viewed.forEach((s) => {
+        const d = detailMap.get(s.id);
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;';
+        row.innerHTML = `<span>${s.student_number} 號　${escapeHtml(s.name)}</span><span style="color:var(--text-muted); font-size:0.78rem;">最後閱讀：${escapeHtml(d.last_viewed_at)}（${d.view_count} 次）</span>`;
+        viewedWrap.appendChild(row);
+      });
+    }
+
+    const unviewedWrap = document.getElementById('list-lms-reading-unviewed');
+    unviewedWrap.innerHTML = `<div style="font-weight:700; font-size:0.9rem; margin-bottom:8px; color:var(--accent-negative);">❌ 未閱讀（${unviewed.length}）</div>`;
+    if (!unviewed.length) {
+      unviewedWrap.innerHTML += `<div style="color:var(--text-muted); font-size:0.85rem;">全班都已經閱讀囉！</div>`;
+    } else {
+      unviewed.forEach((s) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;';
+        row.textContent = `${s.student_number} 號　${s.name}`;
+        unviewedWrap.appendChild(row);
+      });
+    }
+
+    window.openModal('modal-lms-reading-list');
   }
 
-  async function submitNewUnit() {
+  // --- Unit CRUD ---
+
+  // 「➕ 新增章節」改成行內展開表單（比照截圖），取代原本的彈窗流程。
+  function toggleNewUnitInlineForm() {
+    const form = document.getElementById('materials-new-unit-inline-form');
+    if (!form) return;
+    const willShow = form.style.display === 'none';
+    form.style.display = willShow ? 'block' : 'none';
+    if (willShow) {
+      const input = document.getElementById('input-lms-unit-title-inline');
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  async function submitNewUnitInline() {
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
-    const title = document.getElementById('input-lms-unit-title').value.trim();
+    const input = document.getElementById('input-lms-unit-title-inline');
+    const title = input.value.trim();
     if (!title) return;
     try {
       await API.post(`/api/units/${cid}`, { title });
-      window.closeModal('modal-lms-new-unit');
-      showToast('單元建立成功！', 'success');
+      input.value = '';
+      document.getElementById('materials-new-unit-inline-form').style.display = 'none';
+      showToast('章節建立成功！', 'success');
       load();
     } catch (err) {
       showToast(err.message, 'error');
     }
+  }
+
+  async function moveUnit(u, delta) {
+    const cid = courseId();
+    if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+    const ids = unitsData.map((x) => x.id);
+    const idx = ids.indexOf(u.id);
+    const newIdx = idx + delta;
+    if (newIdx < 0 || newIdx >= ids.length) return;
+    [ids[idx], ids[newIdx]] = [ids[newIdx], ids[idx]];
+    try {
+      await API.put(`/api/units/${cid}/reorder`, { unit_ids: ids });
+      load();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  // --- 標頭工具列：開啟本機教材資料夾／匯出課程成績 ---
+
+  async function openMaterialsFolder() {
+    const cid = courseId();
+    if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+    try {
+      await API.post(`/api/units/${cid}/open_materials_folder`, {});
+      showToast('已在「伺服器主機」開啟課程資料夾（若您正透過手機/平板遠端連線，資料夾將顯示在伺服器電腦上，而非您手上的裝置）', 'info');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function exportCourseExcel() {
+    const cid = courseId();
+    if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+    window.open(`/api/reports/${cid}/export`, '_blank');
   }
 
   async function toggleUnitHidden(u) {
@@ -223,7 +495,10 @@
   // --- SubUnit CRUD ---
 
   function getCheckedCategory() {
-    return document.querySelector('input[name="lms-subunit-category"]:checked').value;
+    return document.getElementById('select-lms-content-category').value;
+  }
+  function isYoutubeUrl(url) {
+    return /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{6,})/.test(url);
   }
   function getCheckedAssignmentType() {
     return document.querySelector('input[name="lms-assignment-type"]:checked').value;
@@ -537,11 +812,15 @@
     }
   }
 
-  function openNewSubUnitModal(unitId) {
+  // 「➕ 新增素材」彈窗（合併原本各自獨立的「新增小單元」與「新增教材」流程）：
+  // 一次送出同時建立小單元，並視需要（有上傳檔案／填連結）接著建立教材附件。
+  function openAddContentModal(unitId) {
+    const unit = unitsData.find((u) => u.id === unitId);
+    document.getElementById('text-lms-add-content-title').textContent = `➕ 在「${unit ? unit.title : ''}」新增內容／作業`;
     document.getElementById('input-lms-subunit-unit-id').value = unitId;
     document.getElementById('input-lms-subunit-title').value = '';
     document.getElementById('input-lms-subunit-desc').value = '';
-    document.querySelector('input[name="lms-subunit-category"][value="material"]').checked = true;
+    document.getElementById('select-lms-content-category').value = 'material';
     document.querySelectorAll('input[name="lms-submission-type"]').forEach((el) => { el.checked = el.value === 'file'; });
     document.querySelector('input[name="lms-assignment-type"][value="individual"]').checked = true;
     document.getElementById('input-lms-subunit-duedate').value = '';
@@ -551,16 +830,23 @@
     renderQuizQuestionsList();
     updateSubUnitFormVisibility();
     populateGroupPlanSelect();
-    window.openModal('modal-lms-new-subunit');
+    document.getElementById('input-lms-content-files').value = '';
+    document.getElementById('text-lms-content-files-status').textContent = '尚未選擇檔案';
+    document.getElementById('input-lms-content-link-title').value = '';
+    document.getElementById('input-lms-content-link-url').value = '';
+    window.openModal('modal-lms-add-content');
   }
 
-  async function submitNewSubUnit() {
+  async function submitAddContent() {
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
     const unitId = document.getElementById('input-lms-subunit-unit-id').value;
     const title = document.getElementById('input-lms-subunit-title').value.trim();
     const description = document.getElementById('input-lms-subunit-desc').value.trim();
-    if (!title) return;
+    if (!title) {
+      showToast('請輸入內容標題', 'error');
+      return;
+    }
     const category = getCheckedCategory();
     const payload = { title, description, category };
     if (category === 'assignment') {
@@ -581,14 +867,50 @@
       payload.due_date = document.getElementById('input-lms-subunit-duedate').value || '';
       payload.auto_lock_overdue = document.getElementById('input-lms-subunit-autolock').checked;
     }
+
+    let subUnitId;
     try {
-      await API.post(`/api/units/${cid}/${unitId}/subunits`, payload);
-      window.closeModal('modal-lms-new-subunit');
-      showToast('小單元建立成功！', 'success');
-      load();
+      const res = await API.post(`/api/units/${cid}/${unitId}/subunits`, payload);
+      subUnitId = res.id;
     } catch (err) {
       showToast(err.message, 'error');
+      return;
     }
+
+    // 小單元已建立成功；接下來的附件上傳即使個別失敗也不回滾小單元本身
+    // （比照全案「無跨步驟回滾」慣例），最後用 toast 匯總告知哪些附件沒上傳成功。
+    const materialsUrl = `/api/units/${cid}/${unitId}/subunits/${subUnitId}/materials`;
+    const failures = [];
+
+    const files = Array.from(document.getElementById('input-lms-content-files').files || []);
+    for (const file of files) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('type', 'file');
+        await API.postFormData(materialsUrl, formData);
+      } catch (err) {
+        failures.push(file.name);
+      }
+    }
+
+    const linkUrl = document.getElementById('input-lms-content-link-url').value.trim();
+    if (linkUrl) {
+      const linkTitle = document.getElementById('input-lms-content-link-title').value.trim();
+      try {
+        await API.post(materialsUrl, { type: isYoutubeUrl(linkUrl) ? 'youtube' : 'link', url: linkUrl, title: linkTitle });
+      } catch (err) {
+        failures.push(linkTitle || linkUrl);
+      }
+    }
+
+    window.closeModal('modal-lms-add-content');
+    if (failures.length) {
+      showToast(`內容已建立，但有 ${failures.length} 個附件上傳失敗：${failures.join('、')}`, 'error');
+    } else {
+      showToast('內容新增成功！', 'success');
+    }
+    load();
   }
 
   async function toggleSubUnitHidden(su) {
@@ -616,61 +938,8 @@
   }
 
   // --- Material CRUD ---
-
-  function openNewMaterialModal(subUnitId) {
-    document.getElementById('input-lms-material-subunit-id').value = subUnitId;
-    document.getElementById('input-lms-material-url').value = '';
-    document.getElementById('input-lms-material-title').value = '';
-    document.getElementById('input-lms-material-file').value = '';
-    document.querySelector('input[name="lms-material-type"][value="file"]').checked = true;
-    updateMaterialTypeVisibility();
-    window.openModal('modal-lms-new-material');
-  }
-
-  function updateMaterialTypeVisibility() {
-    const type = document.querySelector('input[name="lms-material-type"]:checked').value;
-    document.getElementById('wrap-lms-material-file').style.display = type === 'file' ? '' : 'none';
-    document.getElementById('wrap-lms-material-url').style.display = type === 'file' ? 'none' : '';
-  }
-
-  async function submitNewMaterial() {
-    const cid = courseId();
-    if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
-    const subUnitId = Number(document.getElementById('input-lms-material-subunit-id').value);
-    const unitId = findUnitIdForSubUnit(subUnitId);
-    if (!unitId) return;
-    const type = document.querySelector('input[name="lms-material-type"]:checked').value;
-    const title = document.getElementById('input-lms-material-title').value.trim();
-
-    try {
-      const url = `/api/units/${cid}/${unitId}/subunits/${subUnitId}/materials`;
-      if (type === 'file') {
-        const fileInput = document.getElementById('input-lms-material-file');
-        const file = fileInput.files[0];
-        if (!file) {
-          showToast('請選擇要上傳的檔案', 'error');
-          return;
-        }
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('type', 'file');
-        if (title) formData.append('title', title);
-        await API.postFormData(url, formData);
-      } else {
-        const materialUrl = document.getElementById('input-lms-material-url').value.trim();
-        if (!materialUrl) {
-          showToast('請輸入網址連結', 'error');
-          return;
-        }
-        await API.post(url, { type, url: materialUrl, title });
-      }
-      window.closeModal('modal-lms-new-material');
-      showToast('教材新增成功！', 'success');
-      load();
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
-  }
+  // 新增教材已併入上方 submitAddContent()（新增內容時可同時附加檔案／連結），
+  // 這裡只留刪除既有教材項目的功能。
 
   async function deleteMaterial(su, m) {
     if (!confirm(`確定要刪除教材「${m.title}」嗎？`)) return;
@@ -712,6 +981,103 @@
     return parts.length ? `<div style="display:flex; flex-direction:column; gap:4px; margin-top:6px; font-size:0.82rem;">${parts.join('')}</div>` : '';
   }
 
+  // --- 提問串（Submission Comments，教師端）：師生一對一（或對小組）留言，展開後才載入 ---
+
+  function renderCommentBubble(c) {
+    const bubble = document.createElement('div');
+    const isTeacher = c.author_role === 'teacher';
+    bubble.style.cssText = `max-width:82%; padding:6px 10px; border-radius:var(--radius-md); font-size:0.82rem; word-break:break-word; align-self:${isTeacher ? 'flex-end' : 'flex-start'}; background:${isTeacher ? '#eef2ff' : 'var(--card-bg)'}; border:1px solid ${isTeacher ? '#c7d2fe' : 'var(--card-border)'};`;
+    const roleEmoji = isTeacher ? '👩‍🏫' : '🧑‍🎓';
+    bubble.innerHTML = `
+      <div style="font-size:0.7rem; color:var(--text-muted); font-weight:700; margin-bottom:2px;">${roleEmoji} ${escapeHtml(c.author_name)} · ${escapeHtml(c.created_at)}</div>
+      <div style="white-space:pre-wrap;">${escapeHtml(c.message)}</div>
+    `;
+    return bubble;
+  }
+
+  function renderCommentThreadPanel(commentsUrl, initialCount) {
+    const toggleBtn = document.createElement('button');
+    toggleBtn.type = 'button';
+    toggleBtn.className = 'btn btn-secondary grading-comments-btn';
+    toggleBtn.style.cssText = 'font-size:0.78rem; padding:5px 10px;';
+    toggleBtn.textContent = initialCount > 0 ? `💬 提問串（${initialCount}）` : '💬 提問串';
+
+    const panel = document.createElement('div');
+    panel.style.cssText = 'margin-top:8px; padding-top:8px; border-top:1px dashed var(--card-border); display:none;';
+    const messages = document.createElement('div');
+    // 280px 比照 kyps-class SubmissionCommentThread.vue；背景沿用 --nav-bg（而非 kyps 的固定淺灰）
+    // 是刻意選擇，因為教師端支援深色模式，寫死淺色會在深色模式下看起來突兀。
+    messages.style.cssText = 'max-height:280px; overflow-y:auto; background:var(--nav-bg); border-radius:var(--radius-sm); padding:8px; display:flex; flex-direction:column; gap:6px;';
+    panel.appendChild(messages);
+
+    const composer = document.createElement('div');
+    composer.style.cssText = 'display:flex; gap:6px; margin-top:8px;';
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = '回覆學生...';
+    textarea.style.cssText = 'flex:1; min-height:36px; max-height:80px; padding:6px 10px; border-radius:var(--radius-sm); border:1.5px solid var(--input-border); background:var(--input-bg); color:var(--input-text); font-size:0.82rem; resize:vertical; box-sizing:border-box; font-family:inherit;';
+    const sendBtn = document.createElement('button');
+    sendBtn.type = 'button';
+    sendBtn.className = 'btn';
+    sendBtn.style.cssText = 'font-size:0.78rem; padding:5px 10px;';
+    sendBtn.textContent = '📤 送出';
+    composer.appendChild(textarea);
+    composer.appendChild(sendBtn);
+    panel.appendChild(composer);
+
+    function renderList(comments) {
+      messages.innerHTML = '';
+      if (!comments.length) {
+        const empty = document.createElement('div');
+        empty.style.cssText = 'font-size:0.8rem; color:var(--text-muted); text-align:center; padding:10px 0;';
+        empty.textContent = '目前還沒有留言。';
+        messages.appendChild(empty);
+        return;
+      }
+      comments.forEach((c) => messages.appendChild(renderCommentBubble(c)));
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    let loaded = false;
+    toggleBtn.addEventListener('click', async () => {
+      const willShow = panel.style.display === 'none';
+      panel.style.display = willShow ? 'block' : 'none';
+      if (willShow && !loaded) {
+        loaded = true;
+        try {
+          renderList(await API.get(commentsUrl));
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      }
+    });
+
+    async function send() {
+      const message = textarea.value.trim();
+      if (!message) return;
+      sendBtn.disabled = true;
+      try {
+        const comments = await API.post(commentsUrl, { message });
+        textarea.value = '';
+        loaded = true;
+        renderList(comments);
+        toggleBtn.textContent = `💬 提問串（${comments.length}）`;
+      } catch (err) {
+        showToast(err.message, 'error');
+      } finally {
+        sendBtn.disabled = false;
+      }
+    }
+    sendBtn.addEventListener('click', send);
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    return { toggleBtn, panel };
+  }
+
   function renderGradingRow(entry, isGroup) {
     const row = document.createElement('div');
     row.style.cssText = 'border:1px solid var(--card-border); border-radius: var(--radius-sm); padding: 10px 12px;';
@@ -735,6 +1101,11 @@
     `;
 
     const idPath = isGroup ? `group/${entry.group_id}` : `${entry.student_id}`;
+
+    const commentsUrl = `/api/units/${courseId()}/${gradingSubUnit.unitId}/subunits/${gradingSubUnit.id}/submissions/${idPath}/comments`;
+    const { toggleBtn: commentsToggleBtn, panel: commentsPanel } = renderCommentThreadPanel(commentsUrl, entry.comment_count || 0);
+    row.querySelector('.grading-controls').appendChild(commentsToggleBtn);
+    row.appendChild(commentsPanel);
 
     row.querySelector('.grading-grade-btn').addEventListener('click', async () => {
       const cid = courseId();
@@ -832,13 +1203,21 @@
   }
 
   function bindStaticUi() {
-    document.getElementById('btn-materials-add-unit')?.addEventListener('click', openNewUnitModal);
-    document.getElementById('btn-submit-lms-unit')?.addEventListener('click', submitNewUnit);
-    document.getElementById('btn-submit-lms-subunit')?.addEventListener('click', submitNewSubUnit);
-    document.getElementById('btn-submit-lms-material')?.addEventListener('click', submitNewMaterial);
-    document.querySelectorAll('input[name="lms-material-type"]').forEach((el) => el.addEventListener('change', updateMaterialTypeVisibility));
-    document.querySelectorAll('input[name="lms-subunit-category"]').forEach((el) => el.addEventListener('change', updateSubUnitFormVisibility));
+    document.getElementById('btn-materials-toggle-edit')?.addEventListener('click', () => setEditMode(!editMode));
+    document.getElementById('btn-materials-add-unit')?.addEventListener('click', toggleNewUnitInlineForm);
+    document.getElementById('btn-submit-lms-unit-inline')?.addEventListener('click', submitNewUnitInline);
+    document.getElementById('btn-materials-open-folder')?.addEventListener('click', openMaterialsFolder);
+    document.getElementById('btn-materials-export-excel')?.addEventListener('click', exportCourseExcel);
+    document.getElementById('btn-submit-lms-add-content')?.addEventListener('click', submitAddContent);
+    document.getElementById('select-lms-content-category')?.addEventListener('change', updateSubUnitFormVisibility);
     document.querySelectorAll('input[name="lms-assignment-type"]').forEach((el) => el.addEventListener('change', updateSubUnitFormVisibility));
+    document.getElementById('input-lms-content-files')?.addEventListener('change', (e) => {
+      const files = e.target.files;
+      const status = document.getElementById('text-lms-content-files-status');
+      if (!files || !files.length) status.textContent = '尚未選擇檔案';
+      else if (files.length === 1) status.textContent = files[0].name;
+      else status.textContent = `已選擇 ${files.length} 個檔案`;
+    });
     document.getElementById('btn-lms-grading-batch-resubmit')?.addEventListener('click', batchRequestResubmit);
     document.getElementById('btn-lms-quiz-add-question')?.addEventListener('click', addQuizQuestion);
     document.getElementById('btn-lms-quiz-download-template')?.addEventListener('click', downloadQuizTemplate);
@@ -847,6 +1226,11 @@
       const file = e.target.files[0];
       e.target.value = '';
       if (file) handleQuizCsvImport(file);
+    });
+    // 「⋮」更多選項選單的點外部關閉：唯一一次註冊，每次觸發即時查詢目前開啟的選單，
+    // 不會因為 materials.js 每次 render() 都重新產生 DOM 元素而重複掛監聽。
+    document.addEventListener('click', () => {
+      document.querySelectorAll('.unit-menu-dropdown').forEach((d) => { d.style.display = 'none'; });
     });
   }
 

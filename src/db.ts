@@ -278,6 +278,62 @@ export async function initSchema(): Promise<void> {
     );
   `);
 
+  // 提問串（Submission Comments）：建立後不可編輯刪除，僅提供 CREATE/LIST，見 utils/submissionComments.ts。
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS submission_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sub_unit_id INTEGER NOT NULL,
+      student_id INTEGER NULL,
+      group_id INTEGER NULL,
+      author_role TEXT NOT NULL,
+      author_id INTEGER NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_submission_comments_thread ON submission_comments(sub_unit_id, student_id, group_id);"
+  );
+
+  // 即時互動牆（Live Wall）：教師開一個限時場次，學生每人限交一則文字/手繪/拍照貼文。
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS live_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      mode TEXT NOT NULL,
+      title TEXT NULL,
+      show_names INTEGER DEFAULT 1,
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  // Partial unique index：同一課程同時只能有一個 is_active=1 的場次，DB 層強制（app 層也會
+  // 在開新場次前先關閉舊場次，這裡是雙重保險，避免競態或漏改造成同時兩個進行中場次）。
+  await prisma.$executeRawUnsafe(
+    "CREATE UNIQUE INDEX IF NOT EXISTS idx_live_sessions_one_active ON live_sessions(course_id) WHERE is_active = 1;"
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS live_wall_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      session_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      text_content TEXT NULL,
+      image_url TEXT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(session_id) REFERENCES live_sessions(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      UNIQUE(session_id, student_id)
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_live_wall_posts_session ON live_wall_posts(session_id);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");
   await tryAlter("ALTER TABLE groups ADD COLUMN plan_id INTEGER NULL;");

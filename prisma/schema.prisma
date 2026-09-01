@@ -36,6 +36,7 @@ model Course {
   scoreLogs        ScoreLog[]
   qualitativeNotes QualitativeNote[]
   units            Unit[]
+  liveSessions     LiveSession[]
 
   @@map("courses")
 }
@@ -68,6 +69,7 @@ model Group {
   members       GroupMember[]
   directStudents Student[]
   submissions   Submission[]
+  submissionComments SubmissionComment[]
 
   @@map("groups")
 }
@@ -112,6 +114,8 @@ model Student {
   qualitativeNotes QualitativeNote[]
   readingProgress  ReadingProgress[]
   submissions      Submission[]
+  submissionComments SubmissionComment[]
+  liveWallPosts    LiveWallPost[]
 
   @@map("students")
 }
@@ -260,6 +264,7 @@ model SubUnit {
   materials       Material[]
   readingProgress ReadingProgress[]
   submissions     Submission[]
+  submissionComments SubmissionComment[]
 
   @@map("sub_units")
 }
@@ -312,6 +317,64 @@ model Submission {
   @@unique([subUnitId, studentId])
   @@unique([subUnitId, groupId])
   @@map("submissions")
+}
+
+// 提問串（Submission Comments）：作業/測驗下的師生一對一（或對小組）留言，建立後不可編輯刪除，
+// 做為師生溝通的永久稽核紀錄（見 node_migration_and_lms_plan.md 第五節模組 2）。以 subUnitId +
+// studentId（個人）或 subUnitId + groupId（小組）定位討論串，不掛在 Submission 底下，因為學生
+// 在正式繳交前就應該能先發問。
+model SubmissionComment {
+  id         Int    @id @default(autoincrement())
+  subUnitId  Int    @map("sub_unit_id")
+  studentId  Int?   @map("student_id")
+  groupId    Int?   @map("group_id")
+  authorRole String @map("author_role") // "teacher" | "student"
+  authorId   Int?   @map("author_id") // 發言學生的 id（teacher 發言時為 null；小組討論串由組內任一人發言仍記錄實際發言人）
+  message    String
+  createdAt  String @map("created_at")
+
+  subUnit SubUnit  @relation(fields: [subUnitId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  group   Group?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@map("submission_comments")
+}
+
+// ==========================================================================
+// Phase 4 — 即時互動牆 (Live Wall)：教師開一個限時場次，學生每人限交一則
+// 文字/手繪/拍照貼文，教師端與投影大螢幕即時呈現，可一鍵清空（見
+// node_migration_and_lms_plan.md 第五節模組 4）。同一課程同時只能有一個
+// isActive=1 的場次，由 db.ts 的 partial unique index 在 DB 層強制。
+// ==========================================================================
+
+model LiveSession {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  mode      String // "text" | "drawing" | "photo"
+  title     String? // 選填的提示/題目文字
+  showNames Int     @default(1) @map("show_names") // 0=投影/學生視角匿名，教師視角一律看得到真名
+  isActive  Int     @default(1) @map("is_active")
+  createdAt String  @map("created_at")
+
+  course Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  posts  LiveWallPost[]
+
+  @@map("live_sessions")
+}
+
+model LiveWallPost {
+  id          Int     @id @default(autoincrement())
+  sessionId   Int     @map("session_id")
+  studentId   Int     @map("student_id")
+  textContent String? @map("text_content")
+  imageUrl    String? @map("image_url") // 手繪/拍照皆存成 PNG/JPG 檔案，此欄位僅存路徑
+  createdAt   String  @map("created_at")
+
+  session LiveSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@map("live_wall_posts")
 }
 
 model Material {

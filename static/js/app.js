@@ -61,7 +61,18 @@ function syncAppRealtimeConnection() {
   }
   appRealtimeCourseId = AppState.currentCourseId;
   if (typeof connectCourseRealtime === 'function' && AppState.currentCourseId) {
-    appRealtimeHandle = connectCourseRealtime(AppState.currentCourseId, () => refreshActiveTab(getActiveTabName()));
+    appRealtimeHandle = connectCourseRealtime(AppState.currentCourseId, (event) => {
+      // live_wall_updated 只刷新即時互動牆子模組，避免每則貼文都觸發整個分頁重新整理
+      // （refreshActiveTab 用在 attendance_updated/groups_updated/score_updated 這類需要
+      // 重抓整個分頁資料的事件，Live Wall 不屬於這個家族）。
+      if (event === 'live_wall_updated') {
+        if (getActiveTabName() === 'toolkit' && window.TeachingToolkit && window.TeachingToolkit.liveWall) {
+          window.TeachingToolkit.liveWall.refresh();
+        }
+      } else {
+        refreshActiveTab(getActiveTabName());
+      }
+    });
   }
 }
 
@@ -158,7 +169,7 @@ async function initAuth() {
         window.location.href = redirectUrl;
         return;
       }
-      
+
       if (authOverlay) authOverlay.classList.remove('open');
       loadCourses();
     } else {
@@ -166,12 +177,64 @@ async function initAuth() {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_date');
       if (authOverlay) authOverlay.classList.add('open');
+      const urlParams = new URLSearchParams(window.location.search);
+      showAuthPanel(urlParams.get('redirect') ? 'teacher' : 'student');
     }
   } catch (err) {
     console.error('Auth check error:', err);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_date');
     if (authOverlay) authOverlay.classList.add('open');
+    showAuthPanel('student');
+  }
+}
+
+// 系統登入頁面：學生登入 / 教師登入面板切換
+function showAuthPanel(which) {
+  const studentPanel = document.getElementById('auth-panel-student');
+  const teacherPanel = document.getElementById('auth-panel-teacher');
+  if (studentPanel) studentPanel.style.display = which === 'teacher' ? 'none' : '';
+  if (teacherPanel) teacherPanel.style.display = which === 'teacher' ? '' : 'none';
+}
+
+async function submitStudentLogin(evt) {
+  if (evt) evt.preventDefault();
+  const accountInput = document.getElementById('student-login-account');
+  const pwdInput = document.getElementById('student-login-password');
+  const errorBox = document.getElementById('student-login-error');
+  const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+  if (errorBox) {
+    errorBox.style.display = 'none';
+    errorBox.textContent = '';
+  }
+
+  const account = accountInput ? accountInput.value.trim() : '';
+  const password = pwdInput ? pwdInput.value : '';
+  if (!account || !password) {
+    if (errorBox) {
+      errorBox.textContent = isEn ? 'Please enter both account and password!' : '請輸入登入帳號與密碼！';
+      errorBox.style.display = 'block';
+    }
+    return;
+  }
+
+  try {
+    const res = await fetch('/api/auth/student/login_by_account', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ account, password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.detail || (isEn ? 'Login failed!' : '登入失敗！'));
+
+    localStorage.setItem('student_token', data.token);
+    localStorage.setItem('student_info', JSON.stringify(data.student));
+    window.location.href = '/student';
+  } catch (err) {
+    if (errorBox) {
+      errorBox.textContent = err.message || (isEn ? 'Login failed!' : '登入失敗！');
+      errorBox.style.display = 'block';
+    }
   }
 }
 
@@ -264,6 +327,7 @@ async function logout() {
     const pwdInput = document.getElementById('auth-password-input');
     if (pwdInput) pwdInput.value = '';
     authOverlay.classList.add('open');
+    showAuthPanel('student');
   }
 }
 
@@ -4116,6 +4180,9 @@ function initEventListeners() {
     if (e.key === 'Enter') submitAuthPassword();
   });
   document.getElementById('btn-open-forgot-password-modal').addEventListener('click', openForgotConfirmModal);
+  document.getElementById('student-login-form').addEventListener('submit', submitStudentLogin);
+  document.getElementById('btn-show-teacher-login').addEventListener('click', () => showAuthPanel('teacher'));
+  document.getElementById('btn-show-student-login').addEventListener('click', () => showAuthPanel('student'));
   document.getElementById('btn-confirm-forgot-reset').addEventListener('click', confirmForgotReset);
   document.getElementById('btn-save-password-prefix').addEventListener('click', savePasswordPrefix);
 

@@ -7,6 +7,7 @@
 import type { Server as HttpServer } from "http";
 import { Server, Socket } from "socket.io";
 import { validateSessionToken } from "./middleware/auth";
+import { verifyStudentToken } from "./middleware/studentAuth";
 
 let io: Server | undefined;
 
@@ -20,11 +21,27 @@ export function setupRealtime(httpServer: HttpServer): Server {
   });
 
   io.on("connection", async (socket: Socket) => {
-    const courseId = Number(socket.handshake.query.course_id);
     const token =
       (socket.handshake.query.token as string | undefined) ||
       parseCookieToken(socket.handshake.headers.cookie);
 
+    if (!token) {
+      socket.disconnect(true);
+      return;
+    }
+
+    // 學生 JWT 內建自己的 courseId——一律以此為準，絕不信任前端傳來的 query.course_id，
+    // 否則學生能偽造 course_id 加入別班房間偷看即時互動牆等內容。verifyStudentToken 對
+    // 教師 token（非 JWT 格式）會乾淨地回傳 null，不影響下面教師驗證路徑的判斷。
+    const studentPayload = await verifyStudentToken(token);
+    if (studentPayload) {
+      socket.join(courseRoom(studentPayload.courseId));
+      return; // 學生不需要中繼 toolkit_action，也不該能發送
+    }
+
+    // 教師端沿用原本邏輯：共用系統密碼、不分課程，query.course_id 的信任等級與其他
+    // REST 呼叫一致（教師本來就能看到自己選的任何課程）。
+    const courseId = Number(socket.handshake.query.course_id);
     if (!Number.isInteger(courseId) || !(await validateSessionToken(token))) {
       socket.disconnect(true);
       return;

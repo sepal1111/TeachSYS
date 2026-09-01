@@ -75,6 +75,34 @@ async function syncActivePlanToStudents(courseId: number, planId: number) {
   }
 }
 
+/** Prisma 回傳的欄位是 camelCase（如 groupName、isActive），但前端一律用 snake_case 讀取
+ *  （沿用原 Python/FastAPI 版本的慣例），這裡手動轉換，否則前端會讀到 undefined
+ *  （例如小組篩選按鈕顯示「undefined」、分組管理頁的⭐生效方案標記失效）。 */
+function serializeGroup<T extends { id: number; courseId: number; groupName: string; iconUrl: string | null; orderIndex: number; planId: number | null }>(
+  g: T,
+  students: unknown
+) {
+  return {
+    id: g.id,
+    course_id: g.courseId,
+    group_name: g.groupName,
+    icon_url: g.iconUrl,
+    order_index: g.orderIndex,
+    plan_id: g.planId,
+    students,
+  };
+}
+
+function serializePlan<T extends { id: number; courseId: number; name: string; isActive: number; createdAt: string | null }>(p: T) {
+  return {
+    id: p.id,
+    course_id: p.courseId,
+    name: p.name,
+    is_active: !!p.isActive,
+    created_at: p.createdAt,
+  };
+}
+
 async function buildCourseGroupsPayload(courseId: number, planId?: number | null) {
   const plans = await prisma.groupPlan.findMany({ where: { courseId }, orderBy: { id: "asc" } });
   const currentPlan = await getOrCreateActivePlan(courseId, planId ?? undefined);
@@ -104,7 +132,7 @@ async function buildCourseGroupsPayload(courseId: number, planId?: number | null
           gender: m.student.gender,
           group_id: g.id,
         }));
-      return { ...g, students };
+      return serializeGroup(g, students);
     })
   );
 
@@ -127,7 +155,7 @@ async function buildCourseGroupsPayload(courseId: number, planId?: number | null
       group_id: null,
     }));
 
-  return { plans: finalPlans, current_plan: currentPlan, groups, unassigned };
+  return { plans: finalPlans.map(serializePlan), current_plan: serializePlan(currentPlan), groups, unassigned };
 }
 
 groupsRouter.get("/:courseId", async (req, res) => {

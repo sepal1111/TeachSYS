@@ -299,6 +299,13 @@
       'group_preset_icons_subtitle': '🦁 25 款可愛動物小組圖示',
 
       // Auth Modal & Forgot Password
+      'auth_student_title': '🎓 學生登入',
+      'auth_student_subtitle': '請輸入老師提供的登入帳號與密碼',
+      'auth_student_account_placeholder': '請輸入登入帳號',
+      'auth_student_password_placeholder': '請輸入登入密碼',
+      'auth_student_btn_submit': '🔓 學生登入',
+      'auth_btn_show_teacher': '🔐 教師登入',
+      'auth_btn_back_to_student': '← 返回學生登入',
       'auth_title': '🔐 教師身分安全驗證',
       'auth_placeholder': '請輸入系統驗證密碼',
       'auth_btn_submit': '🔓 驗證進入系統',
@@ -736,6 +743,13 @@
       'group_preset_icons_subtitle': '🦁 25 Cute Animal Icons',
 
       // Auth Modal & Forgot Password
+      'auth_student_title': '🎓 Student Login',
+      'auth_student_subtitle': 'Enter the login account and password provided by your teacher',
+      'auth_student_account_placeholder': 'Enter login account',
+      'auth_student_password_placeholder': 'Enter login password',
+      'auth_student_btn_submit': '🔓 Student Login',
+      'auth_btn_show_teacher': '🔐 Teacher Login',
+      'auth_btn_back_to_student': '← Back to Student Login',
       'auth_title': '🔐 Teacher Identity Authentication',
       'auth_placeholder': 'Enter System Password',
       'auth_btn_submit': '🔓 Verify & Enter',
@@ -1147,6 +1161,9 @@
       '#btn-save-group-submit': 'modal_save',
       '#btn-close-big-screen': 'proj_fullscreen_exit',
       '#btn-apply-proj-range': 'proj_range_apply_btn',
+      '#btn-submit-student-login': 'auth_student_btn_submit',
+      '#btn-show-teacher-login': 'auth_btn_show_teacher',
+      '#btn-show-student-login': 'auth_btn_back_to_student',
       '#btn-submit-auth-password': 'auth_btn_submit',
       '#btn-open-forgot-password-modal': 'auth_forgot_btn',
       '#btn-confirm-forgot-reset': 'forgot_btn_reset',
@@ -1306,6 +1323,12 @@
 
     const authPassInput = document.getElementById('auth-password-input');
     if (authPassInput) authPassInput.placeholder = t('auth_placeholder');
+
+    const studentLoginAccountInput = document.getElementById('student-login-account');
+    if (studentLoginAccountInput) studentLoginAccountInput.placeholder = t('auth_student_account_placeholder');
+
+    const studentLoginPasswordInput = document.getElementById('student-login-password');
+    if (studentLoginPasswordInput) studentLoginPasswordInput.placeholder = t('auth_student_password_placeholder');
 
     const newCourseInput = document.getElementById('new-course-name');
     if (newCourseInput) newCourseInput.placeholder = t('add_course_name_placeholder');

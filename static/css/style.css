@@ -1201,6 +1201,17 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+.error-box {
+  background: var(--accent-negative-bg);
+  border: 1px solid var(--accent-negative-border);
+  color: var(--accent-negative);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  font-size: 0.9rem;
+  margin-bottom: 14px;
+  display: none;
+}
+
 /* ==========================================================================
    Toast Undo Component (Scoreboard Floating Toast)
    ========================================================================== */

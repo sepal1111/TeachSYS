@@ -4,17 +4,81 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>學生課程入口 - TeachSYS</title>
+<script>
+  // 自動偵測作業系統與裝置類型，寫成 <html data-os data-device> 供 CSS/JS 之後判斷用
+  // （例如 iOS Safari 的 100vh 位址列問題、未來相機拍照 input capture 屬性等裝置差異）。
+  // 同步執行、放在 <link rel="stylesheet"> 之前，避免屬性套用較晚造成畫面閃爍。
+  (function () {
+    var ua = navigator.userAgent || '';
+    var platform = navigator.platform || '';
+    var uaData = navigator.userAgentData;
+    var isTouch = navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+
+    function detectOS() {
+      if (uaData && uaData.platform) {
+        var p = uaData.platform.toLowerCase();
+        if (p.indexOf('android') !== -1) return 'android';
+        if (p.indexOf('windows') !== -1) return 'windows';
+        if (p.indexOf('mac') !== -1) return isTouch && /iPad|iPhone/.test(ua) ? 'ios' : 'macos';
+        if (p.indexOf('linux') !== -1) return 'linux';
+      }
+      // iPadOS 13+ 預設偽裝成 MacIntel 桌面版 UA，須用觸控點數與 Mac 平台合併判斷才抓得到。
+      if (/iPad|iPhone|iPod/.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'ios';
+      if (/Android/.test(ua)) return 'android';
+      if (/Win/.test(platform) || /Windows/.test(ua)) return 'windows';
+      if (/Mac/.test(platform)) return 'macos';
+      if (/Linux/.test(platform)) return 'linux';
+      return 'unknown';
+    }
+
+    function detectDeviceType(os) {
+      var minScreenSide = Math.min(window.screen.width, window.screen.height);
+      if (os === 'ios') return /iPad/.test(ua) || (platform === 'MacIntel' && isTouch) ? 'tablet' : 'mobile';
+      if (os === 'android') return /Mobile/.test(ua) ? 'mobile' : 'tablet';
+      if (uaData && typeof uaData.mobile === 'boolean') {
+        if (!uaData.mobile) return 'desktop';
+        return minScreenSide >= 600 ? 'tablet' : 'mobile';
+      }
+      return isTouch && minScreenSide < 900 ? 'tablet' : 'desktop';
+    }
+
+    var os = detectOS();
+    var device = detectDeviceType(os);
+    var root = document.documentElement;
+    root.setAttribute('data-os', os);
+    root.setAttribute('data-device', device);
+    window.TeachSYSDevice = { os: os, device: device, isTouch: isTouch };
+  })();
+</script>
 <link rel="stylesheet" href="/static/css/style.css">
 <style>
+  /* 學生端專屬色調：與教師端的藍色系區隔開來，比照 kyps-class 的天藍色學生識別色 */
+  :root {
+    --student-primary: #0284c7;
+    --student-primary-dark: #0369a1;
+    --student-primary-light: #38bdf8;
+    --student-primary-bg: #f0f9ff;
+    --student-primary-border: #bae6fd;
+  }
+
   body {
     background: var(--bg-gradient);
     min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 16px 60px;
+    margin: 0;
+    padding-bottom: 60px;
   }
-  .student-shell { width: 100%; max-width: 640px; }
+  /* 44px 最小可點擊高度比照 kyps-class style.css 的明文規則：方便小學生在平板/手機上點按。
+     只在學生頁面套用（教師端沿用共用 style.css 的 .btn，不動它避免波及整個教師介面）。 */
+  .btn, .btn-secondary { min-height: 44px; }
+  .student-shell { width: 100%; max-width: 640px; margin: 0 auto; padding: 0 16px; box-sizing: border-box; }
+  @media (min-width: 760px) {
+    .student-shell { max-width: 820px; padding: 0 24px; }
+  }
+  /* 寬螢幕（筆電/桌機/2K 螢幕）再放寬一階，避免內容欄位在大螢幕上顯得過窄、兩側留白過多；
+     維持單欄置中（非改成側欄雙欄），單純讓卡片與清單有更多呼吸空間。 */
+  @media (min-width: 1200px) {
+    .student-shell { max-width: 1140px; }
+  }
   .student-card {
     background: var(--card-bg);
     border: 1px solid var(--card-border);
@@ -32,13 +96,137 @@
     border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--input-text);
     font-size: 1rem; box-sizing: border-box;
   }
-  .content-tab-switch { display: flex; gap: 8px; margin-bottom: 14px; }
-  .content-tab-btn {
-    flex: 1; padding: 10px 12px; border-radius: var(--radius-md); border: 1.5px solid var(--card-border);
-    background: var(--card-bg); color: var(--text-muted); font-size: 0.92rem; font-weight: 700; cursor: pointer;
-    transition: var(--transition-normal);
+  .login-shell { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 16px; }
+  .login-shell .student-shell { max-width: 420px; }
+  /* iOS Safari 的 100vh 會把可縮合的網址列高度也算進去，導致登入畫面被裁切或跳動；
+     用開頭 <script> 偵測到的 data-os="ios" 改用 -webkit-fill-available 修正。 */
+  html[data-os="ios"] body,
+  html[data-os="ios"] .login-shell {
+    min-height: -webkit-fill-available;
   }
-  .content-tab-btn.active { border-color: var(--primary-light); color: var(--primary); background: rgba(37, 99, 235, 0.08); }
+
+  /* --- Top Nav (sticky) --- */
+  .top-nav {
+    position: sticky; top: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: var(--header-bg); backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--header-border);
+    padding: 10px 16px; margin: 0 0 16px; box-sizing: border-box;
+  }
+  .top-nav-brand { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .top-nav-brand img { height: 28px; }
+  .top-nav-brand-text { display: flex; flex-direction: column; min-width: 0; }
+  .top-nav-brand-title { font-size: 0.95rem; font-weight: 800; color: var(--text-main); white-space: nowrap; }
+  .top-nav-course-badge {
+    font-size: 0.72rem; font-weight: 700; color: var(--student-primary-dark);
+    background: var(--student-primary-bg); border: 1px solid var(--student-primary-border);
+    border-radius: var(--radius-full); padding: 1px 8px; align-self: flex-start; margin-top: 2px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px;
+  }
+  /* position:relative 放在 actions 容器上，而非 bell 自己的 wrap，讓下拉選單無論
+     鈴鐺在窄螢幕上實際落在哪個 x 座標，都固定貼齊導覽列最右側，不會被螢幕邊緣裁切。 */
+  .top-nav-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; position: relative; }
+
+  .student-chip {
+    display: flex; align-items: center; gap: 6px; padding: 4px 10px 4px 4px;
+    border-radius: var(--radius-full); background: var(--card-bg); border: 1px solid var(--card-border);
+  }
+  .student-chip-avatar {
+    width: 26px; height: 26px; border-radius: 50%; background: var(--student-primary);
+    color: #fff; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .student-chip-name { font-size: 0.82rem; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+
+  /* --- Notification Bell --- */
+  .notif-bell-btn {
+    position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--card-border);
+    background: var(--card-bg); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .notif-badge {
+    position: absolute; top: -2px; right: -2px; min-width: 16px; height: 16px; padding: 0 3px;
+    border-radius: var(--radius-full); background: var(--accent-negative); color: #fff;
+    font-size: 0.62rem; font-weight: 800; display: flex; align-items: center; justify-content: center;
+  }
+  .notif-dropdown {
+    position: absolute; top: calc(100% + 8px); right: 0; width: 280px; max-width: 80vw;
+    background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg); z-index: 60; overflow: hidden;
+    /* pop+fade 開合比照 kyps-class NotificationBell.vue：0.16s，translateY(-6px) scale(0.98) -> 原位 */
+    opacity: 0; visibility: hidden; transform: translateY(-6px) scale(0.98); pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease, visibility 0s linear 0.16s;
+  }
+  .notif-dropdown.open {
+    opacity: 1; visibility: visible; transform: translateY(0) scale(1); pointer-events: auto;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+  .notif-dropdown-head { font-size: 0.85rem; font-weight: 800; color: var(--text-main); padding: 12px 14px; border-bottom: 1px solid var(--card-border); }
+  .notif-dropdown-empty { padding: 24px 14px; text-align: center; color: var(--text-muted); font-size: 0.85rem; }
+  .notif-dropdown-empty .emoji { font-size: 1.6rem; display: block; margin-bottom: 6px; }
+
+  /* --- Hero Banner --- */
+  .hero-banner {
+    background: linear-gradient(135deg, #ffffff 0%, var(--student-primary-bg) 100%);
+    border: 1.5px solid var(--student-primary-border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+    padding: 20px; margin-bottom: 16px;
+  }
+  .hero-banner-body { display: flex; flex-direction: column; gap: 14px; }
+  .hero-banner-main { min-width: 0; }
+  .hero-greeting { font-size: 1.1rem; font-weight: 800; color: var(--text-main); margin: 0 0 4px; }
+  .hero-greeting .course-name { color: var(--student-primary-dark); }
+  .hero-subtext { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+  .my-group-card {
+    background: #fff7ed; border: 1px solid #fed7aa; border-radius: var(--radius-md);
+    padding: 12px 14px;
+  }
+  @media (min-width: 760px) {
+    .hero-banner-body { flex-direction: row; align-items: center; gap: 24px; }
+    .hero-banner-main { flex: 1 1 auto; }
+    .my-group-card { flex: 0 0 300px; }
+  }
+  .my-group-card.empty { background: var(--card-bg); border-color: var(--card-border); }
+  .my-group-title { font-size: 0.8rem; font-weight: 800; color: #9a5b13; margin: 0 0 8px; }
+  .my-group-card.empty .my-group-title { color: var(--text-muted); }
+  .my-group-members { display: flex; flex-wrap: wrap; gap: 6px; }
+  .member-pill {
+    font-size: 0.78rem; font-weight: 600; padding: 3px 10px; border-radius: var(--radius-full);
+    background: #ffffff; border: 1px solid #fed7aa; color: #9a5b13;
+  }
+  .member-pill.me { background: #f97316; border-color: #f97316; color: #fff; font-weight: 800; }
+  .my-group-empty-text { font-size: 0.82rem; color: var(--text-muted); }
+
+  /* --- Tab Bar --- */
+  /* 手機窄螢幕：2x2 網格（4 顆分頁鍵在窄寬度以 flex-wrap 會擠成不對稱的 3+1）；
+     平板/桌機有足夠寬度後改為單排排列。 */
+  .student-tab-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 16px; }
+  .student-tab-btn {
+    min-width: 0; min-height: 44px; padding: 8px 10px; border-radius: var(--radius-md);
+    border: 1.5px solid var(--card-border); background: var(--card-bg); color: var(--text-muted);
+    font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: var(--transition-normal);
+    line-height: 1.3;
+  }
+  .student-tab-btn:hover { background: #f1f5f9; }
+  @media (min-width: 640px) {
+    .student-tab-bar { display: flex; flex-wrap: nowrap; }
+    .student-tab-btn { flex: 1 1 0; border-radius: var(--radius-full); white-space: nowrap; }
+  }
+  .student-tab-btn.active {
+    border-color: var(--student-primary); color: #fff; background: var(--student-primary);
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3);
+  }
+  .student-tab-btn.soon { opacity: 0.7; }
+  .student-tab-btn.soon .soon-badge {
+    display: inline-block; font-size: 0.65rem; font-weight: 800; color: var(--text-muted);
+    background: #f1f5f9; border-radius: var(--radius-full); padding: 0 6px; margin-left: 4px;
+  }
+
+  .student-tab-pane { transition: opacity 0.2s ease; }
+  .student-tab-pane.fading { opacity: 0; }
+
+  .coming-soon-card { text-align: center; padding: 40px 20px; }
+  .coming-soon-card .emoji { font-size: 2.4rem; display: block; margin-bottom: 10px; }
+  .coming-soon-card .title { font-size: 1.05rem; font-weight: 800; color: var(--text-main); margin: 0 0 6px; }
+  .coming-soon-card .desc { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
 
   .score-summary-card { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 12px; text-align: center; }
   .score-summary-value { font-size: 1.6rem; font-weight: 800; color: var(--text-main); }
@@ -81,8 +269,6 @@
   .material-link:hover { background: #f1f5f9; }
   .yt-embed { position: relative; width: 100%; padding-top: 56.25%; border-radius: var(--radius-sm); overflow: hidden; margin-top: 8px; }
   .yt-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-  .topbar .who { font-weight: 700; color: var(--text-main); }
   [hidden] { display: none !important; }
 
   .assignment-panel { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--card-border); }
@@ -106,6 +292,37 @@
   }
   .assignment-textarea { min-height: 70px; resize: vertical; }
 
+  /* --- 提問串（Submission Comments）：作業/測驗下方的師生一對一（或對小組）留言 --- */
+  .comment-thread { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--card-border); }
+  .comment-thread-toggle {
+    background: none; border: none; color: var(--student-primary-dark); font-size: 0.85rem;
+    font-weight: 700; cursor: pointer; padding: 4px 0;
+  }
+  .comment-thread-panel { margin-top: 8px; }
+  .comment-thread-messages {
+    /* 280px / light-slate 比照 kyps-class SubmissionCommentThread.vue 原設計 */
+    max-height: 280px; overflow-y: auto; background: #f1f5f9; border-radius: var(--radius-sm);
+    padding: 10px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .comment-thread-empty { font-size: 0.8rem; color: var(--text-muted); text-align: center; padding: 10px 0; }
+  .comment-bubble { max-width: 82%; padding: 8px 10px; border-radius: var(--radius-md); font-size: 0.85rem; word-break: break-word; }
+  .comment-bubble.student { align-self: flex-start; background: var(--card-bg); border: 1px solid var(--card-border); }
+  .comment-bubble.teacher { align-self: flex-end; background: #eef2ff; border: 1px solid #c7d2fe; }
+  .comment-bubble-meta { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px; font-weight: 700; }
+  .comment-bubble-text { white-space: pre-wrap; }
+  .comment-thread-composer { display: flex; gap: 6px; margin-top: 8px; }
+  .comment-thread-composer textarea {
+    flex: 1; min-height: 36px; max-height: 80px; padding: 7px 10px; border-radius: var(--radius-sm);
+    border: 1.5px solid var(--input-border); background: var(--input-bg); color: var(--input-text);
+    font-size: 0.85rem; resize: vertical; box-sizing: border-box; font-family: inherit;
+  }
+
+  /* --- 即時互動牆：手繪畫板色票 --- */
+  .livewall-color-swatch {
+    width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0;
+  }
+  .livewall-color-swatch.active { border-color: var(--student-primary, #0284c7); box-shadow: 0 0 0 2px var(--card-bg); }
+
   .toast-stack { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; z-index: 9999; }
   .toast-item {
     padding: 10px 16px; border-radius: var(--radius-sm); font-size: 0.88rem; font-weight: 600; color: #fff;
@@ -114,46 +331,95 @@
   .toast-item.show { opacity: 1; transform: translateY(0); }
   .toast-item.error { background: var(--accent-negative); }
   .toast-item.success { background: var(--accent-positive); }
+
+  @media (max-width: 480px) {
+    .top-nav-brand-title { display: none; }
+    .student-chip-name { display: none; }
+  }
 </style>
 </head>
 <body>
-  <div class="student-shell">
 
-    <div id="loginView" class="student-card">
-      <p class="student-title">📚 學生課程入口</p>
-      <p class="student-subtitle">輸入老師提供的登入帳號與密碼，瀏覽課程素材</p>
-      <div id="loginError" class="error-box"></div>
+  <div id="loginView" class="login-shell">
+    <div class="student-shell">
+      <div class="student-card">
+        <p class="student-title">📚 學生課程入口</p>
+        <p class="student-subtitle">輸入老師提供的登入帳號與密碼，瀏覽課程素材</p>
+        <div id="loginError" class="error-box"></div>
 
-      <form id="accountLoginForm">
-        <div class="field">
-          <label for="accountInput">帳號</label>
-          <input id="accountInput" type="text" autocomplete="username" required>
-        </div>
-        <div class="field">
-          <label for="accountPasswordInput">密碼</label>
-          <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
-        </div>
-        <button type="submit" class="btn" style="width:100%;">登入</button>
-      </form>
+        <form id="accountLoginForm">
+          <div class="field">
+            <label for="accountInput">帳號</label>
+            <input id="accountInput" type="text" autocomplete="username" required>
+          </div>
+          <div class="field">
+            <label for="accountPasswordInput">密碼</label>
+            <input id="accountPasswordInput" type="password" autocomplete="current-password" required>
+          </div>
+          <button type="submit" class="btn" style="width:100%;">登入</button>
+        </form>
+      </div>
     </div>
+  </div>
 
-    <div id="contentView" hidden>
-      <div class="student-card topbar">
-        <span class="who" id="whoLabel"></span>
-        <button id="logoutBtn" class="btn btn-secondary">登出</button>
+  <div id="contentView" hidden>
+    <header class="top-nav">
+      <div class="top-nav-brand">
+        <img src="/api/system/logo" alt="logo">
+        <div class="top-nav-brand-text">
+          <span class="top-nav-brand-title">TeachSYS 學生入口</span>
+          <span class="top-nav-course-badge" id="topNavCourseBadge"></span>
+        </div>
+      </div>
+      <div class="top-nav-actions">
+        <div class="notif-bell-wrap">
+          <button type="button" id="notifBellBtn" class="notif-bell-btn" title="通知">
+            🔔
+            <span id="notifBadge" class="notif-badge" hidden>0</span>
+          </button>
+          <div id="notifDropdown" class="notif-dropdown">
+            <div class="notif-dropdown-head">🔔 系統通知</div>
+            <div class="notif-dropdown-empty">
+              <span class="emoji">🛠️</span>
+              通知功能開發中，敬請期待！
+            </div>
+          </div>
+        </div>
+        <div class="student-chip">
+          <span class="student-chip-avatar" id="studentChipAvatar"></span>
+          <span class="student-chip-name" id="studentChipName"></span>
+        </div>
+        <button id="logoutBtn" class="btn btn-secondary" style="padding: 8px 14px;">登出</button>
+      </div>
+    </header>
+
+    <div class="student-shell">
+      <div class="hero-banner">
+        <div class="hero-banner-body">
+          <div class="hero-banner-main">
+            <p class="hero-greeting" id="heroGreeting"></p>
+            <p class="hero-subtext">瀏覽課程素材、完成作業與測驗，累積你的課堂點數！</p>
+          </div>
+          <div id="myGroupCard" class="my-group-card empty">
+            <p class="my-group-title">🧑‍🤝‍🧑 我的小組</p>
+            <p class="my-group-empty-text">目前尚未被編入分組。</p>
+          </div>
+        </div>
       </div>
 
-      <div class="content-tab-switch">
-        <button type="button" id="btnContentTabMaterials" class="content-tab-btn active">📚 課程素材</button>
-        <button type="button" id="btnContentTabScores" class="content-tab-btn">🌟 我的點數</button>
+      <div class="student-tab-bar">
+        <button type="button" id="btnContentTabMaterials" class="student-tab-btn active">📚 課程與作業</button>
+        <button type="button" id="btnContentTabScores" class="student-tab-btn">🌟 我的點數</button>
+        <button type="button" id="btnContentTabStream" class="student-tab-btn soon">💬 班級討論區<span class="soon-badge">敬請期待</span></button>
+        <button type="button" id="btnContentTabLiveWall" class="student-tab-btn">🎨 即時互動牆</button>
       </div>
 
-      <div id="materialsTabPane">
+      <div id="materialsTabPane" class="student-tab-pane">
         <div id="unitsContainer"></div>
         <div id="emptyState" class="student-card" hidden>老師尚未發布任何課程素材。</div>
       </div>
 
-      <div id="scoresTabPane" hidden>
+      <div id="scoresTabPane" class="student-tab-pane" hidden>
         <div class="student-card score-summary-card">
           <div class="score-summary-item">
             <div class="score-summary-value" id="scoreTotalValue">0</div>
@@ -175,12 +441,67 @@
         <div id="scoreLogsList"></div>
         <div id="scoreEmptyState" class="student-card" hidden>目前還沒有任何點數紀錄。</div>
       </div>
-    </div>
 
+      <div id="streamTabPane" class="student-tab-pane" hidden>
+        <div class="student-card coming-soon-card">
+          <span class="emoji">💬</span>
+          <p class="title">班級討論區即將推出</p>
+          <p class="desc">未來這裡可以看到全班的班級動態與討論串，敬請期待！</p>
+        </div>
+      </div>
+
+      <div id="liveWallTabPane" class="student-tab-pane" hidden>
+        <div id="livewallEmptyState" class="student-card coming-soon-card">
+          <span class="emoji">🎨</span>
+          <p class="title">目前沒有進行中的課堂互動</p>
+          <p class="desc">🎨 目前沒有進行中的課堂互動，請等待老師開始。</p>
+        </div>
+
+        <div id="livewallLockedState" class="student-card" hidden>
+          <p class="student-title" style="font-size:1.1rem;">✅ 已送出，等待老師查看囉！</p>
+          <div id="livewallMyPostPreview" style="margin-top:12px;"></div>
+        </div>
+
+        <div id="livewallInputState" hidden>
+          <div class="student-card">
+            <p id="livewallPromptTitle" style="font-weight:800; margin:0;"></p>
+          </div>
+
+          <div id="livewallInputText" class="student-card" hidden>
+            <textarea id="livewallTextarea" class="assignment-textarea" style="width:100%; box-sizing:border-box;" placeholder="輸入想分享的內容..."></textarea>
+          </div>
+
+          <div id="livewallInputPhoto" class="student-card" hidden>
+            <input type="file" id="livewallPhotoInput" accept="image/*" capture="environment">
+            <img id="livewallPhotoPreview" style="width:100%; margin-top:10px; border-radius:var(--radius-md);" hidden>
+          </div>
+
+          <div id="livewallInputDrawing" class="student-card" hidden>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+              <button type="button" class="livewall-color-swatch active" data-color="#1e293b" style="background:#1e293b;"></button>
+              <button type="button" class="livewall-color-swatch" data-color="#ef4444" style="background:#ef4444;"></button>
+              <button type="button" class="livewall-color-swatch" data-color="#f59e0b" style="background:#f59e0b;"></button>
+              <button type="button" class="livewall-color-swatch" data-color="#10b981" style="background:#10b981;"></button>
+              <button type="button" class="livewall-color-swatch" data-color="#0ea5e9" style="background:#0ea5e9;"></button>
+              <button type="button" class="livewall-color-swatch" data-color="#8b5cf6" style="background:#8b5cf6;"></button>
+              <input type="range" id="livewallStrokeWidth" min="1" max="20" value="4" style="flex:1; min-width:80px;">
+              <button type="button" id="btnLivewallCanvasClear" class="btn btn-secondary" style="font-size:0.8rem; padding:6px 12px;">🗑️ 清除</button>
+            </div>
+            <div style="width:100%; aspect-ratio:3/2; touch-action:none;">
+              <canvas id="livewallCanvas" width="600" height="400" style="width:100%; height:100%; background:#fff; border-radius:var(--radius-md); border:1.5px solid var(--card-border); display:block;"></canvas>
+            </div>
+          </div>
+
+          <button type="button" id="btnLivewallSubmit" class="btn" style="width:100%;">📤 送出</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="toastStack" class="toast-stack"></div>
 
-  <script src="/static/js/student.js?v=1.3"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/static/js/realtime.js?v=1.0"></script>
+  <script src="/static/js/student.js?v=1.5"></script>
 </body>
 </html>

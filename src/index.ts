@@ -27,6 +27,8 @@ import { reportsRouter } from "./routes/reports";
 import { unitsRouter } from "./routes/units";
 import { studentAuthRouter } from "./routes/studentAuth";
 import { studentContentRouter } from "./routes/studentContent";
+import { liveWallRouter } from "./routes/liveWall";
+import { studentLiveWallRouter } from "./routes/studentLiveWall";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
 const bundleDir = getBundleDir();
@@ -36,6 +38,7 @@ const uploadsDir = getUploadsDir();
 const photoDir = path.join(binDir, "photo");
 fs.mkdirSync(path.join(uploadsDir, "notes"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "groups"), { recursive: true });
+fs.mkdirSync(path.join(uploadsDir, "live_wall"), { recursive: true });
 fs.mkdirSync(photoDir, { recursive: true });
 
 const app = express();
@@ -196,10 +199,12 @@ app.use("/api/scores", requireAuth, scoresRouter);
 app.use("/api/notes", requireAuth, notesRouter);
 app.use("/api/reports", requireAuth, reportsRouter);
 app.use("/api/units", requireAuth, unitsRouter);
+app.use("/api/live-wall", requireAuth, liveWallRouter);
 
 // --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
 app.use("/api/auth/student", studentAuthRouter);
 app.use("/api/student", studentContentRouter);
+app.use("/api/student/live-wall", studentLiveWallRouter);
 
 // --- Global error handler: isolate a single request's failure instead of
 // letting an unhandled rejection crash the whole process (all other teachers'

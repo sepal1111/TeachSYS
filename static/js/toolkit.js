@@ -1742,6 +1742,123 @@
   };
 
   // =========================================================================
+  // 4.5 即時互動牆 (Live Wall)：開一個限時場次，學生每人限交一則文字/手繪/拍照貼文，
+  // 教師端這裡與大螢幕投影（static/js/projection.js）即時同步呈現。
+  // =========================================================================
+  function livewallEscapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  const LiveWall = {
+    currentSession: null,
+
+    init() {
+      document.getElementById('btn-livewall-start')?.addEventListener('click', () => this.start());
+      document.getElementById('btn-livewall-clear')?.addEventListener('click', () => this.clear());
+      document.getElementById('btn-livewall-end')?.addEventListener('click', () => this.end());
+    },
+
+    onEnterLiveWallTab() {
+      this.refresh();
+    },
+
+    async refresh() {
+      const courseId = window.AppState && window.AppState.currentCourseId;
+      if (!courseId) return;
+      try {
+        const data = await API.get(`/api/live-wall/courses/${courseId}/active`);
+        this.currentSession = data.session;
+        this.render(data.session, data.posts || []);
+      } catch (err) {
+        console.error('LiveWall.refresh error:', err);
+      }
+    },
+
+    render(session, posts) {
+      const startForm = document.getElementById('livewall-start-form');
+      const activeView = document.getElementById('livewall-active-view');
+      if (startForm) startForm.style.display = session ? 'none' : 'block';
+      if (activeView) activeView.style.display = session ? 'block' : 'none';
+      if (!session) return;
+
+      const modeLabels = { text: '✏️ 文字', drawing: '🎨 手繪', photo: '📷 拍照' };
+      const statusMeta = document.getElementById('livewall-status-meta');
+      if (statusMeta) {
+        statusMeta.textContent =
+          `模式：${modeLabels[session.mode] || session.mode}｜` +
+          `${session.show_names ? '具名' : '匿名'}投影｜已收到 ${posts.length} 則` +
+          (session.title ? `｜提示：${session.title}` : '');
+      }
+
+      const grid = document.getElementById('livewall-posts-grid');
+      const empty = document.getElementById('livewall-posts-empty');
+      if (!grid) return;
+      grid.innerHTML = '';
+      if (empty) empty.style.display = posts.length ? 'none' : 'block';
+      posts.forEach((p) => {
+        const card = document.createElement('div');
+        card.className = 'glass-card';
+        card.style.cssText = 'padding:12px; display:flex; flex-direction:column; gap:8px;';
+        const nameLine = `${p.student_number} 號 ${livewallEscapeHtml(p.student_name)}`;
+        if (p.image_url) {
+          card.innerHTML = `
+            <a href="${p.image_url}" target="_blank" rel="noopener"><img src="${p.image_url}" style="width:100%; border-radius:var(--radius-md); object-fit:cover; max-height:200px;" alt="貼文"></a>
+            <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">${nameLine}</div>
+          `;
+        } else {
+          card.innerHTML = `
+            <div style="white-space:pre-wrap; font-size:0.92rem;">${livewallEscapeHtml(p.text_content || '')}</div>
+            <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">${nameLine}</div>
+          `;
+        }
+        grid.appendChild(card);
+      });
+    },
+
+    async start() {
+      const courseId = window.AppState && window.AppState.currentCourseId;
+      if (!courseId) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+      const mode = document.querySelector('input[name="livewall-mode"]:checked').value;
+      const title = document.getElementById('livewall-title-input').value.trim();
+      const showNames = document.getElementById('livewall-show-names').checked;
+      try {
+        await API.post(`/api/live-wall/courses/${courseId}/start`, { mode, title, show_names: showNames });
+        document.getElementById('livewall-title-input').value = '';
+        window.showToast && window.showToast('已開始新的即時互動場次！', 'success');
+        await this.refresh();
+      } catch (err) {
+        window.showToast && window.showToast(err.message, 'error');
+      }
+    },
+
+    async clear() {
+      if (!this.currentSession) return;
+      if (!confirm('確定要清空目前所有貼文嗎？場次會繼續開著，學生可以重新送出。')) return;
+      try {
+        await API.post(`/api/live-wall/sessions/${this.currentSession.id}/clear`);
+        window.showToast && window.showToast('已清空所有貼文', 'success');
+        await this.refresh();
+      } catch (err) {
+        window.showToast && window.showToast(err.message, 'error');
+      }
+    },
+
+    async end() {
+      if (!this.currentSession) return;
+      if (!confirm('確定要結束這個場次嗎？學生端會恢復成沒有進行中互動的畫面。')) return;
+      try {
+        await API.post(`/api/live-wall/sessions/${this.currentSession.id}/close`);
+        window.showToast && window.showToast('場次已結束', 'success');
+        await this.refresh();
+      } catch (err) {
+        window.showToast && window.showToast(err.message, 'error');
+      }
+    },
+  };
+
+  // =========================================================================
   // 5. Master Teaching Toolkit Manager
   // =========================================================================
   const TeachingToolkit = {
@@ -1749,11 +1866,13 @@
     bulletin: BulletinBoard,
     luckyDraw: LuckyDraw,
     timer: TimerEngine,
+    liveWall: LiveWall,
 
     init() {
       this.bulletin.init();
       this.luckyDraw.init();
       this.timer.init();
+      this.liveWall.init();
 
       this.luckyDraw.updatePoolCountBadge();
       this.timer.updatePresetButtons();
@@ -1793,6 +1912,9 @@
         this.timer.onEnterTimerTab();
       } else {
         this.timer.onLeaveTimerTab();
+      }
+      if (subtab === 'liveWall') {
+        this.liveWall.onEnterLiveWallTab();
       }
     },
 

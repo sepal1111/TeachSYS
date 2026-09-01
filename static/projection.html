@@ -72,6 +72,48 @@
       box-sizing: border-box;
       overflow: hidden;
     }
+    /* 即時互動牆看板：貼文數量不固定，用自動換行網格而非排行榜那種固定 6x5 格。 */
+    .proj-livewall-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      align-content: start;
+    }
+    .livewall-proj-card {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1.5px solid rgba(255, 255, 255, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 120px;
+      animation: livewallCardIn 0.3s ease;
+    }
+    .livewall-proj-card img {
+      width: 100%;
+      border-radius: var(--radius-md);
+      object-fit: cover;
+      max-height: 260px;
+    }
+    .livewall-proj-text-content {
+      flex: 1;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #f8fafc;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .livewall-proj-name {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-align: right;
+    }
+    @keyframes livewallCardIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
   </style>
 </head>
 <body>
@@ -143,6 +185,12 @@
     <!-- 2. 全班學生座號得分一覽 Container (依座號 1 ~ N 排序，全屏 6x5 共 30 位免捲動) -->
     <div id="proj-all-students-container" style="display: none; flex: 1; height: 100%; overflow: hidden;">
       <div id="proj-all-students-grid" class="proj-all-students-grid"></div>
+    </div>
+
+    <!-- 3. 即時互動牆看板：老師開場次時自動顯示、場次結束/清空後自動恢復上面兩種排行榜畫面 -->
+    <div id="proj-livewall-view-container" style="display: none; flex: 1; flex-direction: column; overflow: hidden; padding: 10px 22px;">
+      <div id="proj-livewall-title" style="font-size: 1.6rem; font-weight: 900; text-align: center; margin-bottom: 14px; color: #ffffff;">🎨 即時互動牆</div>
+      <div id="proj-livewall-grid" class="proj-livewall-grid"></div>
     </div>
   </main>
 

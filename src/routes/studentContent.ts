@@ -11,6 +11,7 @@ import { requireStudentAuth } from "../middleware/studentAuth";
 import { getNowStrTaipei, getTodayStrTaipei } from "../timezone";
 import { getUploadsDir } from "../paths";
 import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
+import { listSubmissionComments, createSubmissionComment, type CommentThreadScope } from "../utils/submissionComments";
 
 export const studentContentRouter = autoCatch(Router());
 studentContentRouter.use(requireStudentAuth);
@@ -53,6 +54,35 @@ studentContentRouter.get("/me/scores", async (req, res) => {
 
   res.json({ total_score: totalScore, positive_score: positiveScore, negative_score: negativeScore, today_score: todayScore, logs: enriched });
 });
+// --- 我的小組（學生端）--- 對應課程當前生效的分組方案（教師分組頁籤所見的同一套），
+// 用於學生入口首頁的「我的小組」卡片；沒有生效方案或尚未被編入小組時回傳 group: null。
+studentContentRouter.get("/me/group", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+
+  const plan = await prisma.groupPlan.findFirst({ where: { courseId, isActive: 1 } });
+  const myMembership = plan ? await prisma.groupMember.findFirst({ where: { planId: plan.id, studentId } }) : null;
+  if (!myMembership) {
+    res.json({ group: null });
+    return;
+  }
+
+  const group = await prisma.group.findUnique({ where: { id: myMembership.groupId } });
+  const members = await prisma.groupMember.findMany({
+    where: { planId: plan!.id, groupId: myMembership.groupId },
+    include: { student: true },
+  });
+
+  res.json({
+    group: {
+      id: group!.id,
+      name: group!.groupName,
+      members: members
+        .map((m) => ({ id: m.student.id, name: m.student.name, student_number: m.student.studentNumber, is_me: m.student.id === studentId }))
+        .sort((a, b) => a.student_number - b.student_number),
+    },
+  });
+});
+
 const upload = multer({ storage: multer.memoryStorage() });
 
 function parseSubmissionTypes(csv: string | null): string[] {
@@ -138,6 +168,18 @@ studentContentRouter.get("/units", async (req, res) => {
       })
     : [];
 
+  // 我的提問串留言數（顯示在「💬 提問老師 (N)」按鈕上，不用展開才知道有沒有新回覆）。
+  const myCommentGroups = allSubUnitIds.length
+    ? await prisma.submissionComment.groupBy({
+        by: ["subUnitId", "studentId", "groupId"],
+        where: {
+          subUnitId: { in: allSubUnitIds },
+          OR: [{ studentId }, { groupId: { in: Array.from(myGroupByPlan.values()) } }],
+        },
+        _count: { id: true },
+      })
+    : [];
+
   res.json(
     units.map((u) => ({
       id: u.id,
@@ -153,6 +195,12 @@ studentContentRouter.get("/units", async (req, res) => {
           : isQuiz
           ? mySubmissions.find((s) => s.subUnitId === su.id && s.studentId === studentId) ?? null
           : null;
+        const myCommentCount =
+          isAssignment && su.assignmentType === "group"
+            ? myCommentGroups.find((c) => c.subUnitId === su.id && c.groupId === myGroupId)?._count.id ?? 0
+            : isAssignment || isQuiz
+            ? myCommentGroups.find((c) => c.subUnitId === su.id && c.studentId === studentId)?._count.id ?? 0
+            : 0;
 
         return {
           id: su.id,
@@ -171,6 +219,7 @@ studentContentRouter.get("/units", async (req, res) => {
                 assignment_type: su.assignmentType,
                 my_group_id: myGroupId,
                 submission: serializeSubmission(mySubmission),
+                comment_count: myCommentCount,
               }
             : {}),
           ...(isQuiz
@@ -180,6 +229,7 @@ studentContentRouter.get("/units", async (req, res) => {
                 reveal_answers_after_submit: !!su.revealAnswersAfterSubmit,
                 quiz_questions: quizQuestionsForStudent(su, !!mySubmission),
                 submission: serializeSubmission(mySubmission),
+                comment_count: myCommentCount,
               }
             : {}),
         };
@@ -497,4 +547,61 @@ studentContentRouter.post("/subunits/:subUnitId/submit_quiz", async (req, res) =
   });
 
   res.json({ message: "測驗已送出，系統已自動完成批改！", score, max_score: maxScore });
+});
+
+// --- 提問串（Submission Comments，學生端）---
+// 開放給作業與測驗（呼應教師端 units.ts 的 loadAssignment 同時允許 assignment/quiz），
+// 個人作業/測驗以 studentId 定位討論串，小組作業以 groupId 定位（全組共用同一串）。
+
+async function loadVisibleAssignmentOrQuiz(courseId: number, subUnitId: number) {
+  return prisma.subUnit.findFirst({
+    where: { id: subUnitId, isHidden: 0, category: { in: ["assignment", "quiz"] }, unit: { courseId, isHidden: 0 } },
+  });
+}
+
+/** 小組作業且尚未分組時，resolveMyGroupId 已經送出 400 回應，呼叫端應直接 return。 */
+async function resolveCommentScope(
+  res: import("express").Response,
+  subUnit: NonNullable<Awaited<ReturnType<typeof loadVisibleAssignmentOrQuiz>>>,
+  studentId: number
+): Promise<CommentThreadScope | null> {
+  const isGroup = subUnit.category === "assignment" && subUnit.assignmentType === "group";
+  if (!isGroup) return { subUnitId: subUnit.id, studentId };
+  const groupId = await resolveMyGroupId(res, subUnit, studentId);
+  return groupId === null ? null : { subUnitId: subUnit.id, groupId };
+}
+
+studentContentRouter.get("/subunits/:subUnitId/comments", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const subUnitId = Number(req.params.subUnitId);
+  const subUnit = await loadVisibleAssignmentOrQuiz(courseId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "作業或測驗不存在" });
+    return;
+  }
+  const scope = await resolveCommentScope(res, subUnit, studentId);
+  if (!scope) return; // resolveCommentScope already sent the 400 response
+
+  res.json(await listSubmissionComments(prisma, scope));
+});
+
+studentContentRouter.post("/subunits/:subUnitId/comments", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const subUnitId = Number(req.params.subUnitId);
+  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!message) {
+    res.status(400).json({ detail: "請輸入訊息內容" });
+    return;
+  }
+
+  const subUnit = await loadVisibleAssignmentOrQuiz(courseId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "作業或測驗不存在" });
+    return;
+  }
+  const scope = await resolveCommentScope(res, subUnit, studentId);
+  if (!scope) return;
+
+  await createSubmissionComment(prisma, scope, "student", studentId, message, getNowStrTaipei());
+  res.json(await listSubmissionComments(prisma, scope));
 });

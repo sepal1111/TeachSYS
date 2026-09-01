@@ -3,6 +3,7 @@
 // for the read-only, JWT-guarded student-facing counterpart.
 import fs from "fs";
 import path from "path";
+import { exec } from "child_process";
 import { Router } from "express";
 import multer from "multer";
 import { prisma } from "../db";
@@ -10,6 +11,7 @@ import { autoCatch } from "../asyncRoute";
 import { getUploadsDir } from "../paths";
 import { getNowStrTaipei } from "../timezone";
 import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
+import { listSubmissionComments, createSubmissionComment } from "../utils/submissionComments";
 
 export const unitsRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
@@ -129,6 +131,19 @@ unitsRouter.put("/:courseId/:unitId", async (req, res) => {
 unitsRouter.delete("/:courseId/:unitId", async (req, res) => {
   await prisma.unit.deleteMany({ where: { id: Number(req.params.unitId), courseId: Number(req.params.courseId) } });
   res.json({ message: "單元已刪除" });
+});
+
+// 開啟本機教材資料夾（教師端 LMS 頁「📁 開啟班級雲端資料夾」按鈕）——TeachSYS 純本機儲存、無雲端，
+// 這裡實際是在「伺服器主機」上跳出檔案總管，多數情況下伺服器就是老師自己的電腦，
+// 但若老師透過手機/平板遠端連線操作，資料夾只會顯示在伺服器電腦上（前端會提示這點）。
+unitsRouter.post("/:courseId/open_materials_folder", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const dir = path.join(getUploadsDir(), "materials", String(courseId));
+  fs.mkdirSync(dir, { recursive: true });
+  const cmd =
+    process.platform === "win32" ? `start "" "${dir}"` : process.platform === "darwin" ? `open "${dir}"` : `xdg-open "${dir}"`;
+  exec(cmd, () => undefined);
+  res.json({ message: "已在伺服器主機開啟資料夾", path: dir });
 });
 
 // --- Sub-units ---
@@ -327,6 +342,30 @@ unitsRouter.get("/:courseId/reading_progress", async (req, res) => {
   );
 });
 
+// 作業/測驗完成度彙總（教師端 LMS 頁小單元卡片上的「✅ 已完成 X／未完成 Y」徽章）。
+// 小組作業的「應繳」對象是組數而非人數，個人作業/測驗則以學生人數為準，
+// 與既有 renderGradingList()（modal-lms-grading）isGroup ? data.groups : data.students 的口徑一致。
+unitsRouter.get("/:courseId/submission_progress", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const totalStudents = await prisma.student.count({ where: { courseId, isActive: 1 } });
+
+  const subUnits = await prisma.subUnit.findMany({
+    where: { unit: { courseId }, category: { in: ["assignment", "quiz"] } },
+  });
+
+  const result = await Promise.all(
+    subUnits.map(async (su) => {
+      const turnedInCount = await prisma.submission.count({ where: { subUnitId: su.id, turnedIn: 1 } });
+      let total = totalStudents;
+      if (su.category === "assignment" && su.assignmentType === "group" && su.groupPlanId) {
+        total = await prisma.group.count({ where: { planId: su.groupPlanId } });
+      }
+      return { sub_unit_id: su.id, total, turned_in_count: turnedInCount };
+    })
+  );
+  res.json(result);
+});
+
 // --- 作業繳交與評分（教師端） ---
 // Phase 3: node_migration_and_lms_plan.md 模組 2「作業與小組共同作業」。個人與小組
 // 兩條路徑都經過 recordGradeScoreLog()/undoScoreLogIds()，讓評分直接觸發 score_logs，
@@ -384,6 +423,15 @@ unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions", async (req
     ...(isQuiz ? { quiz_questions: subUnit.quizQuestions ? JSON.parse(subUnit.quizQuestions) : [] } : {}),
   };
 
+  // 提問串數量：讓評分清單能顯示「💬 3」徽章，不用逐筆展開才知道有沒有新提問。
+  const commentGroups = await prisma.submissionComment.groupBy({ by: ["studentId", "groupId"], where: { subUnitId }, _count: { id: true } });
+  const commentCountByStudent = new Map<number, number>();
+  const commentCountByGroup = new Map<number, number>();
+  for (const g of commentGroups) {
+    if (g.studentId != null) commentCountByStudent.set(g.studentId, g._count.id);
+    if (g.groupId != null) commentCountByGroup.set(g.groupId, g._count.id);
+  }
+
   if (subUnit.assignmentType === "group") {
     const groups = await prisma.group.findMany({
       where: { planId: subUnit.groupPlanId ?? -1 },
@@ -397,6 +445,7 @@ unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions", async (req
         group_name: g.groupName,
         member_names: g.members.map((m) => m.student.name),
         submission: serializeSubmission(submissions.find((s) => s.groupId === g.id) ?? null),
+        comment_count: commentCountByGroup.get(g.id) ?? 0,
       })),
     });
     return;
@@ -410,6 +459,7 @@ unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions", async (req
       student_number: s.studentNumber,
       name: s.name,
       submission: serializeSubmission(submissions.find((sub) => sub.studentId === s.id) ?? null),
+      comment_count: commentCountByStudent.get(s.id) ?? 0,
     })),
   });
 });
@@ -475,6 +525,40 @@ unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId/submissions/:studentId/l
     update: { locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
   });
   res.json({ message: locked ? "作業已鎖定" : "作業已解鎖，學生可重新繳交" });
+});
+
+// --- 提問串（Submission Comments，教師端，個人作業/測驗）---
+
+unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions/:studentId/comments", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const studentId = Number(req.params.studentId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+  res.json(await listSubmissionComments(prisma, { subUnitId, studentId }));
+});
+
+unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/:studentId/comments", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const studentId = Number(req.params.studentId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!message) {
+    res.status(400).json({ detail: "請輸入訊息內容" });
+    return;
+  }
+  await createSubmissionComment(prisma, { subUnitId, studentId }, "teacher", null, message, getNowStrTaipei());
+  res.json(await listSubmissionComments(prisma, { subUnitId, studentId }));
 });
 
 unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/batch_request_resubmit", async (req, res) => {
@@ -584,4 +668,38 @@ unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId/submissions/group/:group
     update: { locked: locked ? 1 : 0, ...(locked ? {} : { teacherReopened: 1, resubmitRequested: 0 }) },
   });
   res.json({ message: locked ? "小組作業已鎖定" : "小組作業已解鎖" });
+});
+
+// --- 提問串（Submission Comments，教師端，小組作業）---
+
+unitsRouter.get("/:courseId/:unitId/subunits/:subUnitId/submissions/group/:groupId/comments", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const groupId = Number(req.params.groupId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+  res.json(await listSubmissionComments(prisma, { subUnitId, groupId }));
+});
+
+unitsRouter.post("/:courseId/:unitId/subunits/:subUnitId/submissions/group/:groupId/comments", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const unitId = Number(req.params.unitId);
+  const subUnitId = Number(req.params.subUnitId);
+  const groupId = Number(req.params.groupId);
+  const subUnit = await loadAssignment(courseId, unitId, subUnitId);
+  if (!subUnit) {
+    res.status(404).json({ detail: "Assignment not found" });
+    return;
+  }
+  const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
+  if (!message) {
+    res.status(400).json({ detail: "請輸入訊息內容" });
+    return;
+  }
+  await createSubmissionComment(prisma, { subUnitId, groupId }, "teacher", null, message, getNowStrTaipei());
+  res.json(await listSubmissionComments(prisma, { subUnitId, groupId }));
 });

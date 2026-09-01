@@ -15,11 +15,13 @@
    file). Reconnection-with-backoff is handled by the Socket.io client itself.
    ========================================================================== */
 
-function connectCourseRealtime(courseId, onUpdate, onToolkitAction) {
+// tokenOverride：學生端呼叫時傳入自己的 JWT；不傳（教師端既有呼叫方式）則沿用
+// localStorage 的教師 auth_token，維持原行為不變。
+function connectCourseRealtime(courseId, onUpdate, onToolkitAction, tokenOverride) {
   if (!courseId) return null;
   if (typeof io === 'undefined') return null;
 
-  const token = localStorage.getItem('auth_token') || '';
+  const token = tokenOverride !== undefined ? tokenOverride : (localStorage.getItem('auth_token') || '');
   const socket = io({
     query: { course_id: courseId, token },
   });
@@ -28,7 +30,10 @@ function connectCourseRealtime(courseId, onUpdate, onToolkitAction) {
     if (data && data.event === 'toolkit_action') {
       if (onToolkitAction) onToolkitAction(data.action, data.payload);
     } else {
-      onUpdate();
+      // 把事件名稱一併傳給 onUpdate，讓呼叫端可以只針對真正變動的部分刷新，
+      // 而不是每次任何事件都無腦重新整理整頁。既有呼叫端都是零參數箭頭函式，
+      // 多傳一個參數會被忽略，向下相容。
+      onUpdate(data && data.event);
     }
   });
 

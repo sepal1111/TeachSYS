@@ -194,6 +194,7 @@ async function initProjectionPage() {
 
     initEventListeners();
     await refreshProjectionData(true);
+    await refreshLiveWallOverlay();
     reconnectProjectionRealtime();
 
   } catch (err) {
@@ -208,7 +209,65 @@ function reconnectProjectionRealtime() {
     projectionRealtimeHandle.close();
     projectionRealtimeHandle = null;
   }
-  projectionRealtimeHandle = connectCourseRealtime(currentCourseId, () => refreshProjectionData(false), handleToolkitAction);
+  projectionRealtimeHandle = connectCourseRealtime(currentCourseId, (event) => {
+    if (event === 'live_wall_updated') {
+      refreshLiveWallOverlay();
+    } else {
+      refreshProjectionData(false);
+    }
+  }, handleToolkitAction);
+}
+
+// --- 即時互動牆看板：老師開場次時自動顯示、結束/清空後自動恢復排行榜畫面 ---
+
+function escapeHtmlProj(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+async function refreshLiveWallOverlay() {
+  if (!currentCourseId) return;
+  try {
+    const data = await API.get(`/api/live-wall/courses/${currentCourseId}/active`);
+    const liveWallContainer = document.getElementById('proj-livewall-view-container');
+    const podiumContainer = document.getElementById('proj-podium-view-container');
+    const allStudentsContainer = document.getElementById('proj-all-students-container');
+
+    if (data.session) {
+      if (liveWallContainer) liveWallContainer.style.display = 'flex';
+      if (podiumContainer) podiumContainer.style.display = 'none';
+      if (allStudentsContainer) allStudentsContainer.style.display = 'none';
+      renderLiveWallGrid(data.session, data.posts || []);
+    } else {
+      if (liveWallContainer) liveWallContainer.style.display = 'none';
+      // 場次已結束/尚未開始：恢復原本排行榜畫面（依目前選擇的模式重新觸發一次強制刷新）。
+      refreshProjectionData(true);
+    }
+  } catch (err) {
+    console.error('refreshLiveWallOverlay error:', err);
+  }
+}
+
+function renderLiveWallGrid(session, posts) {
+  const titleEl = document.getElementById('proj-livewall-title');
+  if (titleEl) titleEl.textContent = session.title ? `🎨 ${escapeHtmlProj(session.title)}` : '🎨 即時互動牆';
+
+  const grid = document.getElementById('proj-livewall-grid');
+  if (!grid) return;
+  if (!posts.length) {
+    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 1.15rem; font-weight: 700;">還沒有人送出貼文，請稍候...</div>`;
+    return;
+  }
+  grid.innerHTML = posts
+    .map((p) => {
+      const displayName = session.show_names ? `${p.student_number} 號 ${escapeHtmlProj(p.student_name)}` : '匿名同學';
+      if (p.image_url) {
+        return `<div class="livewall-proj-card"><img src="${p.image_url}" alt="貼文"><div class="livewall-proj-name">${displayName}</div></div>`;
+      }
+      return `<div class="livewall-proj-card"><div class="livewall-proj-text-content">${escapeHtmlProj(p.text_content || '')}</div><div class="livewall-proj-name">${displayName}</div></div>`;
+    })
+    .join('');
 }
 
 // --- Toolkit Remote Control Receiver (draw / timer / bulletin / bells triggered from a phone) ---

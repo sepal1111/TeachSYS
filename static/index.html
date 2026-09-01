@@ -340,15 +340,28 @@
       <div class="glass-card">
         <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
           <div>
-            <div class="glass-card-title">📚 課程素材與單元</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">
-              建立單元／小單元、上傳教材，學生可從 <b>/student</b> 頁面用「帳號 + 密碼」登入瀏覽（帳號可於「學生管理」分頁查看或設定）
-            </div>
+            <div class="glass-card-title" id="materials-course-title">📚 課程與教材</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">點選課程主題，查看教材或繳交作業</div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="btn-materials-add-unit" class="btn" style="font-size: 0.85rem;">➕ 新增單元</button>
+            <button id="btn-materials-open-folder" class="btn btn-secondary" style="font-size: 0.85rem; color: #b45309; border-color: #fcd34d; background: rgba(252, 211, 77, 0.12);">📁 開啟班級雲端資料夾</button>
+            <button id="btn-materials-export-excel" class="btn btn-secondary" style="font-size: 0.85rem;">📊 匯出課程成績</button>
+            <button id="btn-materials-toggle-edit" class="btn" style="font-size: 0.85rem;">✏️ 編輯課程內容</button>
           </div>
         </div>
+
+        <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;">
+          <span style="font-weight: 800;">課程內容</span>
+          <span title="建立章節與教材，學生可從 /student 頁面用「帳號 + 密碼」登入瀏覽（帳號可於「學生管理」分頁查看或設定）" style="cursor: help; color: var(--text-muted);">ⓘ</span>
+          <button id="btn-materials-add-unit" class="btn btn-secondary" style="font-size: 0.82rem; margin-left: auto; display: none;">➕ 新增章節</button>
+        </div>
+
+        <div id="materials-new-unit-inline-form" style="display: none; border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px; background: var(--card-bg);">
+          <div style="font-weight: 800; margin-bottom: 10px;">➕ 新增章節</div>
+          <input type="text" id="input-lms-unit-title-inline" class="input-control" style="width: 100%; margin-bottom: 10px; box-sizing: border-box;" placeholder="請輸入章節名稱（例如：第一課 認識電腦）" maxlength="60" autocomplete="off">
+          <button type="button" id="btn-submit-lms-unit-inline" class="btn" style="width: 100%;">建立章節</button>
+        </div>
+
         <div id="materials-units-list"><!-- Units rendered by materials.js --></div>
       </div>
     </section>
@@ -363,6 +376,7 @@
             <button type="button" class="btn toolkit-subtab-btn active" data-toolkit-tab="bulletin" data-i18n="toolkit_subtab_bulletin">📌 課堂公布欄</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="draw" data-i18n="toolkit_subtab_draw">🎲 隨機抽籤</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="timer" data-i18n="toolkit_subtab_timer">⏱️ 計時器與碼錶</button>
+            <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="liveWall">🎨 即時互動牆</button>
           </div>
         </div>
 
@@ -567,6 +581,43 @@
               <span style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="timer_bgm_vol">🔊 音量：</span>
               <input type="range" id="timer-bgm-vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 90px; cursor: pointer; accent-color: #3b82f6;">
             </div>
+          </div>
+        </div>
+
+        <!-- 4. 即時互動牆 Subpane -->
+        <div id="toolkit-subpane-liveWall" class="toolkit-subpane" style="display: none;">
+          <!-- A. 沒有進行中場次：開始場次表單 -->
+          <div id="livewall-start-form" class="glass-card">
+            <div class="glass-card-title" style="margin-bottom: 14px;">🎨 開始新的即時互動場次</div>
+            <div style="margin-bottom: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="text" checked> ✏️ 文字</label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="drawing"> 🎨 手繪</label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="photo"> 📷 拍照</label>
+            </div>
+            <div style="margin-bottom: 14px;">
+              <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">提示題目（選填）：</label>
+              <input type="text" id="livewall-title-input" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例：畫出你今天的心情" maxlength="60">
+            </div>
+            <div style="margin-bottom: 18px;">
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="checkbox" id="livewall-show-names" checked> 顯示學生姓名（取消勾選則投影／學生視角皆為匿名）</label>
+            </div>
+            <button type="button" id="btn-livewall-start" class="btn">🚀 開始場次</button>
+          </div>
+
+          <!-- B. 有進行中場次：狀態列 + 即時貼文牆 -->
+          <div id="livewall-active-view" style="display: none;">
+            <div class="glass-card" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+              <div>
+                <div style="font-weight: 800;" id="livewall-status-title">🎨 場次進行中</div>
+                <div id="livewall-status-meta" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;"></div>
+              </div>
+              <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap;">
+                <button type="button" id="btn-livewall-clear" class="btn btn-secondary" style="font-size: 0.85rem;">🗑️ 一鍵清空</button>
+                <button type="button" id="btn-livewall-end" class="btn btn-secondary" style="font-size: 0.85rem; color: var(--accent-negative); border-color: var(--accent-negative-border);">⏹️ 結束場次</button>
+              </div>
+            </div>
+            <div id="livewall-posts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;"></div>
+            <div id="livewall-posts-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);">還沒有人送出貼文。</div>
           </div>
         </div>
 
@@ -1170,7 +1221,7 @@
     </div>
   </div>
 
-  <!-- Full-Screen System Security Auth Overlay (全螢幕登入密碼防護遮罩) -->
+  <!-- Full-Screen System Login Page (系統登入頁面：學生登入為主，教師登入以按鈕切換顯示) -->
   <div id="auth-overlay" class="modal-overlay open" style="z-index: 99999; backdrop-filter: blur(25px); background: rgba(15, 23, 42, 0.92); display: flex; align-items: center; justify-content: center;">
     <div class="glass-card" style="width: 100%; max-width: 400px; margin: 20px; padding: 32px 28px; border: 1.5px solid var(--primary); box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5); text-align: center; position: relative;">
       <div style="position: absolute; top: 14px; right: 14px;">
@@ -1179,15 +1230,37 @@
       <div style="display: flex; justify-content: center; margin-bottom: 12px; margin-top: 6px;">
         <img id="auth-logo-img" src="/api/system/logo" alt="logo" style="height: 54px; max-width: 100%; object-fit: contain;">
       </div>
-      <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 24px; color: var(--text-main);" data-i18n="auth_title">🔐 教師身分安全驗證</h2>
 
-      <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
-        <input type="password" id="auth-password-input" class="input-control" placeholder="請輸入系統驗證密碼" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" data-i18n-placeholder="auth_placeholder">
-        <button id="btn-submit-auth-password" class="btn" style="font-size: 1.05rem; padding: 10px;" data-i18n="auth_btn_submit">🔓 驗證進入系統</button>
+      <!-- Student Login Panel (系統登入頁面預設顯示：學生登入) -->
+      <div id="auth-panel-student">
+        <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 6px; color: var(--text-main);" data-i18n="auth_student_title">🎓 學生登入</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;" data-i18n="auth_student_subtitle">請輸入老師提供的登入帳號與密碼</p>
+        <div id="student-login-error" class="error-box" style="text-align: left;"></div>
+        <form id="student-login-form">
+          <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+            <input type="text" id="student-login-account" class="input-control" autocomplete="username" placeholder="請輸入登入帳號" style="text-align: center; font-size: 1.05rem;" data-i18n-placeholder="auth_student_account_placeholder" required>
+            <input type="password" id="student-login-password" class="input-control" autocomplete="current-password" placeholder="請輸入登入密碼" style="text-align: center; font-size: 1.05rem;" data-i18n-placeholder="auth_student_password_placeholder" required>
+            <button type="submit" id="btn-submit-student-login" class="btn" style="font-size: 1.05rem; padding: 10px;" data-i18n="auth_student_btn_submit">🔓 學生登入</button>
+          </div>
+        </form>
+        <div style="border-top: 1px solid var(--card-border); padding-top: 16px;">
+          <button id="btn-show-teacher-login" class="btn btn-secondary" style="width: 100%;" data-i18n="auth_btn_show_teacher">🔐 教師登入</button>
+        </div>
       </div>
 
-      <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 0.85rem;">
-        <button id="btn-open-forgot-password-modal" style="background: none; border: none; color: var(--primary-light); cursor: pointer; text-decoration: underline;" data-i18n="auth_forgot_btn">❓ 忘記密碼？</button>
+      <!-- Teacher Login Panel (原本的老師登入功能，改以按鈕切換顯示) -->
+      <div id="auth-panel-teacher" style="display: none;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 24px; color: var(--text-main);" data-i18n="auth_title">🔐 教師身分安全驗證</h2>
+
+        <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
+          <input type="password" id="auth-password-input" class="input-control" placeholder="請輸入系統驗證密碼" style="text-align: center; font-size: 1.1rem; letter-spacing: 2px;" data-i18n-placeholder="auth_placeholder">
+          <button id="btn-submit-auth-password" class="btn" style="font-size: 1.05rem; padding: 10px;" data-i18n="auth_btn_submit">🔓 驗證進入系統</button>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
+          <button id="btn-show-student-login" style="background: none; border: none; color: var(--text-muted); cursor: pointer;" data-i18n="auth_btn_back_to_student">← 返回學生登入</button>
+          <button id="btn-open-forgot-password-modal" style="background: none; border: none; color: var(--primary-light); cursor: pointer; text-decoration: underline;" data-i18n="auth_forgot_btn">❓ 忘記密碼？</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1475,37 +1548,29 @@
   </div>
 
   <!-- Modal: 新增單元 (LMS) -->
-  <div id="modal-lms-new-unit" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增單元</h3>
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">單元標題：</label>
-        <input type="text" id="input-lms-unit-title" class="input-control" style="width: 100%;" placeholder="例：第一單元 認識植物" maxlength="60" autocomplete="off">
-      </div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary close-modal">取消</button>
-        <button type="button" id="btn-submit-lms-unit" class="btn">建立單元</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: 新增小單元 (LMS) -->
-  <div id="modal-lms-new-subunit" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow-y: auto;">
-      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增小單元</h3>
+  <!-- Modal: 新增內容／作業 (LMS，合併原本各自獨立的「新增小單元」與「新增教材」流程) -->
+  <div id="modal-lms-add-content" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 560px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; overflow-y: auto;">
+      <h3 id="text-lms-add-content-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增內容／作業</h3>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">請填寫教學素材或作業需求相關細節</div>
       <input type="hidden" id="input-lms-subunit-unit-id">
-      <div style="margin-bottom: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="material" checked> 📄 教學素材</label>
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="assignment"> 📝 作業</label>
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-subunit-category" value="quiz"> ✅ 線上測驗</label>
+      <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px;">
+        <div style="flex: 1; min-width: 180px;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">內容標題 *</label>
+          <input type="text" id="input-lms-subunit-title" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例如：1-1 網路安全小常識" maxlength="60" autocomplete="off">
+        </div>
+        <div style="flex: 1; min-width: 180px;">
+          <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">這是什麼內容？</label>
+          <select id="select-lms-content-category" class="input-control" style="width: 100%;">
+            <option value="material">📘 教學資源（教材、簡報、影片、連結）</option>
+            <option value="assignment">📝 作業</option>
+            <option value="quiz">✅ 線上測驗</option>
+          </select>
+        </div>
       </div>
       <div style="margin-bottom: 14px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">小單元標題：</label>
-        <input type="text" id="input-lms-subunit-title" class="input-control" style="width: 100%;" placeholder="例：1-1 植物的構造" maxlength="60" autocomplete="off">
-      </div>
-      <div style="margin-bottom: 14px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">說明文字 (可選)：</label>
-        <textarea id="input-lms-subunit-desc" class="input-control" style="width: 100%; min-height: 70px; resize: vertical;" placeholder="給學生的導讀說明或任務提示"></textarea>
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">說明文字</label>
+        <textarea id="input-lms-subunit-desc" class="input-control" style="width: 100%; min-height: 80px; resize: vertical; box-sizing: border-box;" placeholder="請填寫學習內容或作業要求說明..."></textarea>
       </div>
       <div id="wrap-lms-subunit-assignment" style="display: none;">
         <div style="margin-bottom: 14px;">
@@ -1544,9 +1609,35 @@
         <div id="list-lms-quiz-questions" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
         <button type="button" id="btn-lms-quiz-add-question" class="btn btn-secondary" style="font-size: 0.85rem;">➕ 新增題目</button>
       </div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+
+      <div style="background: var(--nav-bg); border: 1px solid var(--card-border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px;">
+        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px;">📎 附加說明檔案與參考資源（可同時附加）</div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">📁 1. 上傳教學檔案（可多選）</label>
+          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <label for="input-lms-content-files" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px; cursor: pointer; margin: 0;">📁 選擇檔案</label>
+            <input type="file" id="input-lms-content-files" multiple style="display: none;">
+            <span id="text-lms-content-files-status" style="font-size: 0.85rem; color: var(--text-muted);">尚未選擇檔案</span>
+          </div>
+        </div>
+        <div>
+          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">🔗 2. 加入網路連結／影片</label>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 160px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">連結名稱（選填）</label>
+              <input type="text" id="input-lms-content-link-title" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例如：教學說明影片">
+            </div>
+            <div style="flex: 1; min-width: 160px;">
+              <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">網址 (https://...)</label>
+              <input type="text" id="input-lms-content-link-url" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="https://...">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary close-modal">取消</button>
-        <button type="button" id="btn-submit-lms-subunit" class="btn">建立小單元</button>
+        <button type="button" id="btn-submit-lms-add-content" class="btn btn-success">確定新增</button>
       </div>
     </div>
   </div>
@@ -1566,31 +1657,15 @@
     </div>
   </div>
 
-  <!-- Modal: 新增教材 (LMS) -->
-  <div id="modal-lms-new-material" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <h3 style="margin: 0 0 14px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增教材</h3>
-      <input type="hidden" id="input-lms-material-subunit-id">
-      <div style="margin-bottom: 14px; display: flex; gap: 16px;">
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="file" checked> 📄 上傳檔案</label>
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="link"> 🔗 外部連結</label>
-        <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="lms-material-type" value="youtube"> ▶️ YouTube</label>
-      </div>
-      <div id="wrap-lms-material-file" style="margin-bottom: 14px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">選擇檔案：</label>
-        <input type="file" id="input-lms-material-file" class="input-control" style="width: 100%;">
-      </div>
-      <div id="wrap-lms-material-url" style="margin-bottom: 14px; display: none;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">網址連結：</label>
-        <input type="text" id="input-lms-material-url" class="input-control" style="width: 100%;" placeholder="https://...">
-      </div>
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">顯示名稱 (可選，預設用檔名/網址)：</label>
-        <input type="text" id="input-lms-material-title" class="input-control" style="width: 100%;" maxlength="60">
-      </div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary close-modal">取消</button>
-        <button type="button" id="btn-submit-lms-material" class="btn">新增教材</button>
+  <!-- Modal: 已讀／未讀學生名單 (LMS，教學素材小單元的進度徽章點擊後開啟) -->
+  <div id="modal-lms-reading-list" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto;">
+      <h3 id="text-lms-reading-list-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📊 閱讀狀態</h3>
+      <div id="text-lms-reading-list-meta" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px;"></div>
+      <div id="list-lms-reading-viewed" style="margin-bottom: 16px;"></div>
+      <div id="list-lms-reading-unviewed"></div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 16px;">
+        <button type="button" class="btn btn-secondary close-modal">關閉</button>
       </div>
     </div>
   </div>
