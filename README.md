@@ -1,11 +1,10 @@
 # TeachSYS Node.js Server（Phase 1 現有功能平移 + Phase 2 帳號體系與課程素材模組）
 
-取代 `app/`（Python/FastAPI）的 Node.js/Express/TypeScript/Prisma 後端，與原版並行存在於 `server/` 目錄，尚未接手正式運作前可隨時回退。
+Node.js/Express/TypeScript/Prisma 後端，取代原本的 Python/FastAPI 版本（已正式棄用並移除，功能沿革見 `node_migration_and_lms_plan.md`、`CHANGELOG.md`）。本目錄即完整專案根目錄，包含後端原始碼與前端靜態檔（`static/`），整個資料夾可直接複製到隨身碟部署。
 
 ## 開發啟動
 
 ```bash
-cd server
 npm install
 npx prisma generate
 npm run dev
@@ -22,7 +21,7 @@ npm run build   # tsc 編譯 + prisma generate
 npm start        # node dist/index.js
 ```
 
-尚未實作：`pkg`/`nexe` 封裝成單一 `.exe`（對應原本的 `build_exe.py`），排在規劃書的「第五階段：打包與隨身碟便攜化」。
+尚未實作：`pkg`/`nexe` 封裝成單一 `.exe`，排在規劃書的「第五階段：打包與隨身碟便攜化」。
 
 ## 目錄結構
 

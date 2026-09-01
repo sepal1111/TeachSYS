@@ -157,6 +157,7 @@
 
   async function submitNewUnit() {
     const cid = courseId();
+    if (!cid) return;
     const title = document.getElementById('input-lms-unit-title').value.trim();
     if (!title) return;
     try {
@@ -171,6 +172,7 @@
 
   async function toggleUnitHidden(u) {
     const cid = courseId();
+    if (!cid) return;
     try {
       await API.put(`/api/units/${cid}/${u.id}`, { is_hidden: !u.isHidden });
       load();
@@ -182,6 +184,7 @@
   async function deleteUnit(u) {
     if (!confirm(`確定要刪除單元「${u.title}」嗎？其下所有小單元與教材將一併刪除，此動作無法復原！`)) return;
     const cid = courseId();
+    if (!cid) return;
     try {
       await API.delete(`/api/units/${cid}/${u.id}`);
       showToast('單元已刪除', 'success');
@@ -202,6 +205,7 @@
 
   async function submitNewSubUnit() {
     const cid = courseId();
+    if (!cid) return;
     const unitId = document.getElementById('input-lms-subunit-unit-id').value;
     const title = document.getElementById('input-lms-subunit-title').value.trim();
     const description = document.getElementById('input-lms-subunit-desc').value.trim();
@@ -218,6 +222,7 @@
 
   async function toggleSubUnitHidden(su) {
     const cid = courseId();
+    if (!cid) return;
     try {
       await API.put(`/api/units/${cid}/${su.unitId}/subunits/${su.id}`, { is_hidden: !su.isHidden });
       load();
@@ -229,6 +234,7 @@
   async function deleteSubUnit(su) {
     if (!confirm(`確定要刪除小單元「${su.title}」嗎？其下所有教材將一併刪除，此動作無法復原！`)) return;
     const cid = courseId();
+    if (!cid) return;
     try {
       await API.delete(`/api/units/${cid}/${su.unitId}/subunits/${su.id}`);
       showToast('小單元已刪除', 'success');
@@ -258,6 +264,7 @@
 
   async function submitNewMaterial() {
     const cid = courseId();
+    if (!cid) return;
     const subUnitId = Number(document.getElementById('input-lms-material-subunit-id').value);
     const unitId = findUnitIdForSubUnit(subUnitId);
     if (!unitId) return;
@@ -297,6 +304,7 @@
   async function deleteMaterial(su, m) {
     if (!confirm(`確定要刪除教材「${m.title}」嗎？`)) return;
     const cid = courseId();
+    if (!cid) return;
     try {
       await API.delete(`/api/units/${cid}/${su.unitId}/subunits/${su.id}/materials/${m.id}`);
       showToast('教材已刪除', 'success');

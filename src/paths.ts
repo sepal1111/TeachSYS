@@ -1,5 +1,3 @@
-// Port of app/database.py's path-resolution helpers + main.py's get_bundle_dir().
-//
 // Portable deployment model: the server binary lives on a USB drive / in a folder
 // together with a `static/` asset folder and (at runtime) a `bin/` subfolder that
 // holds the SQLite db file and all uploads. Everything must resolve relative to
@@ -85,7 +83,7 @@ export function getBundleDir(): string {
   if (isPackaged()) {
     return getExeDir();
   }
-  return path.resolve(__dirname, "..", "..");
+  return path.resolve(__dirname, "..");
 }
 
 export function getUploadsDir(): string {
