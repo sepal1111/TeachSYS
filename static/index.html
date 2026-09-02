@@ -352,7 +352,7 @@
 
         <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;">
           <span style="font-weight: 800;">課程內容</span>
-          <span title="建立章節與教材，學生可從 /student 頁面用「帳號 + 密碼」登入瀏覽（帳號可於「學生管理」分頁查看或設定）" style="cursor: help; color: var(--text-muted);">ⓘ</span>
+          <span title="建立章節與教材，學生從本網址用「帳號 + 密碼」登入即可瀏覽（帳號可於「學生管理」分頁查看或設定）" style="cursor: help; color: var(--text-muted);">ⓘ</span>
           <button id="btn-materials-add-unit" class="btn btn-secondary" style="font-size: 0.82rem; margin-left: auto; display: none;">➕ 新增章節</button>
         </div>
 
@@ -586,6 +586,11 @@
 
         <!-- 4. 即時互動牆 Subpane -->
         <div id="toolkit-subpane-liveWall" class="toolkit-subpane" style="display: none;">
+          <!-- 歷史紀錄一律可查看，不受目前是否有進行中場次影響 -->
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+            <button type="button" id="btn-livewall-history" class="btn btn-secondary" style="font-size: 0.85rem;">📜 歷史紀錄</button>
+          </div>
+
           <!-- A. 沒有進行中場次：開始場次表單 -->
           <div id="livewall-start-form" class="glass-card">
             <div class="glass-card-title" style="margin-bottom: 14px;">🎨 開始新的即時互動場次</div>
@@ -1231,8 +1236,9 @@
         <img id="auth-logo-img" src="/api/system/logo" alt="logo" style="height: 54px; max-width: 100%; object-fit: contain;">
       </div>
 
-      <!-- Student Login Panel (系統登入頁面預設顯示：學生登入) -->
-      <div id="auth-panel-student">
+      <!-- Student Login Panel（不再是預設畫面，只有從「學生連線 QR Code」掃碼進來
+           （網址帶 ?login=student）的裝置才會顯示，見 static/js/app.js 的 getDefaultAuthPanel()） -->
+      <div id="auth-panel-student" style="display: none;">
         <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 6px; color: var(--text-main);" data-i18n="auth_student_title">🎓 學生登入</h2>
         <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 20px;" data-i18n="auth_student_subtitle">請輸入老師提供的登入帳號與密碼</p>
         <div id="student-login-error" class="error-box" style="text-align: left;"></div>
@@ -1243,13 +1249,10 @@
             <button type="submit" id="btn-submit-student-login" class="btn" style="font-size: 1.05rem; padding: 10px;" data-i18n="auth_student_btn_submit">🔓 學生登入</button>
           </div>
         </form>
-        <div style="border-top: 1px solid var(--card-border); padding-top: 16px;">
-          <button id="btn-show-teacher-login" class="btn btn-secondary" style="width: 100%;" data-i18n="auth_btn_show_teacher">🔐 教師登入</button>
-        </div>
       </div>
 
-      <!-- Teacher Login Panel (原本的老師登入功能，改以按鈕切換顯示) -->
-      <div id="auth-panel-teacher" style="display: none;">
+      <!-- Teacher/Admin Login Panel（主登入介面預設顯示） -->
+      <div id="auth-panel-teacher">
         <h2 style="font-size: 1.35rem; font-weight: 800; margin-bottom: 24px; color: var(--text-main);" data-i18n="auth_title">🔐 教師身分安全驗證</h2>
 
         <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px;">
@@ -1257,10 +1260,31 @@
           <button id="btn-submit-auth-password" class="btn" style="font-size: 1.05rem; padding: 10px;" data-i18n="auth_btn_submit">🔓 驗證進入系統</button>
         </div>
 
-        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem;">
-          <button id="btn-show-student-login" style="background: none; border: none; color: var(--text-muted); cursor: pointer;" data-i18n="auth_btn_back_to_student">← 返回學生登入</button>
+        <div style="border-top: 1px solid var(--card-border); padding-top: 16px; margin-bottom: 14px;">
+          <button id="btn-show-student-qr" class="btn btn-secondary" style="width: 100%;">📱 學生連線 QR Code</button>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; align-items: center; font-size: 0.85rem;">
           <button id="btn-open-forgot-password-modal" style="background: none; border: none; color: var(--primary-light); cursor: pointer; text-decoration: underline;" data-i18n="auth_forgot_btn">❓ 忘記密碼？</button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 學生連線 QR Code（登入畫面用，z-index 需高於 auth-overlay 的 99999 才蓋得住） -->
+  <div id="modal-qr-student-login" class="modal-overlay" style="z-index: 100200;">
+    <div class="modal-content" style="text-align: center; max-width: 420px;">
+      <div class="modal-header">
+        <div class="modal-title">🎓 學生連線 QR Code</div>
+        <button class="btn-icon close-modal">✕</button>
+      </div>
+      <div style="font-size: 0.92rem; color: var(--text-main); margin-bottom: 8px;">
+        請學生用手機或平板掃描下方 QR Code，即可直接開啟<b>學生登入頁面</b>：
+      </div>
+      <img id="qr-student-image" src="" alt="QR Code" style="width: 220px; height: 220px; margin: 10px auto; display: block; border-radius: 12px; background: #fff; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
+      <p id="qr-student-url-text" style="font-weight: bold; margin-top: 10px; color: var(--primary-light); font-size: 1.05rem; word-break: break-all;"></p>
+      <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; line-height: 1.5;">
+        💡 提示：手機/平板需連上與這台電腦相同的教室 Wi-Fi，才能掃碼連線成功。
       </div>
     </div>
   </div>
@@ -1549,28 +1573,42 @@
 
   <!-- Modal: 新增單元 (LMS) -->
   <!-- Modal: 新增內容／作業 (LMS，合併原本各自獨立的「新增小單元」與「新增教材」流程) -->
+  <!-- 外層 .modal-content 改為 overflow:hidden（負責裁切圓角）＋內層獨立捲動區塊（負責 overflow-y:auto），
+       避免捲軸本身蓋在圓角上方超出邊界——兩者疊在同一層時，Chrome 在 modal 開啟動畫用到 transform 的
+       情況下，原生捲軸有時不會被圓角裁切。 -->
   <div id="modal-lms-add-content" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 560px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; overflow-y: auto;">
+    <div class="modal-content glass-card" style="max-width: 620px; padding: 0; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;">
+    <div style="padding: 28px 24px; overflow-y: auto; flex: 1; min-height: 0;">
       <h3 id="text-lms-add-content-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增內容／作業</h3>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">請填寫教學素材或作業需求相關細節</div>
       <input type="hidden" id="input-lms-subunit-unit-id">
+      <input type="hidden" id="input-lms-subunit-id">
       <div style="display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 14px;">
         <div style="flex: 1; min-width: 180px;">
           <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">內容標題 *</label>
           <input type="text" id="input-lms-subunit-title" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例如：1-1 網路安全小常識" maxlength="60" autocomplete="off">
         </div>
-        <div style="flex: 1; min-width: 180px;">
+        <div style="flex: 1; min-width: 240px;">
           <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">這是什麼內容？</label>
           <select id="select-lms-content-category" class="input-control" style="width: 100%;">
             <option value="material">📘 教學資源（教材、簡報、影片、連結）</option>
             <option value="assignment">📝 作業</option>
             <option value="quiz">✅ 線上測驗</option>
           </select>
+          <div id="text-lms-content-category-locked-hint" style="display: none; font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">建立後無法變更類別</div>
         </div>
       </div>
       <div style="margin-bottom: 14px;">
         <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-muted);">說明文字</label>
         <textarea id="input-lms-subunit-desc" class="input-control" style="width: 100%; min-height: 80px; resize: vertical; box-sizing: border-box;" placeholder="請填寫學習內容或作業要求說明..."></textarea>
+      </div>
+      <div style="margin-bottom: 14px;">
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">⏰ 定時開放（可選）</label>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <input type="datetime-local" id="input-lms-subunit-publishat" class="input-control" style="flex: 1; min-width: 200px;">
+          <button type="button" id="btn-lms-subunit-publishat-clear" class="btn btn-secondary" style="font-size: 0.78rem; padding: 5px 10px;">清除</button>
+        </div>
+        <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">留空＝不限制開放時間，僅依下方「顯示／隱藏」控制；設定後，時間到達前學生端一律看不到這則內容。</div>
       </div>
       <div id="wrap-lms-subunit-assignment" style="display: none;">
         <div style="margin-bottom: 14px;">
@@ -1604,34 +1642,31 @@
         <div style="margin-bottom: 10px; display: flex; gap: 8px; flex-wrap: wrap;">
           <button type="button" id="btn-lms-quiz-download-template" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">📥 下載匯入範本（CSV）</button>
           <button type="button" id="btn-lms-quiz-import" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">📤 匯入題目（CSV）</button>
+          <button type="button" id="btn-lms-quiz-export" class="btn btn-secondary" style="font-size: 0.8rem; padding: 6px 12px;">📥 匯出目前題目（CSV）</button>
           <input type="file" id="input-lms-quiz-import-file" accept=".csv" style="display: none;">
         </div>
         <div id="list-lms-quiz-questions" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px;"></div>
         <button type="button" id="btn-lms-quiz-add-question" class="btn btn-secondary" style="font-size: 0.85rem;">➕ 新增題目</button>
       </div>
 
+      <!-- 編輯既有內容時才顯示：目前已附加的教材/檔案清單，可個別刪除；新增內容時沒有既有教材可管理，維持隱藏。 -->
+      <div id="wrap-lms-edit-existing-materials" style="display: none; margin-bottom: 14px;">
+        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-muted);">目前已附加的教材/檔案</div>
+        <div id="list-lms-edit-existing-materials" style="display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+
       <div style="background: var(--nav-bg); border: 1px solid var(--card-border); border-radius: var(--radius-sm); padding: 14px; margin-bottom: 20px;">
-        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px;">📎 附加說明檔案與參考資源（可同時附加）</div>
+        <div style="font-weight: 700; font-size: 0.9rem; margin-bottom: 12px;">📎 附加說明檔案與參考資源（可同時附加多個檔案、多個連結）</div>
         <div style="margin-bottom: 14px;">
-          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">📁 1. 上傳教學檔案（可多選）</label>
-          <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-            <label for="input-lms-content-files" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px; cursor: pointer; margin: 0;">📁 選擇檔案</label>
-            <input type="file" id="input-lms-content-files" multiple style="display: none;">
-            <span id="text-lms-content-files-status" style="font-size: 0.85rem; color: var(--text-muted);">尚未選擇檔案</span>
-          </div>
+          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">📁 1. 上傳教學檔案（可分次多次選擇，逐一加入下方清單）</label>
+          <label for="input-lms-content-files" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px; cursor: pointer; margin: 0 0 8px;">📁 選擇檔案</label>
+          <input type="file" id="input-lms-content-files" multiple style="display: none;">
+          <div id="list-lms-content-files-staged" style="display: flex; flex-direction: column; gap: 6px;"></div>
         </div>
         <div>
-          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">🔗 2. 加入網路連結／影片</label>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 160px;">
-              <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">連結名稱（選填）</label>
-              <input type="text" id="input-lms-content-link-title" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例如：教學說明影片">
-            </div>
-            <div style="flex: 1; min-width: 160px;">
-              <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 4px;">網址 (https://...)</label>
-              <input type="text" id="input-lms-content-link-url" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="https://...">
-            </div>
-          </div>
+          <label style="display: block; font-weight: 600; font-size: 0.85rem; margin-bottom: 6px;">🔗 2. 加入網路連結／影片（可新增多筆）</label>
+          <div id="list-lms-content-links" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px;"></div>
+          <button type="button" id="btn-lms-content-add-link" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px;">➕ 新增連結</button>
         </div>
       </div>
 
@@ -1639,6 +1674,7 @@
         <button type="button" class="btn btn-secondary close-modal">取消</button>
         <button type="button" id="btn-submit-lms-add-content" class="btn btn-success">確定新增</button>
       </div>
+    </div>
     </div>
   </div>
 
@@ -1670,6 +1706,40 @@
     </div>
   </div>
 
+  <!-- Modal: 即時互動牆歷史紀錄（教師端）——該課程所有場次、所有學生的完整上傳紀錄，
+       與進行中場次的唯讀看板分開，刪除紀錄的管理動作只在這裡進行。 -->
+  <div id="modal-livewall-history" class="modal-overlay" style="z-index: 100010;">
+    <div class="modal-content glass-card" style="max-width: 640px; padding: 0; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+      <div style="padding: 28px 24px 16px;">
+        <h3 style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📜 即時互動牆歷史紀錄</h3>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">全班所有場次的上傳紀錄，學生無法自行刪除，僅教師可在此管理刪除。</div>
+      </div>
+      <div style="padding: 0 24px 24px; overflow-y: auto; flex: 1; min-height: 0;">
+        <div id="livewall-history-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        <div id="livewall-history-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);">目前還沒有任何上傳紀錄。</div>
+      </div>
+      <div style="padding: 14px 24px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary close-modal">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 圖片放大檢視（即時互動牆手繪/拍照貼文點擊後開啟，取代原本開新分頁的做法，見 static/js/image-lightbox.js） -->
+  <div id="modal-image-lightbox" class="modal-overlay lightbox-overlay">
+    <div class="lightbox-content">
+      <div class="lightbox-toolbar">
+        <button type="button" id="btn-lightbox-zoom-out" class="lightbox-btn" title="縮小">－</button>
+        <span id="text-lightbox-zoom-level" class="lightbox-zoom-label">100%</span>
+        <button type="button" id="btn-lightbox-zoom-in" class="lightbox-btn" title="放大">＋</button>
+        <button type="button" id="btn-lightbox-zoom-reset" class="lightbox-btn" title="還原大小">還原</button>
+        <button type="button" id="btn-lightbox-close" class="lightbox-btn lightbox-close-btn close-modal" title="關閉">✕</button>
+      </div>
+      <div id="lightbox-image-wrap" class="lightbox-image-wrap">
+        <img id="lightbox-image" src="" alt="放大檢視">
+      </div>
+    </div>
+  </div>
+
   <!-- Floating Mini Timer Widget (右下角常駐浮動迷你計時器) -->
   <div id="floating-mini-timer-widget" class="floating-mini-timer-widget" style="display: none;">
     <div class="floating-timer-drag-handle">
@@ -1679,10 +1749,19 @@
     </div>
   </div>
 
+  <!-- 學生端入口：與教師端共用同一個網址（http://localhost:8000），不再有獨立的 /student 頁面
+       給使用者直接輸入網址進入。學生登入成功後改為載入這個同源 iframe（src 指向內部沿用的
+       /student 資源），localStorage 的 student_token/student_info 兩個 key 在同源 iframe 之間
+       本來就共用，不需要額外傳遞；student.html/student.js 完全沒有改動邏輯，只是換了個呈現位置。
+       見 static/js/app.js 的 enterStudentMode()/exitStudentMode()。 -->
+  <iframe id="student-app-frame" title="學生課程入口" style="display:none; position:fixed; inset:0; width:100%; height:100%; border:none; z-index:200000; background:#f8fafc;"></iframe>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/api.js?v=3.0"></script>
   <script src="/static/js/i18n.js?v=3.0"></script>
   <script src="/static/js/datepicker.js?v=3.0"></script>
+  <script src="/static/js/custom-select.js?v=1.0"></script>
+  <script src="/static/js/image-lightbox.js?v=1.0"></script>
   <script src="/static/js/audio-engine.js?v=3.0"></script>
   <script src="/static/js/toolkit.js?v=3.0"></script>
   <script src="/static/js/realtime.js?v=3.0"></script>

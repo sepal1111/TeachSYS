@@ -209,6 +209,71 @@
       background: rgba(59, 130, 246, 0.2) !important;
       color: #93c5fd !important;
     }
+
+    .cdp-time-row {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      margin-top: 10px !important;
+      padding-top: 10px !important;
+      border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+    }
+
+    .cdp-time-label {
+      font-size: 0.85rem !important;
+      font-weight: 700 !important;
+      color: #94a3b8 !important;
+      color: var(--text-muted, #94a3b8) !important;
+      margin-right: 4px !important;
+    }
+
+    .cdp-time-input {
+      width: 52px !important;
+      text-align: center !important;
+      background: rgba(255, 255, 255, 0.08) !important;
+      border: 1px solid rgba(255, 255, 255, 0.18) !important;
+      color: #ffffff !important;
+      color: var(--text-main, #ffffff) !important;
+      border-radius: 8px !important;
+      padding: 6px 4px !important;
+      font-size: 0.95rem !important;
+      font-weight: 700 !important;
+      font-family: inherit !important;
+      outline: none !important;
+    }
+
+    .cdp-time-input:focus {
+      border-color: #3b82f6 !important;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+    }
+
+    .cdp-time-input::-webkit-outer-spin-button,
+    .cdp-time-input::-webkit-inner-spin-button {
+      margin: 0 !important;
+    }
+
+    .cdp-time-sep {
+      font-weight: 800 !important;
+      color: #ffffff !important;
+      color: var(--text-main, #ffffff) !important;
+    }
+
+    .cdp-apply-btn {
+      background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+      color: #ffffff !important;
+      border: none !important;
+      font-size: 0.85rem !important;
+      font-weight: 700 !important;
+      cursor: pointer !important;
+      padding: 6px 14px !important;
+      border-radius: 8px !important;
+      transition: all 0.15s ease !important;
+    }
+
+    .cdp-apply-btn:hover {
+      filter: brightness(1.1) !important;
+      transform: translateY(-1px) !important;
+    }
   `;
 
   function injectStyles() {
@@ -273,12 +338,107 @@
     return `${year}-${mm}-${dd}`;
   }
 
+  // 日期時間值一律用 "YYYY-MM-DD HH:MM"（空格分隔，不含 "T"）——與後端 publish_at 欄位存的格式
+  // 完全一致，前端不需要再額外轉換；也順便相容原生 datetime-local 可能給的 "YYYY-MM-DDTHH:MM"。
+  function parseDateTime(str) {
+    if (!str || typeof str !== 'string') return null;
+    const m = str.trim().replace('T', ' ').match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2})$/);
+    if (!m) return null;
+    const year = parseInt(m[1], 10);
+    const month = parseInt(m[2], 10) - 1;
+    const day = parseInt(m[3], 10);
+    const hour = parseInt(m[4], 10);
+    const minute = parseInt(m[5], 10);
+    const date = new Date(year, month, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) return null;
+    if (hour > 23 || minute > 59) return null;
+    return { year, month, day, hour, minute };
+  }
+
+  function formatDateTime(year, month, day, hour, minute) {
+    return `${formatDate(year, month, day)} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+  }
+
   function closePopup() {
     if (activePopup) {
       activePopup.remove();
       activePopup = null;
       activeInput = null;
     }
+  }
+
+  /** 月曆天數格子（上個月補位／本月／下個月補位），供日期選擇器與日期時間選擇器共用。 */
+  function buildDaysGrid(viewYear, viewMonth, selectedDateStr, onPick) {
+    const today = new Date();
+    const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const daysGrid = document.createElement('div');
+    daysGrid.className = 'cdp-days-grid';
+
+    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    // Previous month padding
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      const d = daysInPrevMonth - i;
+      const cell = document.createElement('div');
+      cell.className = 'cdp-day-cell cdp-other-month';
+      cell.textContent = d;
+      const prevM = viewMonth === 0 ? 11 : viewMonth - 1;
+      const prevY = viewMonth === 0 ? viewYear - 1 : viewYear;
+      const dStr = formatDate(prevY, prevM, d);
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPick(dStr);
+      });
+      daysGrid.appendChild(cell);
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dStr = formatDate(viewYear, viewMonth, d);
+      const cell = document.createElement('div');
+      cell.className = 'cdp-day-cell';
+      cell.textContent = d;
+
+      if (dStr === todayStr) {
+        cell.classList.add('cdp-today');
+      }
+      if (dStr === selectedDateStr) {
+        cell.classList.add('cdp-selected');
+      }
+
+      const dayOfWeek = (firstDayIndex + d - 1) % 7;
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        cell.classList.add('cdp-weekend');
+      }
+
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPick(dStr);
+      });
+      daysGrid.appendChild(cell);
+    }
+
+    // Next month padding to complete 35 or 42 grid cells
+    const totalCells = firstDayIndex + daysInMonth;
+    const nextPadding = totalCells <= 35 ? (35 - totalCells) : (42 - totalCells);
+    for (let d = 1; d <= nextPadding; d++) {
+      const cell = document.createElement('div');
+      cell.className = 'cdp-day-cell cdp-other-month';
+      cell.textContent = d;
+      const nextM = viewMonth === 11 ? 0 : viewMonth + 1;
+      const nextY = viewMonth === 11 ? viewYear + 1 : viewYear;
+      const dStr = formatDate(nextY, nextM, d);
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onPick(dStr);
+      });
+      daysGrid.appendChild(cell);
+    }
+
+    return daysGrid;
   }
 
   function renderCalendar(viewYear, viewMonth, selectedDateStr, onSelect) {
@@ -332,72 +492,7 @@
     container.appendChild(weekdaysRow);
 
     // 3. Days Grid
-    const daysGrid = document.createElement('div');
-    daysGrid.className = 'cdp-days-grid';
-
-    const firstDayIndex = new Date(viewYear, viewMonth, 1).getDay();
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
-
-    // Previous month padding
-    for (let i = firstDayIndex - 1; i >= 0; i--) {
-      const d = daysInPrevMonth - i;
-      const cell = document.createElement('div');
-      cell.className = 'cdp-day-cell cdp-other-month';
-      cell.textContent = d;
-      const prevM = viewMonth === 0 ? 11 : viewMonth - 1;
-      const prevY = viewMonth === 0 ? viewYear - 1 : viewYear;
-      const dStr = formatDate(prevY, prevM, d);
-      cell.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onSelect(dStr);
-      });
-      daysGrid.appendChild(cell);
-    }
-
-    // Current month days
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dStr = formatDate(viewYear, viewMonth, d);
-      const cell = document.createElement('div');
-      cell.className = 'cdp-day-cell';
-      cell.textContent = d;
-
-      if (dStr === todayStr) {
-        cell.classList.add('cdp-today');
-      }
-      if (dStr === selectedDateStr) {
-        cell.classList.add('cdp-selected');
-      }
-
-      const dayOfWeek = (firstDayIndex + d - 1) % 7;
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        cell.classList.add('cdp-weekend');
-      }
-
-      cell.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onSelect(dStr);
-      });
-      daysGrid.appendChild(cell);
-    }
-
-    // Next month padding to complete 35 or 42 grid cells
-    const totalCells = firstDayIndex + daysInMonth;
-    const nextPadding = totalCells <= 35 ? (35 - totalCells) : (42 - totalCells);
-    for (let d = 1; d <= nextPadding; d++) {
-      const cell = document.createElement('div');
-      cell.className = 'cdp-day-cell cdp-other-month';
-      cell.textContent = d;
-      const nextM = viewMonth === 11 ? 0 : viewMonth + 1;
-      const nextY = viewMonth === 11 ? viewYear + 1 : viewYear;
-      const dStr = formatDate(nextY, nextM, d);
-      cell.addEventListener('click', (e) => {
-        e.stopPropagation();
-        onSelect(dStr);
-      });
-      daysGrid.appendChild(cell);
-    }
-
+    const daysGrid = buildDaysGrid(viewYear, viewMonth, selectedDateStr, onSelect);
     container.appendChild(daysGrid);
 
     // 4. Footer with Today and Clear shortcuts
@@ -512,6 +607,224 @@
     popup.style.left = `${left}px`;
   }
 
+  /** 日期時間選擇器：月曆＋時/分輸入＋清除／此刻／套用。點日期只更新選取狀態並重繪（不關閉），
+   *  因為使用者通常還要接著調整時間；時/分輸入本身不觸發整個彈窗重繪（避免打字打到一半被中斷），
+   *  真正送出（更新原本的 input 值＋觸發 change 事件＋關閉）發生在「套用」／「此刻」／「清除」。 */
+  function renderDateTimePicker(state, callbacks) {
+    const lang = getLang();
+    const dict = DATEPICKER_I18N[lang] || DATEPICKER_I18N['zh-TW'];
+
+    const container = document.createElement('div');
+    container.className = 'custom-datepicker-popup';
+
+    const header = document.createElement('div');
+    header.className = 'cdp-header';
+    const prevBtn = document.createElement('button');
+    prevBtn.type = 'button';
+    prevBtn.className = 'cdp-nav-btn';
+    prevBtn.innerHTML = '‹';
+    prevBtn.title = lang === 'en' ? 'Previous Month' : '上個月';
+    const titleArea = document.createElement('div');
+    titleArea.className = 'cdp-title';
+    titleArea.textContent =
+      lang === 'en' ? `${dict.months[state.month]} ${state.year}` : `${state.year}${dict.yearSuffix} ${dict.months[state.month]}`;
+    const nextBtn = document.createElement('button');
+    nextBtn.type = 'button';
+    nextBtn.className = 'cdp-nav-btn';
+    nextBtn.innerHTML = '›';
+    nextBtn.title = lang === 'en' ? 'Next Month' : '下個月';
+    header.appendChild(prevBtn);
+    header.appendChild(titleArea);
+    header.appendChild(nextBtn);
+    container.appendChild(header);
+
+    const weekdaysRow = document.createElement('div');
+    weekdaysRow.className = 'cdp-weekdays';
+    dict.weekdays.forEach((wd, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'cdp-weekday-cell' + (i === 0 || i === 6 ? ' cdp-weekend' : '');
+      cell.textContent = wd;
+      weekdaysRow.appendChild(cell);
+    });
+    container.appendChild(weekdaysRow);
+
+    const selectedDateStr = formatDate(state.year, state.month, state.day);
+    const daysGrid = buildDaysGrid(state.year, state.month, selectedDateStr, (dStr) => {
+      const parsed = parseDate(dStr);
+      callbacks.onPick(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+    });
+    container.appendChild(daysGrid);
+
+    // 時間列：時／分兩個數字輸入
+    const timeRow = document.createElement('div');
+    timeRow.className = 'cdp-time-row';
+
+    const timeLabel = document.createElement('span');
+    timeLabel.className = 'cdp-time-label';
+    timeLabel.textContent = lang === 'en' ? 'Time' : '時間';
+
+    function clamp(v, min, max) {
+      const n = parseInt(v, 10);
+      return isNaN(n) ? min : Math.max(min, Math.min(max, n));
+    }
+
+    const hourInput = document.createElement('input');
+    hourInput.type = 'number';
+    hourInput.min = '0';
+    hourInput.max = '23';
+    hourInput.className = 'cdp-time-input';
+    hourInput.value = String(state.hour).padStart(2, '0');
+    hourInput.addEventListener('click', (e) => e.stopPropagation());
+    hourInput.addEventListener('input', () => callbacks.onTimeChange(clamp(hourInput.value, 0, 23), undefined));
+    hourInput.addEventListener('blur', () => { hourInput.value = String(clamp(hourInput.value, 0, 23)).padStart(2, '0'); });
+
+    const sep = document.createElement('span');
+    sep.className = 'cdp-time-sep';
+    sep.textContent = ':';
+
+    const minuteInput = document.createElement('input');
+    minuteInput.type = 'number';
+    minuteInput.min = '0';
+    minuteInput.max = '59';
+    minuteInput.className = 'cdp-time-input';
+    minuteInput.value = String(state.minute).padStart(2, '0');
+    minuteInput.addEventListener('click', (e) => e.stopPropagation());
+    minuteInput.addEventListener('input', () => callbacks.onTimeChange(undefined, clamp(minuteInput.value, 0, 59)));
+    minuteInput.addEventListener('blur', () => { minuteInput.value = String(clamp(minuteInput.value, 0, 59)).padStart(2, '0'); });
+
+    timeRow.appendChild(timeLabel);
+    timeRow.appendChild(hourInput);
+    timeRow.appendChild(sep);
+    timeRow.appendChild(minuteInput);
+    container.appendChild(timeRow);
+
+    // 4. Footer：清除／此刻／套用
+    const footer = document.createElement('div');
+    footer.className = 'cdp-footer';
+
+    const clearBtn = document.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'cdp-action-btn';
+    clearBtn.textContent = dict.clear;
+    clearBtn.addEventListener('click', (e) => { e.stopPropagation(); callbacks.onClear(); });
+
+    const nowBtn = document.createElement('button');
+    nowBtn.type = 'button';
+    nowBtn.className = 'cdp-action-btn cdp-today-btn';
+    nowBtn.textContent = lang === 'en' ? 'Now' : '此刻';
+    nowBtn.addEventListener('click', (e) => { e.stopPropagation(); callbacks.onNow(); });
+
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'cdp-apply-btn';
+    applyBtn.textContent = lang === 'en' ? 'Apply' : '套用';
+    applyBtn.addEventListener('click', (e) => { e.stopPropagation(); callbacks.onApply(); });
+
+    footer.appendChild(clearBtn);
+    footer.appendChild(nowBtn);
+    footer.appendChild(applyBtn);
+    container.appendChild(footer);
+
+    prevBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      let newM = state.month - 1;
+      let newY = state.year;
+      if (newM < 0) { newM = 11; newY--; }
+      callbacks.onNavigate(newY, newM);
+    });
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      let newM = state.month + 1;
+      let newY = state.year;
+      if (newM > 11) { newM = 0; newY++; }
+      callbacks.onNavigate(newY, newM);
+    });
+
+    return container;
+  }
+
+  function openDateTimePickerForInput(input) {
+    if (activeInput === input && activePopup) {
+      closePopup();
+      return;
+    }
+    closePopup();
+    activeInput = input;
+
+    const now = new Date();
+    const parsed = parseDateTime(input.value || '');
+    let state = parsed || { year: now.getFullYear(), month: now.getMonth(), day: now.getDate(), hour: now.getHours(), minute: now.getMinutes() };
+
+    function commit(finalState) {
+      input.value = formatDateTime(finalState.year, finalState.month, finalState.day, finalState.hour, finalState.minute);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      closePopup();
+    }
+
+    function buildPopup() {
+      return renderDateTimePicker(state, {
+        onPick(y, m, d) {
+          state = { ...state, year: y, month: m, day: d };
+          rerender();
+        },
+        onNavigate(y, m) {
+          // 換月保留原本選到的日期數字，新月份天數不足則夾到當月最後一天（例如 1/31 切到 2 月）。
+          const maxDay = new Date(y, m + 1, 0).getDate();
+          state = { ...state, year: y, month: m, day: Math.min(state.day, maxDay) };
+          rerender();
+        },
+        onTimeChange(h, mnt) {
+          if (h !== undefined) state.hour = h;
+          if (mnt !== undefined) state.minute = mnt;
+        },
+        onApply() { commit(state); },
+        onNow() {
+          const n = new Date();
+          state = { year: n.getFullYear(), month: n.getMonth(), day: n.getDate(), hour: n.getHours(), minute: n.getMinutes() };
+          commit(state);
+        },
+        onClear() {
+          input.value = '';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          closePopup();
+        },
+      });
+    }
+
+    function rerender() {
+      if (!activePopup) return;
+      const parent = activePopup.parentElement;
+      const newPopup = buildPopup();
+      newPopup.style.position = 'fixed';
+      newPopup.style.top = activePopup.style.top;
+      newPopup.style.left = activePopup.style.left;
+      newPopup.style.zIndex = activePopup.style.zIndex;
+      parent.replaceChild(newPopup, activePopup);
+      activePopup = newPopup;
+    }
+
+    const popup = buildPopup();
+    document.body.appendChild(popup);
+    activePopup = popup;
+
+    const rect = input.getBoundingClientRect();
+    const popupHeight = 380;
+    const popupWidth = 295;
+    let top = rect.bottom + 6;
+    let left = rect.left;
+    if (rect.bottom + popupHeight > window.innerHeight && rect.top - popupHeight > 0) {
+      top = rect.top - popupHeight - 6;
+    }
+    if (left + popupWidth > window.innerWidth - 10) {
+      left = window.innerWidth - popupWidth - 10;
+    }
+    if (left < 10) left = 10;
+    popup.style.top = `${top}px`;
+    popup.style.left = `${left}px`;
+  }
+
   // Global document click to close when clicking outside
   document.addEventListener('click', (e) => {
     if (activePopup) {
@@ -534,9 +847,13 @@
       return;
     }
 
+    // datetime-local（如「定時開放」）與 date 共用同一套元件，差別在開啟哪個彈窗、值的格式，
+    // 以及 placeholder 文字；用 dataset 記錄，openDatePickerForInput 呼叫端據此判斷。
+    const isDateTime = input.type === 'datetime-local';
+    input.dataset.datepickerMode = isDateTime ? 'datetime' : 'date';
     input.dataset.customDatepickerAttached = 'true';
 
-    // Change type to text so browser native shadow DOM '年/月/日' is completely superseded
+    // Change type to text so browser native picker UI is completely superseded
     input.type = 'text';
     input.setAttribute('autocomplete', 'off');
     input.setAttribute('spellcheck', 'false');
@@ -544,12 +861,17 @@
 
     updateInputPlaceholder(input);
 
+    const openPicker = () => (isDateTime ? openDateTimePickerForInput(input) : openDatePickerForInput(input));
+
     // Create wrapper if not wrapped
     let wrapper = input.parentElement;
     if (!wrapper || !wrapper.classList.contains('custom-datepicker-wrapper')) {
       wrapper = document.createElement('div');
       wrapper.className = 'custom-datepicker-wrapper';
-      if (input.style.width) wrapper.style.width = input.style.width;
+      // 複製原本 input 的完整 inline style（而不是只有 width），讓 wrapper 接手原本的版面配置
+      // （例如 flex:1、min-width，常見於跟其他欄位並排的情況），避免換行後版面跑掉。
+      const inlineStyle = input.getAttribute('style');
+      if (inlineStyle) wrapper.setAttribute('style', inlineStyle);
 
       input.parentNode.insertBefore(wrapper, input);
       wrapper.appendChild(input);
@@ -557,40 +879,44 @@
       // Add clickable calendar icon
       const icon = document.createElement('span');
       icon.className = 'custom-datepicker-icon';
-      icon.innerHTML = '📅';
-      icon.title = 'Select Date / 選擇日期';
+      icon.innerHTML = isDateTime ? '🕒' : '📅';
+      icon.title = isDateTime ? 'Select Date & Time / 選擇日期時間' : 'Select Date / 選擇日期';
       icon.addEventListener('click', (e) => {
         e.stopPropagation();
-        openDatePickerForInput(input);
+        openPicker();
       });
       wrapper.appendChild(icon);
     }
 
     input.addEventListener('click', (e) => {
       e.stopPropagation();
-      openDatePickerForInput(input);
+      openPicker();
     });
 
     input.addEventListener('focus', (e) => {
-      openDatePickerForInput(input);
+      openPicker();
     });
 
-    // Auto-format typing
-    input.addEventListener('blur', () => {
-      const v = input.value.trim();
-      if (v) {
-        const p = parseDate(v);
-        if (p) {
-          input.value = formatDate(p.getFullYear(), p.getMonth(), p.getDate());
+    // Auto-format typing（datetime 模式一律透過彈窗的「套用」寫回，直接輸入文字不做自動格式化）
+    if (!isDateTime) {
+      input.addEventListener('blur', () => {
+        const v = input.value.trim();
+        if (v) {
+          const p = parseDate(v);
+          if (p) {
+            input.value = formatDate(p.getFullYear(), p.getMonth(), p.getDate());
+          }
         }
-      }
-    });
+      });
+    }
   }
 
   function updateInputPlaceholder(input) {
     const lang = getLang();
     const dict = DATEPICKER_I18N[lang] || DATEPICKER_I18N['zh-TW'];
-    input.placeholder = dict.placeholder;
+    input.placeholder = input.dataset.datepickerMode === 'datetime'
+      ? (lang === 'en' ? 'YYYY-MM-DD HH:MM' : '年/月/日 時:分')
+      : dict.placeholder;
   }
 
   /**
@@ -598,7 +924,7 @@
    */
   function initAll() {
     injectStyles();
-    const selector = 'input[type="date"], input[data-datepicker="true"], #attendance-date, #note-date, #dash-start-date, #dash-end-date, #export-start-date, #export-end-date, #quick-note-date, #score-logs-start-date, #score-logs-end-date, #proj-start-date, #proj-end-date';
+    const selector = 'input[type="date"], input[type="datetime-local"], input[data-datepicker="true"], #attendance-date, #note-date, #dash-start-date, #dash-end-date, #export-start-date, #export-end-date, #quick-note-date, #score-logs-start-date, #score-logs-end-date, #proj-start-date, #proj-end-date';
     document.querySelectorAll(selector).forEach(input => {
       attachDatePicker(input);
     });

@@ -1201,6 +1201,60 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+/* ==========================================================================
+   自訂下拉選單（static/js/custom-select.js 動態產生，取代原生 <select> 的
+   選項清單彈出框——原生清單是作業系統繪製的，圓角/陰影/hover 顏色都無法自訂，
+   只在桌面滑鼠環境套用，見該檔案開頭說明）。
+   ========================================================================== */
+.custom-select-native-hidden { display: none !important; }
+
+.custom-select-trigger {
+  appearance: none;
+  -webkit-appearance: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.custom-select-trigger.is-disabled { cursor: not-allowed; opacity: 0.6; }
+.custom-select-trigger-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.custom-select-trigger-caret { flex-shrink: 0; font-size: 0.7em; opacity: 0.6; transition: transform 0.15s; }
+.custom-select-trigger[aria-expanded="true"] .custom-select-trigger-caret { transform: rotate(180deg); }
+
+.custom-select-panel {
+  position: fixed;
+  z-index: 100050;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 4px;
+  max-height: 280px;
+  overflow-y: auto;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  display: none;
+}
+.custom-select-panel.open { display: block; opacity: 1; transform: translateY(0); }
+
+.custom-select-option {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  color: var(--text-main);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.custom-select-option:hover,
+.custom-select-option.active { background: var(--nav-bg); }
+.custom-select-option.selected { background: rgba(37, 99, 235, 0.14); color: var(--primary); font-weight: 700; }
+.custom-select-option.disabled { color: var(--text-subtle); cursor: not-allowed; }
+
 .error-box {
   background: var(--accent-negative-bg);
   border: 1px solid var(--accent-negative-border);
@@ -1302,6 +1356,104 @@ body {
 
 .modal-overlay.open .modal-content {
   transform: scale(1);
+}
+
+/* ==========================================================================
+   圖片放大檢視 Lightbox（static/js/image-lightbox.js，即時互動牆手繪/拍照貼文點擊
+   後開啟，取代原本開新分頁的做法）。用 .lightbox-overlay 覆蓋 .modal-content 慣用的
+   小張置中卡片樣式，改成近全螢幕的深色檢視器。
+   ========================================================================== */
+.lightbox-overlay .lightbox-content {
+  transform: none; /* 蓋掉 .modal-content 的 scale 開合動畫，這裡改用淡入即可 */
+}
+
+.lightbox-content {
+  width: min(94vw, 1100px);
+  height: min(90vh, 900px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-xl, 20px);
+  box-shadow: var(--shadow-2xl, 0 25px 60px rgba(0, 0, 0, 0.5));
+  overflow: hidden;
+}
+
+.lightbox-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-zoom-label {
+  min-width: 48px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.lightbox-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-1px);
+}
+
+.lightbox-btn[title="還原大小"] {
+  width: auto;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
+.lightbox-close-btn {
+  margin-left: 8px;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.lightbox-close-btn:hover {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.lightbox-image-wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: default;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%) 0 0 / 24px 24px,
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%) 12px 12px / 24px 24px;
+}
+
+.lightbox-image-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: transform 0.08s linear;
+  touch-action: none;
+  user-select: none;
 }
 
 .modal-header {

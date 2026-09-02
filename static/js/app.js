@@ -146,7 +146,43 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Security & Auth System ---
 let gAuthTodayStr = '';
 
+// 學生端與教師端共用同一個網址：學生登入成功後不再導向獨立的 /student 頁面，改為顯示這個
+// 蓋滿全螢幕的同源 iframe（src 指向內部沿用的 /student 資源，未曾更動 student.html/student.js
+// 的任何邏輯）。同源 iframe 本來就共用同一份 localStorage，student_token/student_info 這兩個
+// key 一存好，iframe 裡的 student.js 就讀得到，不需要額外傳遞。
+function enterStudentMode() {
+  const authOverlay = document.getElementById('auth-overlay');
+  if (authOverlay) authOverlay.classList.remove('open');
+  const frame = document.getElementById('student-app-frame');
+  if (!frame) return;
+  if (!frame.dataset.loaded) {
+    frame.src = '/student';
+    frame.dataset.loaded = '1';
+  }
+  frame.style.display = 'block';
+}
+window.enterStudentMode = enterStudentMode;
+
+// 學生登出／session 失效時呼叫（由 iframe 內的 student.js 透過 window.parent.exitStudentMode()
+// 呼叫回來，因為同源可以直接互相呼叫函式，不需要 postMessage）：卸載 iframe、重新走一次登入檢查流程。
+function exitStudentMode() {
+  const frame = document.getElementById('student-app-frame');
+  if (frame) {
+    frame.style.display = 'none';
+    frame.removeAttribute('src');
+    delete frame.dataset.loaded;
+  }
+  initAuth();
+}
+window.exitStudentMode = exitStudentMode;
+
 async function initAuth() {
+  // 重新整理頁面時，若 localStorage 已有學生 session，直接回到學生畫面，不用重新登入、
+  // 也不需要先跑教師端的 check_auth 檢查。
+  if (localStorage.getItem('student_token')) {
+    enterStudentMode();
+    return;
+  }
   const authOverlay = document.getElementById('auth-overlay');
   try {
     const authStatus = await API.get('/api/system/check_auth');
@@ -177,16 +213,22 @@ async function initAuth() {
       localStorage.removeItem('auth_token');
       localStorage.removeItem('auth_date');
       if (authOverlay) authOverlay.classList.add('open');
-      const urlParams = new URLSearchParams(window.location.search);
-      showAuthPanel(urlParams.get('redirect') ? 'teacher' : 'student');
+      showAuthPanel(getDefaultAuthPanel());
     }
   } catch (err) {
     console.error('Auth check error:', err);
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_date');
     if (authOverlay) authOverlay.classList.add('open');
-    showAuthPanel('student');
+    showAuthPanel(getDefaultAuthPanel());
   }
+}
+
+// 主登入介面預設顯示教師登入；只有網址帶 ?login=student（學生連線 QR Code 掃碼進來）才顯示
+// 學生登入表單——學生不再從這台裝置手動切換到學生登入，只能透過教師出示的 QR Code 進入。
+function getDefaultAuthPanel() {
+  const urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get('login') === 'student' ? 'student' : 'teacher';
 }
 
 // 系統登入頁面：學生登入 / 教師登入面板切換
@@ -229,7 +271,7 @@ async function submitStudentLogin(evt) {
 
     localStorage.setItem('student_token', data.token);
     localStorage.setItem('student_info', JSON.stringify(data.student));
-    window.location.href = '/student';
+    enterStudentMode();
   } catch (err) {
     if (errorBox) {
       errorBox.textContent = err.message || (isEn ? 'Login failed!' : '登入失敗！');
@@ -327,7 +369,7 @@ async function logout() {
     const pwdInput = document.getElementById('auth-password-input');
     if (pwdInput) pwdInput.value = '';
     authOverlay.classList.add('open');
-    showAuthPanel('student');
+    showAuthPanel(getDefaultAuthPanel());
   }
 }
 
@@ -3766,6 +3808,19 @@ async function showQRModal() {
   }
 }
 
+// 主登入畫面「📱 學生連線 QR Code」按鈕：這個 API 不需要登入即可呼叫（見 system.ts 的
+// GET /api/system/info 沒有掛 requireAuth），所以在 auth-overlay 階段也能直接使用。
+async function showStudentQrModal() {
+  try {
+    const info = await API.get('/api/system/info?mode=student');
+    document.getElementById('qr-student-image').src = info.qr_code;
+    document.getElementById('qr-student-url-text').textContent = info.url;
+    openModal('modal-qr-student-login');
+  } catch (err) {
+    alert(`獲取 QR Code 失敗：${err.message}`);
+  }
+}
+
 // --- Global Event Listeners ---
 function initEventListeners() {
   // Course change dropdown
@@ -4181,8 +4236,7 @@ function initEventListeners() {
   });
   document.getElementById('btn-open-forgot-password-modal').addEventListener('click', openForgotConfirmModal);
   document.getElementById('student-login-form').addEventListener('submit', submitStudentLogin);
-  document.getElementById('btn-show-teacher-login').addEventListener('click', () => showAuthPanel('teacher'));
-  document.getElementById('btn-show-student-login').addEventListener('click', () => showAuthPanel('student'));
+  document.getElementById('btn-show-student-qr').addEventListener('click', showStudentQrModal);
   document.getElementById('btn-confirm-forgot-reset').addEventListener('click', confirmForgotReset);
   document.getElementById('btn-save-password-prefix').addEventListener('click', savePasswordPrefix);
 

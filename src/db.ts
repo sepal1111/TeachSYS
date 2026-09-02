@@ -362,6 +362,7 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE sub_units ADD COLUMN reveal_answers_after_submit INTEGER DEFAULT 1;");
   await tryAlter("ALTER TABLE submissions ADD COLUMN answers_json TEXT NULL;");
   await tryAlter("ALTER TABLE submissions ADD COLUMN max_score INTEGER NULL;");
+  await tryAlter("ALTER TABLE sub_units ADD COLUMN publish_at TEXT NULL;");
 
   // Ensure every course has an active group_plan, and backfill group_members from
   // legacy students.group_id, exactly like the Python auto-migration block.

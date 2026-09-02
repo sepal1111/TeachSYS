@@ -72,10 +72,15 @@
     }, 3000);
   }
 
-  function fileUrlWithToken(url) {
+  // filename（選填）：另存/下載時要用的檔名（例如素材標題、作業繳交時的原始檔名），
+  // 對應 /uploads/* 路由的 ?name= 支援（見 src/index.ts），磁碟上存的是防碰撞用的亂數檔名，
+  // 不帶這個參數的話下載出來的檔案名稱會是那串亂碼。
+  function fileUrlWithToken(url, filename) {
     const token = localStorage.getItem(TOKEN_KEY);
-    if (!token) return url;
-    return url + (url.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    let result = url;
+    if (token) result += (result.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
+    if (filename) result += (result.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(filename);
+    return result;
   }
 
   function saveSession(token, student) {
@@ -85,6 +90,20 @@
   function clearSession() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(STUDENT_KEY);
+  }
+
+  // 登出／session 失效時的共用出口：這個頁面現在一律是被 index.html 用同源 iframe 嵌入顯示
+  // （見 static/js/app.js 的 enterStudentMode()），所以清完 session 後要請「外層」頁面把 iframe
+  // 收起來、回到登入畫面，而不是自己 reload（reload 只會讓 iframe 裡面重新顯示這支檔案自帶的
+  // 登入表單，使用者會卡在一個「巢狀」畫面裡出不去）。同源 iframe 可以直接呼叫 parent 上的函式。
+  // 保留 location.reload() 這條路是為了「萬一」此檔案未來又被直接開啟（不在 iframe 裡）時還能動作。
+  function exitToLogin() {
+    clearSession();
+    if (window.parent && window.parent !== window && typeof window.parent.exitStudentMode === 'function') {
+      window.parent.exitStudentMode();
+    } else {
+      location.reload();
+    }
   }
 
   function youtubeEmbedUrl(url) {
@@ -110,7 +129,9 @@
     }
     const a = document.createElement('a');
     a.className = 'material-link';
-    a.href = m.url;
+    // 上傳檔案走 /uploads/* 這個受保護的路由，需要帶學生 JWT 才能讀取（見 src/index.ts 的
+    // app.get("/uploads/*", ...)）；純外部連結不需要，直接開原始網址即可。
+    a.href = m.type === 'file' ? fileUrlWithToken(m.url, m.title) : m.url;
     a.target = '_blank';
     a.rel = 'noopener';
     const icon = m.type === 'file' ? '📄' : m.type === 'youtube' ? '▶️' : '🔗';
@@ -279,7 +300,7 @@
         const row = document.createElement('div');
         row.className = 'assignment-file-row';
         const a = document.createElement('a');
-        a.href = fileUrlWithToken(f.url);
+        a.href = fileUrlWithToken(f.url, f.file_name);
         a.target = '_blank';
         a.rel = 'noopener';
         a.textContent = `📄 ${f.file_name}`;
@@ -600,11 +621,24 @@
     withContent.forEach((u) => {
       const block = document.createElement('div');
       block.className = 'unit-block';
-      const title = document.createElement('p');
+
+      const title = document.createElement('div');
       title.className = 'unit-title';
-      title.textContent = u.title;
+      title.innerHTML = `<span>${escapeHtml(u.title)}</span><span class="unit-toggle-icon">▶</span>`;
+
+      // 預設摺疊：避免多章節/多影片同時展開時版面過於混雜，點章節標題展開/收合。
+      const body = document.createElement('div');
+      body.className = 'unit-body';
+      body.hidden = true;
+      u.sub_units.forEach((su) => body.appendChild(renderSubUnit(su)));
+
+      title.addEventListener('click', () => {
+        body.hidden = !body.hidden;
+        title.classList.toggle('expanded', !body.hidden);
+      });
+
       block.appendChild(title);
-      u.sub_units.forEach((su) => block.appendChild(renderSubUnit(su)));
+      block.appendChild(body);
       unitsContainer.appendChild(block);
     });
   }
@@ -732,8 +766,7 @@
       connectStudentRealtime(me.course.id);
     } catch (e) {
       if (String(e.message).includes('登入')) {
-        clearSession();
-        location.reload();
+        exitToLogin();
       }
     }
   }
@@ -761,8 +794,7 @@
   });
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
-    clearSession();
-    location.reload();
+    exitToLogin();
   });
 
   // --- 即時互動牆（Live Wall）：老師開一個限時場次，每人限交一則文字/手繪/拍照貼文 ---
@@ -779,6 +811,8 @@
       // 只有目前正顯示「即時互動牆」分頁時才需要刷新，避免學生在其他分頁時也一直打 API。
       if (event === 'live_wall_updated' && !liveWallTabPane.hidden) {
         LiveWall.refresh();
+        // 歷史紀錄清單若已展開才刷新（例如老師在教師端刪除了某筆紀錄），未展開時不必多打一次 API。
+        if (!document.getElementById('livewallHistoryList')?.hidden) LiveWall.loadHistory();
       }
     }, null, token);
   }
@@ -915,14 +949,55 @@
       try {
         await apiUpload('/api/student/live-wall/submit', formData);
         showToast('已送出，等待老師查看囉！', 'success');
-        await this.refresh();
+        await Promise.all([this.refresh(), this.loadHistory()]);
       } catch (e) {
         showToast(e.message, 'error');
       } finally {
         submitBtn.disabled = false;
       }
     },
+
+    // 我的歷史紀錄（唯讀）：這門課所有場次自己送出過的貼文，沒有刪除功能——
+    // 學生不得刪除自己的紀錄，刪除只能由教師端管理。
+    async loadHistory() {
+      try {
+        const posts = await api('/api/student/live-wall/history');
+        this.renderHistory(posts);
+      } catch (e) {
+        console.error('LiveWall.loadHistory error', e);
+      }
+    },
+
+    renderHistory(posts) {
+      const modeLabels = { text: '✏️ 文字', drawing: '🎨 手繪', photo: '📷 拍照' };
+      const list = document.getElementById('livewallHistoryList');
+      if (!list) return;
+      list.innerHTML = '';
+      if (!posts.length) {
+        list.innerHTML = '<p style="color:var(--text-muted); font-size:0.88rem; margin:0;">目前還沒有任何歷史紀錄。</p>';
+        return;
+      }
+      posts.forEach((p) => {
+        const item = document.createElement('div');
+        item.style.cssText = 'border:1px solid var(--card-border); border-radius:var(--radius-md); padding:10px 12px;';
+        const meta = `${modeLabels[p.session_mode] || p.session_mode}${p.session_title ? '｜' + escapeHtml(p.session_title) : ''}｜${escapeHtml(p.created_at || '')}`;
+        const contentHtml = p.text_content
+          ? `<p style="white-space:pre-wrap; margin:6px 0 0;">${escapeHtml(p.text_content)}</p>`
+          : `<img src="${fileUrlWithToken(p.image_url)}" style="max-width:100%; margin-top:6px; border-radius:var(--radius-sm);">`;
+        item.innerHTML = `<div style="font-size:0.78rem; color:var(--text-muted);">${meta}</div>${contentHtml}`;
+        list.appendChild(item);
+      });
+    },
   };
+
+  document.getElementById('livewallHistoryToggle')?.addEventListener('click', () => {
+    const list = document.getElementById('livewallHistoryList');
+    const icon = document.getElementById('livewallHistoryToggleIcon');
+    const expanded = !list.hidden;
+    list.hidden = expanded;
+    icon.textContent = expanded ? '▶' : '▼';
+    if (!expanded) LiveWall.loadHistory();
+  });
 
   document.getElementById('livewallPhotoInput')?.addEventListener('change', (evt) => {
     const file = evt.target.files[0];

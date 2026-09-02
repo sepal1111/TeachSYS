@@ -147,6 +147,17 @@
       });
     },
 
+    // 🎲 7. 抽籤洗牌喀嗒聲 (Shuffle Tick)
+    playTick(isFast = true) {
+      this.init();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const freq = isFast ? 1200 : 900;
+      const duration = isFast ? 0.05 : 0.09;
+      const gainVal = isFast ? 0.25 : 0.35;
+      this._playTone(freq, now, duration, 'square', gainVal * this.volume);
+    },
+
     playSound(sound) {
       switch (sound) {
         case 'chime':

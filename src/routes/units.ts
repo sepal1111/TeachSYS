@@ -12,6 +12,7 @@ import { getUploadsDir } from "../paths";
 import { getNowStrTaipei } from "../timezone";
 import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
 import { listSubmissionComments, createSubmissionComment } from "../utils/submissionComments";
+import { fixUploadFilename } from "../utils/upload";
 
 export const unitsRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
@@ -163,8 +164,15 @@ unitsRouter.post("/:courseId/:unitId/subunits", async (req, res) => {
   }
   const category: string = req.body?.category ?? "material";
   const description: string | null = req.body?.description ?? null;
+  const publishAtRaw = (req.body?.publish_at as string | undefined)?.trim();
 
-  const data: Record<string, unknown> = { unitId, title, category, description };
+  const data: Record<string, unknown> = {
+    unitId,
+    title,
+    category,
+    description,
+    publishAt: publishAtRaw ? publishAtRaw.replace("T", " ") : null,
+  };
   if (category === "assignment") {
     const assignmentType: string = req.body?.assignment_type === "group" ? "group" : "individual";
     let groupPlanId: number | null = null;
@@ -217,6 +225,7 @@ unitsRouter.put("/:courseId/:unitId/subunits/:subUnitId", async (req, res) => {
   if (typeof req.body?.description === "string") data.description = req.body.description;
   if (typeof req.body?.is_hidden === "boolean") data.isHidden = req.body.is_hidden ? 1 : 0;
   if (typeof req.body?.order_index === "number") data.orderIndex = req.body.order_index;
+  if (typeof req.body?.publish_at === "string") data.publishAt = req.body.publish_at.trim() ? req.body.publish_at.trim().replace("T", " ") : null;
   if (Array.isArray(req.body?.submission_types)) data.submissionTypes = serializeSubmissionTypes(req.body.submission_types);
   if (req.body?.assignment_type === "individual" || req.body?.assignment_type === "group") {
     data.assignmentType = req.body.assignment_type;
@@ -281,6 +290,7 @@ unitsRouter.post(
         res.status(400).json({ detail: "請選擇要上傳的檔案" });
         return;
       }
+      file.originalname = fixUploadFilename(file.originalname);
       const materialsDir = path.join(getUploadsDir(), "materials", String(courseId), String(unitId));
       fs.mkdirSync(materialsDir, { recursive: true });
       const ext = path.extname(file.originalname);

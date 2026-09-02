@@ -25,7 +25,11 @@ systemRouter.get("/info", async (req, res) => {
   const localIp = getLocalIp();
   const baseUrl = `http://${localIp}:${port}`;
   const mobileUrl = courseId ? `${baseUrl}/?mobile=1&course_id=${courseId}` : `${baseUrl}/?mobile=1`;
-  const targetUrl = mode === "mobile" ? mobileUrl : baseUrl;
+  // 學生連線 QR Code（登入畫面用）：主登入介面預設只顯示教師登入，學生改用自己的手機/平板
+  // 掃這組 QR Code，帶 ?login=student 讓對方裝置上開啟的頁面直接顯示學生登入表單（見
+  // static/js/app.js 的 getDefaultAuthPanel()），不影響掃碼裝置以外的任何畫面。
+  const studentLoginUrl = `${baseUrl}/?login=student`;
+  const targetUrl = mode === "mobile" ? mobileUrl : mode === "student" ? studentLoginUrl : baseUrl;
 
   const qrDataUrl = await QRCode.toDataURL(targetUrl, {
     errorCorrectionLevel: "L",

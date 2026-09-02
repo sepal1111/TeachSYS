@@ -12,6 +12,7 @@ import { getNowStrTaipei, getTodayStrTaipei } from "../timezone";
 import { getUploadsDir } from "../paths";
 import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
 import { listSubmissionComments, createSubmissionComment, type CommentThreadScope } from "../utils/submissionComments";
+import { fixUploadFilename } from "../utils/upload";
 
 export const studentContentRouter = autoCatch(Router());
 studentContentRouter.use(requireStudentAuth);
@@ -85,6 +86,13 @@ studentContentRouter.get("/me/group", async (req, res) => {
 
 const upload = multer({ storage: multer.memoryStorage() });
 
+/** Sub-unit visibility gate for students: must be un-hidden AND (no schedule, or its
+ *  scheduled publish_at has already passed) — see prisma/schema.prisma's SubUnit.publishAt. */
+function visibleSubUnitWhere() {
+  const now = getNowStrTaipei();
+  return { isHidden: 0, OR: [{ publishAt: null }, { publishAt: { lte: now } }] };
+}
+
 function parseSubmissionTypes(csv: string | null): string[] {
   return csv ? csv.split(",").filter(Boolean) : [];
 }
@@ -138,7 +146,7 @@ studentContentRouter.get("/units", async (req, res) => {
     orderBy: [{ orderIndex: "asc" }, { id: "asc" }],
     include: {
       subUnits: {
-        where: { isHidden: 0 },
+        where: visibleSubUnitWhere(),
         orderBy: [{ orderIndex: "asc" }, { id: "asc" }],
         include: {
           materials: { orderBy: [{ orderIndex: "asc" }, { id: "asc" }] },
@@ -273,7 +281,7 @@ type SubmissionRecord = Awaited<ReturnType<typeof prisma.submission.findFirst>>;
 
 async function loadVisibleAssignment(courseId: number, subUnitId: number) {
   const subUnit = await prisma.subUnit.findFirst({
-    where: { id: subUnitId, isHidden: 0, category: "assignment", unit: { courseId, isHidden: 0 } },
+    where: { id: subUnitId, ...visibleSubUnitWhere(), category: "assignment", unit: { courseId, isHidden: 0 } },
   });
   return subUnit;
 }
@@ -333,6 +341,7 @@ studentContentRouter.post("/subunits/:subUnitId/submit", upload.array("files", 5
 
   const allowedTypes = parseSubmissionTypes(subUnit.submissionTypes);
   const files = (req.files as Express.Multer.File[] | undefined) ?? [];
+  files.forEach((f) => { f.originalname = fixUploadFilename(f.originalname); });
   const link = typeof req.body?.link === "string" ? req.body.link.trim() : undefined;
   const textContent = typeof req.body?.text_content === "string" ? req.body.text_content : undefined;
 
@@ -470,7 +479,7 @@ studentContentRouter.delete("/subunits/:subUnitId/files/:fileIndex", async (req,
 
 async function loadVisibleQuiz(courseId: number, subUnitId: number) {
   const subUnit = await prisma.subUnit.findFirst({
-    where: { id: subUnitId, isHidden: 0, category: "quiz", unit: { courseId, isHidden: 0 } },
+    where: { id: subUnitId, ...visibleSubUnitWhere(), category: "quiz", unit: { courseId, isHidden: 0 } },
   });
   return subUnit;
 }
@@ -555,7 +564,7 @@ studentContentRouter.post("/subunits/:subUnitId/submit_quiz", async (req, res) =
 
 async function loadVisibleAssignmentOrQuiz(courseId: number, subUnitId: number) {
   return prisma.subUnit.findFirst({
-    where: { id: subUnitId, isHidden: 0, category: { in: ["assignment", "quiz"] }, unit: { courseId, isHidden: 0 } },
+    where: { id: subUnitId, ...visibleSubUnitWhere(), category: { in: ["assignment", "quiz"] }, unit: { courseId, isHidden: 0 } },
   });
 }
 

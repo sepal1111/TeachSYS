@@ -290,12 +290,15 @@
         </div>`
       : '';
 
+    const publishAtLabel = su.publishAt ? `<div style="font-size:0.78rem; color:var(--accent-warning, #d97706); margin-top:4px;">⏰ 定時開放：${escapeHtml(su.publishAt.replace('T', ' '))}</div>` : '';
+
     card.innerHTML = `
       <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;">
         <div style="font-weight:700;">${escapeHtml(su.title)} ${su.isHidden ? '<span style="font-size:0.75rem;color:var(--text-subtle);">(隱藏)</span>' : ''}</div>
         <div class="subunit-progress-badge"></div>
       </div>
       ${su.description ? `<div style="font-size:0.85rem; color:var(--text-muted); margin-top:6px; white-space:pre-wrap;">${escapeHtml(su.description)}</div>` : ''}
+      ${publishAtLabel}
       ${assignmentBadges}
       <div class="material-items" style="margin-top:8px; display:flex; flex-direction:column; gap:6px;"></div>
       <div class="subunit-actions" style="display:flex; gap:8px; margin-top:10px; flex-wrap: wrap;"></div>
@@ -328,6 +331,7 @@
     su.materials.forEach((m) => itemsWrap.appendChild(renderMaterialItem(su, m)));
 
     const actionsWrap = card.querySelector('.subunit-actions');
+    actionsWrap.appendChild(iconBtn('✏️ 編輯', () => openEditContentModal(su)));
     if (isAssignment || isQuiz) {
       actionsWrap.appendChild(iconBtn(isQuiz ? '📋 查看成績' : '📋 查看繳交', () => openGradingModal(su)));
     }
@@ -342,7 +346,9 @@
     row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.85rem; padding:6px 10px; border:1px solid var(--card-border); border-radius:8px;';
     const icon = m.type === 'file' ? '📄' : m.type === 'youtube' ? '▶️' : '🔗';
     const link = document.createElement('a');
-    link.href = m.url;
+    // 磁碟上的檔名是防碰撞用的亂數字串，帶 ?name= 讓下載/另存時用回素材標題顯示（見 src/index.ts
+    // 的 /uploads/* 路由）；外部連結不需要。
+    link.href = m.type === 'file' ? `${m.url}${m.url.includes('?') ? '&' : '?'}name=${encodeURIComponent(m.title)}` : m.url;
     link.target = '_blank';
     link.rel = 'noopener';
     link.style.cssText = 'color:var(--text-main); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex: 1;';
@@ -516,6 +522,90 @@
   // --- 測驗題目編輯器（新增小單元時使用） ---
 
   let quizQuestionsDraft = [];
+
+  // --- 新增/編輯內容彈窗的附件暫存區：多個檔案＋多個連結（新增內容/作業） ---
+  // 檔案 input 本身雖然有 multiple，但每次重新開檔案選擇視窗都會整組換掉，
+  // 無法「先選一批、再補選幾個」，所以改用陣列自行暫存，累加而非取代。
+  let stagedFiles = [];
+  let linkRowsDraft = [];
+
+  function renderStagedFilesList() {
+    const wrap = document.getElementById('list-lms-content-files-staged');
+    wrap.innerHTML = '';
+    if (!stagedFiles.length) {
+      wrap.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem;">尚未選擇檔案</div>';
+      return;
+    }
+    stagedFiles.forEach((file, idx) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.85rem; padding:6px 10px; border:1px solid var(--card-border); border-radius:8px;';
+      const label = document.createElement('span');
+      label.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;';
+      label.textContent = `📄 ${file.name}`;
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon';
+      delBtn.textContent = '✕';
+      delBtn.title = '移除';
+      delBtn.addEventListener('click', () => {
+        stagedFiles.splice(idx, 1);
+        renderStagedFilesList();
+      });
+      row.appendChild(label);
+      row.appendChild(delBtn);
+      wrap.appendChild(row);
+    });
+  }
+
+  function generateLinkRowId() {
+    return `link_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  }
+
+  function addLinkRow() {
+    linkRowsDraft.push({ id: generateLinkRowId(), title: '', url: '' });
+    renderLinkRowsList();
+  }
+
+  function renderLinkRowsList() {
+    const wrap = document.getElementById('list-lms-content-links');
+    wrap.innerHTML = '';
+    if (!linkRowsDraft.length) {
+      wrap.innerHTML = '<div style="color:var(--text-muted); font-size:0.82rem;">尚未新增任何連結，點下方「➕ 新增連結」開始加入。</div>';
+      return;
+    }
+    linkRowsDraft.forEach((row) => {
+      const rowWrap = document.createElement('div');
+      rowWrap.style.cssText = 'display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; border:1px solid var(--card-border); border-radius:8px; padding:10px;';
+      rowWrap.innerHTML = `
+        <div style="flex:1; min-width:140px;">
+          <label style="display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">連結名稱（選填）</label>
+          <input type="text" class="input-control link-title-input" style="width:100%; box-sizing:border-box;" placeholder="例如：教學說明影片">
+        </div>
+        <div style="flex:1; min-width:160px;">
+          <label style="display:block; font-size:0.78rem; color:var(--text-muted); margin-bottom:4px;">網址 (https://...)</label>
+          <input type="text" class="input-control link-url-input" style="width:100%; box-sizing:border-box;" placeholder="https://...">
+        </div>
+      `;
+      // 用 .value 屬性指定初始值而非塞進 HTML 字串的 value="..." 屬性，避免標題/網址裡若含雙引號會截斷屬性。
+      const titleInput = rowWrap.querySelector('.link-title-input');
+      const urlInput = rowWrap.querySelector('.link-url-input');
+      titleInput.value = row.title;
+      urlInput.value = row.url;
+      titleInput.addEventListener('input', (e) => { row.title = e.target.value; });
+      urlInput.addEventListener('input', (e) => { row.url = e.target.value; });
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon';
+      delBtn.textContent = '✕';
+      delBtn.title = '移除連結';
+      delBtn.addEventListener('click', () => {
+        linkRowsDraft = linkRowsDraft.filter((r) => r.id !== row.id);
+        renderLinkRowsList();
+      });
+      rowWrap.appendChild(delBtn);
+      wrap.appendChild(rowWrap);
+    });
+  }
 
   function generateQuestionId() {
     return `q_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -794,6 +884,37 @@
     showToast(`已成功匯入 ${imported.length} 道題目，請檢查每一題內容與正確答案是否正確無誤！`, 'success');
   }
 
+  /** 匯出目前編輯中的題目清單（手動新增或匯入後再調整過的皆可），與 downloadQuizTemplate
+   *  共用同一份欄位格式，方便老師之間互相分享題庫或跨課程重複使用。 */
+  function downloadQuizQuestionsAsCsv() {
+    if (!quizQuestionsDraft.length) {
+      showToast('目前尚未新增任何題目可供匯出', 'error');
+      return;
+    }
+    const typeLabels = { multiple_choice: '選擇題', true_false: '是非題', short_answer: '簡答題' };
+    const headers = ['題型', '題目內容', '選項1', '選項2', '選項3', '選項4', '正確答案', '配分'];
+    const rows = quizQuestionsDraft.map((q) => {
+      const opts = q.type === 'multiple_choice' ? (q.options || []) : [];
+      const correctAnswerText =
+        q.type === 'multiple_choice'
+          ? opts[Number(q.correct_answer)] ?? ''
+          : q.type === 'true_false'
+          ? (q.correct_answer === 'true' ? '正確' : '錯誤')
+          : (q.correct_answer || '');
+      return [typeLabels[q.type] || '選擇題', q.question_text, opts[0] || '', opts[1] || '', opts[2] || '', opts[3] || '', correctAnswerText, q.points];
+    });
+    const csv = [headers, ...rows].map((r) => r.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '測驗題目匯出.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function populateGroupPlanSelect() {
     const cid = courseId();
     const select = document.getElementById('select-lms-assignment-group-plan');
@@ -817,23 +938,120 @@
   function openAddContentModal(unitId) {
     const unit = unitsData.find((u) => u.id === unitId);
     document.getElementById('text-lms-add-content-title').textContent = `➕ 在「${unit ? unit.title : ''}」新增內容／作業`;
+    document.getElementById('btn-submit-lms-add-content').textContent = '確定新增';
     document.getElementById('input-lms-subunit-unit-id').value = unitId;
+    document.getElementById('input-lms-subunit-id').value = '';
     document.getElementById('input-lms-subunit-title').value = '';
     document.getElementById('input-lms-subunit-desc').value = '';
     document.getElementById('select-lms-content-category').value = 'material';
+    document.getElementById('select-lms-content-category').disabled = false;
+    document.getElementById('text-lms-content-category-locked-hint').style.display = 'none';
     document.querySelectorAll('input[name="lms-submission-type"]').forEach((el) => { el.checked = el.value === 'file'; });
     document.querySelector('input[name="lms-assignment-type"][value="individual"]').checked = true;
     document.getElementById('input-lms-subunit-duedate').value = '';
     document.getElementById('input-lms-subunit-autolock').checked = false;
+    document.getElementById('input-lms-subunit-publishat').value = '';
     document.getElementById('input-lms-quiz-reveal').checked = true;
     quizQuestionsDraft = [];
     renderQuizQuestionsList();
     updateSubUnitFormVisibility();
     populateGroupPlanSelect();
     document.getElementById('input-lms-content-files').value = '';
-    document.getElementById('text-lms-content-files-status').textContent = '尚未選擇檔案';
-    document.getElementById('input-lms-content-link-title').value = '';
-    document.getElementById('input-lms-content-link-url').value = '';
+    stagedFiles = [];
+    renderStagedFilesList();
+    linkRowsDraft = [];
+    renderLinkRowsList();
+    document.getElementById('wrap-lms-edit-existing-materials').style.display = 'none';
+    window.openModal('modal-lms-add-content');
+  }
+
+  function findSubUnitById(subUnitId) {
+    for (const u of unitsData) {
+      const su = u.subUnits.find((x) => x.id === subUnitId);
+      if (su) return su;
+    }
+    return null;
+  }
+
+  /** 既有教材/檔案清單（編輯彈窗內用）：可個別刪除，刪除後重新整理主畫面資料並就地重繪這份清單，
+   *  不需要關閉彈窗——比照既有 deleteMaterial() 的刪除邏輯，但刪除後留在彈窗內方便繼續編輯。 */
+  function renderEditMaterialsList(subUnitId) {
+    const wrap = document.getElementById('list-lms-edit-existing-materials');
+    const su = findSubUnitById(subUnitId);
+    const materials = su ? su.materials : [];
+    wrap.innerHTML = '';
+    if (!materials.length) {
+      wrap.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">目前沒有附加的教材/檔案。</div>';
+      return;
+    }
+    materials.forEach((m) => {
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:0.85rem; padding:6px 10px; border:1px solid var(--card-border); border-radius:8px;';
+      const icon = m.type === 'file' ? '📄' : m.type === 'youtube' ? '▶️' : '🔗';
+      const link = document.createElement('a');
+      link.href = m.url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.cssText = 'color:var(--text-main); text-decoration:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;';
+      link.textContent = `${icon} ${m.title}`;
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon';
+      delBtn.textContent = '✕';
+      delBtn.title = '刪除教材';
+      delBtn.addEventListener('click', async () => {
+        if (!confirm(`確定要刪除教材「${m.title}」嗎？`)) return;
+        const cid = courseId();
+        if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+        try {
+          await API.delete(`/api/units/${cid}/${su.unitId}/subunits/${su.id}/materials/${m.id}`);
+          await load();
+          renderEditMaterialsList(subUnitId);
+          showToast('教材已刪除', 'success');
+        } catch (err) {
+          showToast(err.message, 'error');
+        }
+      });
+      row.appendChild(link);
+      row.appendChild(delBtn);
+      wrap.appendChild(row);
+    });
+  }
+
+  // 「✏️ 編輯」小單元：與新增共用同一個彈窗，但鎖定「這是什麼內容？」類別不可更改
+  // （建立後切換類別牽涉既有繳交/測驗資料如何處理，超出本次範圍），並補上既有教材的管理清單。
+  function openEditContentModal(su) {
+    document.getElementById('text-lms-add-content-title').textContent = `✏️ 編輯「${su.title}」`;
+    document.getElementById('btn-submit-lms-add-content').textContent = '儲存變更';
+    document.getElementById('input-lms-subunit-unit-id').value = su.unitId;
+    document.getElementById('input-lms-subunit-id').value = su.id;
+    document.getElementById('input-lms-subunit-title').value = su.title;
+    document.getElementById('input-lms-subunit-desc').value = su.description || '';
+    document.getElementById('select-lms-content-category').value = su.category;
+    document.getElementById('select-lms-content-category').disabled = true;
+    document.getElementById('text-lms-content-category-locked-hint').style.display = 'block';
+    document.querySelectorAll('input[name="lms-submission-type"]').forEach((el) => {
+      el.checked = (su.submissionTypes || []).includes(el.value);
+    });
+    document.querySelector(`input[name="lms-assignment-type"][value="${su.assignmentType === 'group' ? 'group' : 'individual'}"]`).checked = true;
+    document.getElementById('input-lms-subunit-duedate').value = su.dueDate || '';
+    document.getElementById('input-lms-subunit-autolock').checked = !!su.autoLockOverdue;
+    // 自訂日期時間選擇器（datepicker.js）直接吃／存 "YYYY-MM-DD HH:MM"，跟後端格式一致，不需轉換。
+    document.getElementById('input-lms-subunit-publishat').value = su.publishAt || '';
+    document.getElementById('input-lms-quiz-reveal').checked = su.revealAnswersAfterSubmit !== false;
+    quizQuestionsDraft = su.category === 'quiz' ? JSON.parse(JSON.stringify(su.quizQuestions || [])) : [];
+    renderQuizQuestionsList();
+    updateSubUnitFormVisibility();
+    populateGroupPlanSelect().then(() => {
+      if (su.groupPlanId) document.getElementById('select-lms-assignment-group-plan').value = su.groupPlanId;
+    });
+    document.getElementById('input-lms-content-files').value = '';
+    stagedFiles = [];
+    renderStagedFilesList();
+    linkRowsDraft = [];
+    renderLinkRowsList();
+    document.getElementById('wrap-lms-edit-existing-materials').style.display = 'block';
+    renderEditMaterialsList(su.id);
     window.openModal('modal-lms-add-content');
   }
 
@@ -841,6 +1059,8 @@
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
     const unitId = document.getElementById('input-lms-subunit-unit-id').value;
+    const editingSubUnitId = document.getElementById('input-lms-subunit-id').value;
+    const isEdit = !!editingSubUnitId;
     const title = document.getElementById('input-lms-subunit-title').value.trim();
     const description = document.getElementById('input-lms-subunit-desc').value.trim();
     if (!title) {
@@ -848,7 +1068,8 @@
       return;
     }
     const category = getCheckedCategory();
-    const payload = { title, description, category };
+    const payload = { title, description, publish_at: document.getElementById('input-lms-subunit-publishat').value || '' };
+    if (!isEdit) payload.category = category; // 編輯時類別鎖定不可變更，不送這個欄位
     if (category === 'assignment') {
       payload.submission_types = Array.from(document.querySelectorAll('input[name="lms-submission-type"]:checked')).map((el) => el.value);
       payload.assignment_type = getCheckedAssignmentType();
@@ -868,22 +1089,25 @@
       payload.auto_lock_overdue = document.getElementById('input-lms-subunit-autolock').checked;
     }
 
-    let subUnitId;
+    let subUnitId = editingSubUnitId ? Number(editingSubUnitId) : undefined;
     try {
-      const res = await API.post(`/api/units/${cid}/${unitId}/subunits`, payload);
-      subUnitId = res.id;
+      if (isEdit) {
+        await API.put(`/api/units/${cid}/${unitId}/subunits/${subUnitId}`, payload);
+      } else {
+        const res = await API.post(`/api/units/${cid}/${unitId}/subunits`, payload);
+        subUnitId = res.id;
+      }
     } catch (err) {
       showToast(err.message, 'error');
       return;
     }
 
-    // 小單元已建立成功；接下來的附件上傳即使個別失敗也不回滾小單元本身
+    // 小單元已建立/更新成功；接下來的附件上傳即使個別失敗也不回滾小單元本身
     // （比照全案「無跨步驟回滾」慣例），最後用 toast 匯總告知哪些附件沒上傳成功。
     const materialsUrl = `/api/units/${cid}/${unitId}/subunits/${subUnitId}/materials`;
     const failures = [];
 
-    const files = Array.from(document.getElementById('input-lms-content-files').files || []);
-    for (const file of files) {
+    for (const file of stagedFiles) {
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -894,9 +1118,10 @@
       }
     }
 
-    const linkUrl = document.getElementById('input-lms-content-link-url').value.trim();
-    if (linkUrl) {
-      const linkTitle = document.getElementById('input-lms-content-link-title').value.trim();
+    for (const linkRow of linkRowsDraft) {
+      const linkUrl = linkRow.url.trim();
+      if (!linkUrl) continue; // 略過還沒填網址的空白列，不當成失敗
+      const linkTitle = linkRow.title.trim();
       try {
         await API.post(materialsUrl, { type: isYoutubeUrl(linkUrl) ? 'youtube' : 'link', url: linkUrl, title: linkTitle });
       } catch (err) {
@@ -906,9 +1131,9 @@
 
     window.closeModal('modal-lms-add-content');
     if (failures.length) {
-      showToast(`內容已建立，但有 ${failures.length} 個附件上傳失敗：${failures.join('、')}`, 'error');
+      showToast(`內容已${isEdit ? '更新' : '建立'}，但有 ${failures.length} 個附件上傳失敗：${failures.join('、')}`, 'error');
     } else {
-      showToast('內容新增成功！', 'success');
+      showToast(isEdit ? '內容已更新！' : '內容新增成功！', 'success');
     }
     load();
   }
@@ -1212,20 +1437,25 @@
     document.getElementById('select-lms-content-category')?.addEventListener('change', updateSubUnitFormVisibility);
     document.querySelectorAll('input[name="lms-assignment-type"]').forEach((el) => el.addEventListener('change', updateSubUnitFormVisibility));
     document.getElementById('input-lms-content-files')?.addEventListener('change', (e) => {
-      const files = e.target.files;
-      const status = document.getElementById('text-lms-content-files-status');
-      if (!files || !files.length) status.textContent = '尚未選擇檔案';
-      else if (files.length === 1) status.textContent = files[0].name;
-      else status.textContent = `已選擇 ${files.length} 個檔案`;
+      // 累加而非取代：允許老師分次選檔（選一批、關掉視窗、再選另一批），配合 stagedFiles 陣列與
+      // list-lms-content-files-staged 清單逐一顯示、可個別移除。
+      stagedFiles = stagedFiles.concat(Array.from(e.target.files || []));
+      e.target.value = '';
+      renderStagedFilesList();
     });
+    document.getElementById('btn-lms-content-add-link')?.addEventListener('click', addLinkRow);
     document.getElementById('btn-lms-grading-batch-resubmit')?.addEventListener('click', batchRequestResubmit);
     document.getElementById('btn-lms-quiz-add-question')?.addEventListener('click', addQuizQuestion);
     document.getElementById('btn-lms-quiz-download-template')?.addEventListener('click', downloadQuizTemplate);
     document.getElementById('btn-lms-quiz-import')?.addEventListener('click', () => document.getElementById('input-lms-quiz-import-file').click());
+    document.getElementById('btn-lms-quiz-export')?.addEventListener('click', downloadQuizQuestionsAsCsv);
     document.getElementById('input-lms-quiz-import-file')?.addEventListener('change', (e) => {
       const file = e.target.files[0];
       e.target.value = '';
       if (file) handleQuizCsvImport(file);
+    });
+    document.getElementById('btn-lms-subunit-publishat-clear')?.addEventListener('click', () => {
+      document.getElementById('input-lms-subunit-publishat').value = '';
     });
     // 「⋮」更多選項選單的點外部關閉：唯一一次註冊，每次觸發即時查詢目前開啟的選單，
     // 不會因為 materials.js 每次 render() 都重新產生 DOM 元素而重複掛監聽。

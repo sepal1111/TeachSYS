@@ -10,6 +10,7 @@ import { requireStudentAuth } from "../middleware/studentAuth";
 import { getNowStrTaipei } from "../timezone";
 import { getUploadsDir } from "../paths";
 import { broadcastToCourse } from "../realtime";
+import { sanitizeFilenamePart } from "../utils/upload";
 
 export const studentLiveWallRouter = autoCatch(Router());
 studentLiveWallRouter.use(requireStudentAuth);
@@ -71,12 +72,20 @@ studentLiveWallRouter.post("/submit", upload.single("file"), async (req, res) =>
       res.status(400).json({ detail: "請先完成手繪或選擇照片" });
       return;
     }
-    const dir = path.join(getUploadsDir(), "live_wall", String(courseId), String(session.id));
+    // 依「課程名稱-座號」建立資料夾（而非場次 ID），同一位學生所有場次的上傳都歸在同一個
+    // 好辨識的資料夾下，方便老師事後對照人找檔案；courseId 仍保留在上一層路徑避免不同課程
+    // 剛好同名同座號時互相覆蓋。
+    const [course, student] = await Promise.all([
+      prisma.course.findUnique({ where: { id: courseId } }),
+      prisma.student.findUnique({ where: { id: studentId } }),
+    ]);
+    const folderName = `${sanitizeFilenamePart(course?.name ?? "課程")}-${String(student?.studentNumber ?? 0).padStart(2, "0")}`;
+    const dir = path.join(getUploadsDir(), "live_wall", String(courseId), folderName);
     fs.mkdirSync(dir, { recursive: true });
     const ext = path.extname(file.originalname) || ".png";
     const filename = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`;
     fs.writeFileSync(path.join(dir, filename), file.buffer);
-    imageUrl = `/uploads/live_wall/${courseId}/${session.id}/${filename}`;
+    imageUrl = `/uploads/live_wall/${courseId}/${folderName}/${filename}`;
   }
 
   const post = await prisma.liveWallPost.create({
@@ -85,4 +94,22 @@ studentLiveWallRouter.post("/submit", upload.single("file"), async (req, res) =>
 
   broadcastToCourse(courseId, "live_wall_updated");
   res.json(serializePost(post));
+});
+
+// 我的歷史紀錄（學生端，唯讀）：這門課所有場次自己送出過的貼文，供學生自行回顧；
+// 沒有對應的刪除路由——學生不得刪除自己的紀錄，刪除只能由教師端管理。
+studentLiveWallRouter.get("/history", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const posts = await prisma.liveWallPost.findMany({
+    where: { studentId, session: { courseId } },
+    orderBy: { id: "desc" },
+    include: { session: true },
+  });
+  res.json(
+    posts.map((p) => ({
+      ...serializePost(p),
+      session_mode: p.session.mode,
+      session_title: p.session.title,
+    }))
+  );
 });

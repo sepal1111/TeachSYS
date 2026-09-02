@@ -248,8 +248,25 @@
     color: var(--accent-negative); border-radius: var(--radius-sm); padding: 10px 12px;
     font-size: 0.9rem; margin-bottom: 14px; display: none;
   }
-  .unit-block { margin-bottom: 18px; }
-  .unit-title { font-size: 1.15rem; font-weight: 800; color: var(--text-main); margin: 0 0 10px; }
+  /* 章節（第一層）與小單元（第二層）需要有「附屬」的視覺層級：整個章節（標題列＋底下小單元）
+     包在同一張卡片裡，標題列用強調色標示是可點擊的抽屜開關，小單元則是卡片內縮排的內容，
+     而不是各自獨立、看起來對等的區塊（比照教師端 static/js/materials.js 的 renderUnit() 做法）。 */
+  .unit-block {
+    border: 1px solid var(--card-border); border-radius: var(--radius-md);
+    margin-bottom: 18px; overflow: hidden; background: var(--card-bg);
+  }
+  .unit-title {
+    font-size: 1.05rem; font-weight: 800; color: var(--student-primary-dark); margin: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    cursor: pointer; user-select: none;
+    background: var(--student-primary-bg); border-left: 4px solid var(--student-primary);
+    padding: 12px 16px;
+  }
+  .unit-title:hover { background: var(--student-primary-border); }
+  .unit-toggle-icon { font-size: 0.85rem; color: var(--student-primary-dark); transition: transform 0.2s; flex-shrink: 0; }
+  .unit-body { padding: 14px 16px; }
+  .unit-body .subunit-card:last-child { margin-bottom: 0; }
+  .unit-title.expanded .unit-toggle-icon { transform: rotate(90deg); }
   .subunit-card {
     background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
     padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-xs);
@@ -493,6 +510,15 @@
           </div>
 
           <button type="button" id="btnLivewallSubmit" class="btn" style="width:100%;">📤 送出</button>
+        </div>
+
+        <!-- 我的歷史紀錄：唯讀，學生無法刪除自己的紀錄；預設摺疊避免版面混雜 -->
+        <div class="student-card" style="margin-top:16px;">
+          <p id="livewallHistoryToggle" style="font-weight:800; margin:0; display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none;">
+            <span>📜 我的歷史紀錄</span>
+            <span id="livewallHistoryToggleIcon">▶</span>
+          </p>
+          <div id="livewallHistoryList" hidden style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
         </div>
       </div>
     </div>

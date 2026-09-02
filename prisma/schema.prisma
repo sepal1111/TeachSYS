@@ -237,6 +237,9 @@ model SubUnit {
   title       String
   orderIndex  Int     @default(0) @map("order_index")
   isHidden    Int     @default(0) @map("is_hidden")
+  // 定時開放：YYYY-MM-DD HH:MM，null=不限制。與 isHidden 是兩道獨立的可見性條件（皆需通過學生端才看得到），
+  // 教師端一律看得到全部內容，不受此欄位影響（見 studentContent.ts 的 visibleSubUnitWhere()）。
+  publishAt   String? @map("publish_at")
   // material（教材）｜ assignment（作業，Phase 3）｜ quiz（測驗，Phase 3）
   category    String  @default("material")
   description String?

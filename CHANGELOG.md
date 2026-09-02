@@ -1,5 +1,176 @@
 # CHANGELOG
 
+## [2026-09-02 16:19] 主登入畫面移除學生登入表單，改為「學生連線 QR Code」按鈕
+
+- **修改模組/檔案**：`static/index.html`、`static/js/app.js`、`static/js/i18n.js`、`src/routes/system.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：延續上一版「教師與學生共用同一個網址」的調整，使用者進一步要求：主登入介面（教師/管理員實際操作的那台電腦）預設只顯示教師登入，不要再有學生登入欄位；改成一個「📱 學生連線 QR Code」按鈕，教師點開後顯示 QR Code，學生用自己的手機/平板掃碼即可進入學生登入頁面。
+  2. **主登入畫面**：`auth-panel-teacher`（教師登入）改為預設顯示，`auth-panel-student`（學生登入表單）改為預設隱藏；移除原本兩個面板互相切換用的「🔐 教師登入」/「← 返回學生登入」按鈕（不再需要在同一台裝置上手動切換身分），教師面板新增「📱 學生連線 QR Code」按鈕。
+  3. **QR Code 機制**：後端 `GET /api/system/info` 新增 `mode=student`，回傳指向 `{區網網址}/?login=student` 的 QR Code（沿用既有「手機評分 QR Code」同一套 `qrcode` 套件與端點，此端點本來就不需要登入即可呼叫）；前端 `getDefaultAuthPanel()` 讀取網址的 `?login=student` 參數，只有從這個 QR Code 掃碼進入的裝置才會顯示學生登入表單，其餘一律顯示教師登入。新增獨立的 `#modal-qr-student-login` 彈窗（z-index 特別設定高於登入畫面本身，否則會被登入畫面蓋住），不與既有「手機評分 QR Code」共用同一個彈窗以免文字混淆。
+  4. **順手修正**：教師登出（`logout()`）原本寫死 `showAuthPanel('student')`，在舊版「預設顯示學生登入」的邏輯下沒問題，但這次改完預設值後如果不改，教師登出會錯誤地跳回學生登入畫面——已一併修正為呼叫 `getDefaultAuthPanel()`。
+  5. 移除的兩個切換按鈕對應的 i18n 翻譯字串（`auth_btn_show_teacher`／`auth_btn_back_to_student`，含中英文兩份）已一併清除，避免留下用不到的死資料。
+  6. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`app.js`／`i18n.js`）驗證，未啟動開發伺服器測試（依使用者要求）——**建議實機測試**：確認主畫面預設只看到教師登入、點「學生連線 QR Code」能正確顯示、用手機掃碼後能開啟學生登入表單並完成登入。
+
+## [2026-09-02 15:56] 學生與教師改用同一個網址登入，不再有獨立的 /student 入口頁
+
+- **修改模組/檔案**：`static/index.html`、`static/js/app.js`、`static/js/student.js`、`src/index.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：使用者確認需求範圍後（曾先確認是否要整個拿掉學生端所有功能——不是，只是不要獨立網址），要求教師與學生一律從 `http://localhost:8000` 登入，原本學生登入成功後會另外導向 `http://localhost:8000/student` 這個獨立頁面的做法不需要了。
+  2. **實作方式（同源 iframe，未重寫任何學生端邏輯）**：`student.html`／`static/js/student.js` 完全沒有改寫內部邏輯，只是換了呈現位置——`index.html` 新增一個預設隱藏、蓋滿全螢幕的 `<iframe id="student-app-frame">`；學生在首頁登入表單送出成功後，`app.js` 新增的 `enterStudentMode()` 把這個 iframe 的 `src` 指向原本的 `/student` 資源並顯示出來（同時隱藏登入畫面），不再 `window.location.href = '/student'` 整頁跳轉。由於 iframe 與外層頁面同源，`localStorage` 的 `student_token`/`student_info` 本來就共用，iframe 裡的 `student.js` 一啟動就讀得到剛登入存好的 token，不需要額外傳遞任何資料。
+  3. **重新整理頁面／登出**：`initAuth()`（`app.js`）改為一開始就先檢查 `localStorage` 是否已有學生 token，有的話直接呼叫 `enterStudentMode()`（略過教師端 `check_auth` 檢查），讓學生重新整理 `localhost:8000` 也能直接回到自己的畫面，不用重新登入。`student.js` 的登出按鈕與 session 失效兩處，原本是 `location.reload()`（單獨頁面時代的做法，搬進 iframe 後只會讓 iframe 裡重新顯示這支檔案自帶的登入表單、卡在巢狀畫面出不去），改為新增的 `exitToLogin()`：同源 iframe 可以直接呼叫 `window.parent.exitStudentMode()`（`app.js` 新增，卸載 iframe＋重新走一次登入檢查流程），保留 `location.reload()` 當作萬一此檔案未來又被直接開啟時的備援路徑。
+  4. **後端**：`src/index.ts` 的 `GET /student` 路由本身**沒有拿掉**——現在純粹是那個 iframe 的內部資源來源，不是給使用者直接輸入網址用的入口，補上註解說明這個角色轉變；若有人手動輸入 `/student` 網址，頁面仍會照舊獨立運作（不影響、不強制擋掉，屬於保留的向下相容路徑，非新增的公開入口）。
+  5. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`app.js`／`student.js`）驗證，未啟動開發伺服器測試（依使用者要求）——**這項改動涉及 iframe 跨文件溝通與登入狀態切換，強烈建議實機測試**：學生登入 → 重新整理頁面 → 登出，三個流程都要跑過一次確認網址列全程停留在 `http://localhost:8000` 且畫面切換正常。
+
+## [2026-09-02 15:35] 下載教材/作業附件時，改用素材頁面顯示的檔名而非磁碟上的亂數檔名
+
+- **修改模組/檔案**：`src/index.ts`、`static/js/student.js`、`static/js/materials.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：所有上傳檔案在磁碟上都是存成 `{時間戳}_{亂數}{副檔名}` 的防碰撞檔名（例如 `1730000000000_ab12cd.pdf`），跟素材頁面顯示的標題（例如「1-1 網路安全小常識.pdf」）不同；使用者下載或另存時瀏覽器預設會用網址最後一段當檔名，導致存下來的檔案名稱是那串沒有意義的亂碼，而非素材頁面上看到的名稱。
+  2. **後端**：`/uploads/*` 這個共用的受保護檔案路由（`src/index.ts`）新增支援選填的 `?name=` query 參數，帶入的話會在回應加上 `Content-Disposition: inline; filename*=UTF-8''<檔名>` 表頭，指定下載/另存時要用的顯示檔名（自動補回實際副檔名，避免呼叫端忘記帶副檔名或帶錯）；用 `inline` 而非 `attachment`，維持原本能在瀏覽器分頁內直接檢視 PDF/圖片的行為不變，只在真的觸發下載/另存時才影響檔名。
+  3. **前端**：學生端「課程與教材」（`student.js` 的 `renderMaterial()`）與「作業已繳交檔案」下載連結、教師端「課程與教材」（`materials.js` 的 `renderMaterialItem()`）皆已補上 `?name=`，分別帶入素材標題／學生原始上傳檔名。純外部連結（`type === 'link'`）與 YouTube 嵌入不受影響。
+  4. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`student.js`／`materials.js`）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 15:28] 修正學生端課程附件檔案點擊後回應 401「未登入無法讀取系統附件」
+
+- **修改模組/檔案**：`static/js/student.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. 學生端「課程與教材」點擊教師上傳的檔案型教材（`type === 'file'`）會顯示 `{"detail":"未登入無法讀取系統附件"}`。根因：`renderMaterial()` 直接用 `a.href = m.url`（原始 `/uploads/materials/...` 路徑），但這個路由（`src/index.ts` 的 `app.get("/uploads/*", ...)`）受保護，需要帶學生 JWT 才能讀取；一般 `<a target="_blank">` 的瀏覽器導覽不會自動附加 `Authorization` 表頭，導致後端收不到任何身分資訊而回 401——這是既有問題，非本次新增功能造成。
+  2. 修正為對 `type === 'file'` 的教材改用既有的 `fileUrlWithToken()`（把學生 JWT 以 `?token=` query string 帶上，跟作業繳交檔案下載連結、即時互動牆貼文圖片同一套既有機制）；純外部連結（`type === 'link'`）與 YouTube 嵌入不受影響，維持原始網址。
+  3. 已順手排查 `student.js` 其餘所有指到 `.url` 欄位的地方，確認作業繳交檔案下載（`f.url`）與即時互動牆圖片皆已正確使用 `fileUrlWithToken()`，僅這一處教材連結漏掉。
+  4. 本次已用 `node --check` 驗證語法，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 15:24] 教師端歷史紀錄改為「日期－活動名稱」分類，點開才顯示該場次學生內容
+
+- **修改模組/檔案**：`src/routes/liveWall.ts`、`static/js/toolkit.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. 上一版教師端「📜 歷史紀錄」是所有場次、所有學生的貼文攤平成一長串列表，場次一多就很難找特定活動的紀錄。改為後端 `GET /api/live-wall/courses/:courseId/history` 直接依場次分組回傳（`[{session, posts}]`，`LiveSession.posts` 關聯查詢，過濾掉沒有任何人送出過的場次），前端 `toolkit.js` 的 `renderHistory()` 改為渲染成可展開的分類清單，標題顯示「📅 日期－活動名稱（N 則）」（活動名稱優先用場次的提示題目 `title`，沒有填的話退回用模式名稱如「✏️ 文字」），預設全部收合，點開才載入顯示該場次底下所有學生的送出內容（含縮圖放大檢視、個別刪除按鈕，皆沿用先前做好的功能）。
+  2. 學生端「📜 我的歷史紀錄」本次未變動（使用者僅要求教師端要分類，維持原本的簡單清單）。
+  3. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`toolkit.js`）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 15:16] 即時互動牆刪除功能改為獨立的「歷史紀錄」管理，移出進行中場次看板
+
+- **修改模組/檔案**：`src/routes/liveWall.ts`、`src/routes/studentLiveWall.ts`、`static/js/toolkit.js`、`static/js/student.js`、`static/index.html`、`static/student.html`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **背景**：使用者糾正上一版做法——刪除功能不應該放在「進行中場次」的即時看板上，而是應該獨立成一個「歷史紀錄」介面：學生可以看到自己的歷史紀錄（唯讀），教師可以看到全班學生的歷史紀錄並在該處管理刪除。已把上一版加在教師端即時看板卡片上的「✕」刪除按鈕移除，看板恢復成純唯讀展示。
+  2. **教師端「📜 歷史紀錄」**：即時互動牆分頁新增常駐按鈕（不受目前是否有進行中場次影響），點開彈出視窗列出該課程所有場次（進行中或已結束）、所有學生的完整上傳紀錄（新增後端 `GET /api/live-wall/courses/:courseId/history`），每筆紀錄可點縮圖放大檢視（沿用既有 `image-lightbox.js`），並有「🗑️」刪除按鈕（沿用先前做好的 `DELETE /api/live-wall/posts/:postId`，連同伺服器上的檔案一併刪除）。
+  3. **學生端「📜 我的歷史紀錄」**：即時互動牆分頁下方新增可展開/收合區塊（新增後端 `GET /api/student/live-wall/history`，唯讀），預設摺疊避免版面混雜，展開時才發 API 請求；列出自己在這門課所有場次送出過的貼文（文字或圖片）＋所屬場次模式/提示/時間。**沒有刪除按鈕或路由——學生不得刪除自己的紀錄**，此為刻意設計。
+  4. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`toolkit.js`／`student.js`）驗證，未啟動開發伺服器測試（依使用者要求）。
+  5. **已知取捨（未處理，供之後參考）**：目前「🗑️ 一鍵清空」（教師端，讓學生在同一場次內重新送出一次）仍會直接刪除資料庫紀錄與檔案，因此被清空的貼文不會出現在歷史紀錄裡——歷史紀錄目前只保存「尚未被清空/刪除」的既有紀錄（含所有已結束但未清空的場次）。若要讓歷史紀錄完整保留每一次清空前的貼文，需要把 `live_wall_posts` 的 `UNIQUE(session_id, student_id)` 限制改掉（允許同一場次同一學生留下多筆歷史紀錄），屬於較大幅的資料庫結構調整，這次未一併處理；如有需要請再提出。
+
+## [2026-09-02 15:05] 即時互動牆：上傳檔案改依「課程-座號」歸檔、教師可刪除紀錄（連同檔案）、學生不得刪除
+
+- **修改模組/檔案**：`src/utils/upload.ts`、`src/routes/studentLiveWall.ts`、`src/routes/liveWall.ts`、`static/js/toolkit.js`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **上傳檔案改依「課程－座號」資料夾歸檔**：學生手繪/拍照的檔案原本存在 `uploads/live_wall/{courseId}/{sessionId}/`（依場次分資料夾，換一次場次就散在不同資料夾，不好對照人找檔案）。改為 `uploads/live_wall/{courseId}/{課程名稱}-{座號}/`（例如 `五年一班-01`），同一位學生所有場次的上傳都歸在同一個好辨識的資料夾下；`courseId` 仍保留在上一層路徑，避免不同課程剛好同名同座號時互相覆蓋。資料夾名稱清理規則沿用既有 `notes.ts` 的 `sanitizeFilenamePart`（拿掉路徑不安全字元），抽到 `src/utils/upload.ts` 共用。
+  2. **教師端可刪除單筆上傳紀錄，連同檔案一併刪除**：新增 `DELETE /api/live-wall/posts/:postId`，刪除資料庫紀錄的同時把對應的手繪/拍照檔案從磁碟刪除（純文字貼文沒有檔案可刪，只刪紀錄）；教師端每張貼文卡片右上角新增「✕」刪除按鈕（`toolkit.js` 的 `LiveWall.deletePost()`），並補上送出時間顯示，讓貼文網格更像一份完整的上傳紀錄而不只是即時看板。**學生端沒有對應的刪除路由或按鈕，不得刪除自己的紀錄**——這是刻意的設計，不是遺漏。
+  3. **順手修正既有的孤兒檔案問題**：「🗑️ 一鍵清空」（`POST /sessions/:sessionId/clear`）原本只刪資料庫紀錄，完全沒刪對應的圖片檔案，每清空一次就留下永久占用硬碟空間的孤兒檔案——這是既有問題，非本次新增功能造成，這次一併修正為刪除前先讀出所有貼文的 `image_url` 逐一刪檔。
+  4. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check`（`toolkit.js`）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 14:49] 即時互動牆手繪/拍照貼文改為彈出視窗放大檢視（含縮放/平移）
+
+- **修改模組/檔案**：`static/js/image-lightbox.js`（新增）、`static/css/style.css`、`static/index.html`、`static/js/toolkit.js`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **背景**：教師端「教學小工具」的即時互動牆貼文網格，點手繪/拍照縮圖原本是 `<a target="_blank">` 直接開新分頁看原圖，使用者要求改為彈出視窗，並加入放大／縮小／關閉功能。
+  2. 新增通用的圖片放大檢視元件 `image-lightbox.js`：`window.ImageLightbox.open(url)` 開啟一個近全螢幕的深色檢視 modal（`#modal-image-lightbox`，獨立於既有 `.modal-content` 小卡片樣式，另外設計 `.lightbox-*` 系列 CSS class），支援：工具列「－／＋」按鈕縮放（100%–400%，25% 為單位）、滑鼠滾輪縮放、放大後可拖曳平移（Pointer Events，滑鼠/觸控通用）、雙擊快速放大或還原、Esc 鍵關閉、右上角 ✕ 按鈕（掛 `close-modal` class，沿用 `app.js` 既有的 `initModals()` 通用關閉邏輯，不需另外寫關閉邏輯）。
+  3. `toolkit.js` 的 `LiveWall.render()` 把貼文縮圖從 `<a href=... target="_blank">` 改為單純 `<img>` 綁 click 事件呼叫 `ImageLightbox.open(p.image_url)`；投影頁（`projection.js`）與學生端（`student.js`）顯示圖片的地方本來就沒有連結/開新分頁的行為（單純展示用），不受影響、未變更。
+  4. 本次已用 `node --check`（`image-lightbox.js`／`toolkit.js`）與 `npx tsc --noEmit`（0 錯誤，本次未修改後端）驗證語法，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 14:35] 「定時開放」改用自訂日期時間選擇器 + 修正新增內容彈窗捲軸超出圓角
+
+- **修改模組/檔案**：`static/js/datepicker.js`、`static/js/materials.js`、`static/index.html`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **背景**：使用者回報「定時開放」欄位（`input type="datetime-local"`）點開的年/月/日/時/分選擇器很醜，且該彈窗雖然設了圓角，捲軸卻超出圓角邊界。前者原因跟先前 select 選項清單一樣——`datetime-local` 的日期時間選擇器完全是瀏覽器/作業系統原生繪製，CSS 幾乎無法自訂外觀；後者是 Chrome 在同一個元素上同時使用 `border-radius` + `overflow-y:auto` + `transform`（modal 開啟動畫）時，原生捲軸有時不會被圓角正確裁切的已知渲染問題。
+  2. **自訂日期時間選擇器**：專案原本就有 `datepicker.js` 這個自訂雙語日期選擇器元件（取代 `input[type="date"]`，全站點名日期欄位如出缺席日期、報表區間等都在用），本次擴充支援 `datetime-local`：新增 `parseDateTime`/`formatDateTime`（一律用 `"YYYY-MM-DD HH:MM"` 空格分隔格式，跟後端 `publish_at` 欄位存的格式完全一致，前端不用再轉換）、抽出共用的 `buildDaysGrid()` 月曆格子產生函式（讓日期選擇器與日期時間選擇器共用同一份月曆邏輯，純粹提取不改變既有日期選擇器行為）、新增 `renderDateTimePicker()`／`openDateTimePickerForInput()`：月曆下方多一列時／分數字輸入，搭配「清除」「此刻」「套用」三個按鈕——點日期只更新選取狀態並重繪（不會馬上關閉，因為使用者通常還要接著調整時間），時/分輸入本身不觸發整個彈窗重繪（避免打字打到一半被中斷），真正寫回原本 input 的值＋觸發 change 事件＋關閉彈窗，發生在按下「套用」或「此刻」的當下。`initAll()` 掃描的 selector 加入 `input[type="datetime-local"]`，全站任何未來新增的 datetime-local 欄位都會自動套用，不限於這次的定時開放欄位。
+  3. **修正新增內容彈窗捲軸超出圓角**：`modal-lms-add-content` 原本把 `overflow-y: auto` 直接設在有 `border-radius` 的 `.modal-content` 本身；改為外層 `.modal-content` 只負責 `overflow: hidden`（裁切圓角）＋ `display:flex; flex-direction:column`，捲動行為移到內層新增的 `<div style="overflow-y:auto; flex:1; min-height:0;">` 包住原本全部內容，捲軸永遠不會跑到圓角外側。此為僅套用在這一個彈窗的局部修正；其餘幾個 modal（如作業繳交評分、已讀/未讀名單）也是同樣的 `overflow-y:auto` 直接放在 `.modal-content` 上的寫法，理論上有同樣風險，但使用者這次只點名這一個彈窗，故未一併處理，如需要可再提出。
+  4. **附帶修正**：`datepicker.js` 建立 wrapper 時，原本只複製 input 的 `style.width`，改為複製完整 inline style（例如這次新欄位用到的 `flex: 1; min-width: 200px;`），避免欄位與旁邊按鈕並排時版面跑掉；此為一般性強化，對既有日期欄位無影響（多半沒有依賴此行為）。
+  5. 本次已用 `node --check`（`datepicker.js`／`materials.js`）與 `npx tsc --noEmit`（0 錯誤，本次未修改後端）驗證語法；因涉及彈窗互動與月曆重繪時機，建議實機開啟「新增內容／作業」彈窗點開「定時開放」測試換月、選日期、調整時/分、套用/此刻/清除是否皆正確寫回欄位值，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:52] 全站自訂下拉選單元件，取代原生 select 彈出清單
+
+- **修改模組/檔案**：`static/js/custom-select.js`（新增）、`static/css/style.css`、`static/index.html`、`static/projection.html`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **背景**：使用者回報「新增內容／作業」彈窗的「這是什麼內容？」下拉選單展開時，選項清單會超出彈窗邊界。根因是原生 `<select>` 展開的選項清單由瀏覽器/作業系統繪製，寬度依內容自動撐開且不受 CSS 版面約束，也幾乎無法自訂圓角/陰影/hover 顏色（使用者截圖看到的圓角效果本身就是 Windows 11 版 Chrome 的原生樣式）。使用者確認後選擇「全部換成自訂下拉選單元件」以求根本解決＋外觀統一。
+  2. **實作方式**：新增 `custom-select.js`，對頁面上每個 `<select>`做漸進式增強——原生 `<select>` 保留但視覺隱藏（`display:none`，作為唯一事實來源：值、`change` 事件、既有程式碼的 `.value`/`.disabled`/動態重建 options 全部繼續對它生效，完全不需要更動任何既有呼叫端程式碼），疊一個自訂觸發按鈕＋選項面板做視覺呈現。面板用 `position:fixed` 掛在 `<body>` 下、開啟時自動偵測視窗邊界避免溢出（下方空間不夠就往上開、右側空間不夠就往左收），從根本解決「下拉選單超出容器/視窗」的問題，不是只修這一個彈窗，全站所有下拉選單都套用同一套防溢出邏輯。
+  3. **與既有程式碼同步的技巧**：既有程式碼常見的 `select.value = x`、`select.disabled = true`、`select.innerHTML = ''` 後 `appendChild` 重建選項（例如動態載入的班級選單、分組方案選單）都不會觸發 `change` 事件，因此在該 select 實例上覆寫 `value`/`selectedIndex` 存取子並用 `MutationObserver` 監看子節點與 `disabled` 屬性異動，讓自訂觸發按鈕的顯示文字/停用狀態自動保持同步。
+  4. **只在桌面滑鼠環境啟用**（`(hover: hover) and (pointer: fine)` media query）：觸控裝置（如手機遙控器彈窗、行動裝置窄螢幕的分頁切換 select）維持原生 select 不變，保留原生選擇器對觸控更友善的操作方式，不強行套用桌面風格的小面板；此判斷基於指標裝置類型而非螢幕寬度，因此桌機瀏覽器縮小視窗寬度也仍會使用桌面版自訂下拉選單，行為更準確。
+  5. 順手把回報的那個彈窗（`modal-lms-add-content`）稍微加寬（560px → 620px）並讓類別欄位有更多寬度（180px → 240px），作為雙重保險：即使在會維持原生 select 的觸控裝置上，欄位也不會太過擁擠。
+  6. 本次已用 `node --check` 驗證 `custom-select.js`／`materials.js` 語法、`npx tsc --noEmit`（0 錯誤，本次未修改後端）；因為是視覺互動元件，強烈建議實機在瀏覽器裡點開幾個下拉選單（課程切換、LMS 新增內容彈窗、分組方案等）確認鍵盤上下鍵/Enter/Escape 操作與各種既有頁面版面下都正常，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:38] 新增/編輯內容彈窗支援多個檔案、多個連結
+
+- **修改模組/檔案**：`static/index.html`、`static/js/materials.js`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **多個檔案**：檔案 `<input>` 雖然本來就有 `multiple`，但每次重新點「選擇檔案」開瀏覽器檔案視窗都會把上一次選的整組換掉，無法「先選一批、再補選幾個」，也看不到目前選了哪些、無法個別移除某一個。改為用 `stagedFiles` 陣列自行暫存，每次選檔用 `concat` 累加而非取代，並在彈窗內新增清單逐一顯示已選檔案，各自可用「✕」移除。
+  2. **多個連結**：原本「加入網路連結／影片」固定只有一組標題＋網址欄位，一次只能加一個連結。改為「➕ 新增連結」可重複新增任意筆連結列（`linkRowsDraft` 陣列），每列各自可編輯與移除，送出時逐筆呼叫既有的教材新增 API（沿用 YouTube 網址自動判斷邏輯）。
+  3. 新增/編輯彈窗開啟時都會重置這兩個暫存陣列（編輯既有小單元時，這裡新增的只是「額外要附加」的檔案/連結，既有附件仍由另一個「目前已附加的教材/檔案」清單管理）。
+  4. 實作過程中發現連結列若直接把使用者輸入值塞進 `value="${...}"` 的 HTML 字串屬性，標題或網址若含雙引號會截斷屬性導致渲染錯誤（潛在的屬性注入問題），已改為建立元素後用 `.value` 屬性賦值，不經過 HTML 字串拼接。
+  5. 本次已用 `npx tsc --noEmit`（0 錯誤，本次未修改後端）與 `node --check`（前端語法）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:31] 教師端新增小單元「編輯」功能
+
+- **修改模組/檔案**：`static/index.html`、`static/js/materials.js`
+- **修改類別**：新增／修正
+- **具體修改內容說明**：
+  1. **章節（第一層）刪除功能**：使用者提出時已確認**既有功能已滿足需求**——每個章節列右側「⋮」更多選項選單裡本來就有「🗑️ 刪除」，`deleteUnit()` 的確認對話框已明確警告「其下所有小單元與教材將一併刪除，此動作無法復原！」，故本次未變更，僅回覆使用者其入口位置（章節列的「⋮」按鈕，需先進入編輯模式）。
+  2. **小單元（第二層）編輯功能**（新增，先前完全沒有事後編輯入口，只能新增/隱藏/刪除，上一版加的「⏰ 定時開放」也只是 `prompt()` 極簡編輯，本次一併整合進來取代）：新增「✏️ 編輯」按鈕於每張小單元卡片，與既有「➕ 新增內容／作業」共用同一個彈窗（`modal-lms-add-content`），改用 `PUT /api/units/:courseId/:unitId/subunits/:subUnitId` 送出而非 `POST`，可編輯標題、說明文字、定時開放時間，以及依類別而定的作業/測驗專屬欄位（繳交方式、個人/小組、分組方案、繳交期限、逾期鎖定、測驗題目、送出後是否公布詳解）。**類別（教材/作業/測驗）建立後鎖定不可變更**（下拉選單停用並顯示提示文字），因為切換類別牽涉既有繳交/測驗資料如何處理，超出本次範圍。彈窗內新增「目前已附加的教材/檔案」清單，可個別刪除既有附件，不必離開編輯彈窗；新增檔案/連結沿用既有流程。因此移除上一版用 `prompt()` 做的「⏰ 定時開放」快速編輯按鈕（功能已被完整編輯彈窗取代，避免同一件事有兩個維護入口）。
+  3. 本次已用 `npx tsc --noEmit`（0 錯誤，後端 `PUT` 端點本來就支援這些欄位，未修改後端）與 `node --check`（前端語法）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:22] 學生端章節／小單元改為同一張卡片內的附屬關係
+
+- **修改模組/檔案**：`static/student.html`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. 上一版把章節標題列（`.unit-title`）加上跟小單元卡片（`.subunit-card`）幾乎相同的外框/陰影樣式，結果兩層看起來像兩個對等、各自獨立的區塊，而不是「章節包含小單元」的從屬關係。改為比照教師端 `static/js/materials.js` 的 `renderUnit()` 既有做法：整個章節（標題列＋底下所有小單元）包在同一張卡片（`.unit-block`，`overflow:hidden`）裡，標題列（`.unit-title`）改用學生端主色調的淺色底＋左側色條（`border-left: 4px solid var(--student-primary)`）標示這是可點擊的抽屜開關，底下小單元則放在同一張卡片內的縮排內容區（`.unit-body`，有 padding），視覺上明確從屬於上方章節，不再是各自獨立飄浮的卡片。
+  2. 本次為純 CSS 調整，未涉及 JS/後端邏輯，已用瀏覽器渲染邏輯目視核對（未啟動開發伺服器，依使用者要求）。
+
+## [2026-09-02 08:19] 修正章節摺疊列背景色不易辨識、教師上傳檔案繁體中文檔名亂碼
+
+- **修改模組/檔案**：`static/student.html`、`src/utils/upload.ts`（新增）、`src/routes/units.ts`、`src/routes/studentContent.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **章節摺疊列背景色與頁面背景相同**：上一版加入的 `.unit-title` 摺疊列沒有設定背景色，直接透出頁面底色，跟其他卡片（`.subunit-card`）比起來不容易辨識出是可點擊的區塊。補上與其他卡片一致的 `var(--card-bg)` 背景、邊框、圓角、陰影，並加上 `:hover` 效果提示可點擊。
+  2. **教師上傳檔案的繁體中文檔名亂碼**（如 `20260904å¡«å–®.docx`）：multer（底層用 busboy）預設把 multipart 表單的檔名依 HTTP 表頭規範用 latin1 解碼，但瀏覽器實際上是用 UTF-8 位元組送出非 ASCII 檔名，兩者不一致就會產生亂碼；這是既有問題，非本次新增功能造成。新增 `src/utils/upload.ts` 的 `fixUploadFilename()`（`Buffer.from(name, "latin1").toString("utf8")` 重新解碼），套用在教師端「新增內容/作業」的教材檔案上傳（`units.ts`）與學生端作業檔案繳交（`studentContent.ts`）兩處會把 `file.originalname` 存進資料庫／顯示給使用者看的地方；其餘上傳點（大頭貼、CSV 範本、即時互動牆照片等）只用副檔名做副檔名檢查，ASCII 安全，不受影響、無需修改。
+  3. 本次已用 `npx tsc --noEmit`（0 錯誤）驗證，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:14] 學生端課程內容章節預設摺疊
+
+- **修改模組/檔案**：`static/student.html`、`static/js/student.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. 學生入口「課程與作業」分頁原本每個章節（unit）底下的所有小單元（含內嵌 YouTube 影片）一律展開顯示，章節一多、又剛好有影片時版面非常混雜。改為每個章節標題可點擊展開/收合（▶/▼ 箭頭指示），`loadContent()` 渲染時預設全部摺疊（`body.hidden = true`），學生點章節標題才展開查看底下內容，不影響既有的「點閱讀取進度記錄」「作業/測驗繳交」等既有互動邏輯。
+  2. 本次已用 `node --check` 驗證語法，未啟動開發伺服器測試（依使用者要求）。
+
+## [2026-09-02 08:07] LMS 課程素材模組補完：小單元「定時開放」+ 測驗題庫 CSV 匯出
+
+- **修改模組/檔案**：`prisma/schema.prisma`、`src/db.ts`、`src/routes/units.ts`、`src/routes/studentContent.ts`、`static/index.html`、`static/js/materials.js`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **背景**：使用者請 Claude 盤點 `node_migration_and_lms_plan.md` 對照 kyps-class 移植進度後，明確指示「1、2、3、4、5不需要移植，處理6、7」，即只處理「單元定時開放」與「測驗題庫 CSV 匯入匯出」兩項，其餘（討論區、班級動態牆、通知系統、QR Code 免密碼登入、教師視角模擬）依指示不動。
+  2. **小單元「定時開放」**（模組 1，僅實作在 sub_unit 層級，不含 unit/章節層級——章節目前只有標題單一欄位的極簡建立流程，加排程時間不成比例，維持既有範圍）：`SubUnit` 新增 `publishAt`（`publish_at TEXT NULL`，格式 `YYYY-MM-DD HH:MM`）欄位，與既有 `isHidden` 是兩道獨立的可見性條件，皆需通過才會出現在學生端（`studentContent.ts` 新增 `visibleSubUnitWhere()`，套用到 `/units` 列表與 `loadVisibleAssignment`/`loadVisibleQuiz`/`loadVisibleAssignmentOrQuiz` 三個個別存取入口，避免學生直接打 API 繞過列表過濾）；教師端不受此欄位影響，一律看得到全部內容。教師端「新增內容/作業」彈窗新增「⏰ 定時開放（可選）」datetime-local 輸入框（三種類別皆可用，非僅作業/測驗），既有小單元動作列新增「⏰ 定時開放／修改排程」按鈕（沿用既有「重新命名」的 `prompt()` 極簡模式而非另建完整編輯彈窗，因本檔案目前對已建立小單元本來就沒有完整編輯表單，是既有設計取捨的延伸），卡片上有排程時會顯示「⏰ 定時開放：YYYY-MM-DD HH:MM」提示列。
+  3. **測驗題庫 CSV 匯入匯出**（模組 1）：清查後發現「下載匯入範本」與「匯入題目」其實在 Phase 3 就已經做好（`downloadQuizTemplate`/`handleQuizCsvImport`），先前判斷「未實作」是誤判；本次只補上真正缺的另一半——「📥 匯出目前題目（CSV）」按鈕，把編輯器裡目前的 `quizQuestionsDraft`（無論是手動新增或匯入後再調整過）匯出成與範本相同欄位格式的 CSV，讓題庫能真正雙向匯入匯出、跨課程重複使用或備份。
+  4. 本次已用 `npx tsc --noEmit`（0 錯誤）與 `node --check` 驗證前端 JS 語法；因使用者反映開發過程中一直啟動測試伺服器會導致瀏覽器一直被開啟分頁（`src/index.ts` 啟動時會自動 `start ""` 開啟瀏覽器），本次規範開發流程改為只跑 `prisma generate`／`tsc --noEmit`／`node --check` 驗證，不主動啟動伺服器，需要實機測試會先徵詢使用者。
+
+## [2026-09-02 07:55] 修正抽籤喀嗒聲缺失函式、工具箱子分頁按鈕未跟隨切換、Live Wall 因 Prisma Client 過期而 500
+
+- **修改模組/檔案**：`static/js/audio-engine.js`、`static/js/toolkit.js`、`node_modules/.prisma/client`（重新產生，非原始碼）
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **隨機抽籤丟出 `AudioEngine.playTick is not a function`**：`toolkit.js` 的洗牌動畫（`runSingleCardShuffleAnimation`）呼叫 `AudioEngine.playTick(isFast)` 播放洗牌喀嗒聲，但 `audio-engine.js` 從未定義過這個方法，導致每次抽籤都會擲出例外並中斷動畫。新增 `playTick(isFast)`：加速階段用較高音高／較短時長／較小音量，減速階段（最後 6 步）改用較低音高／較長時長／較大音量，做出漸慢的聽覺回饋。
+  2. **工具箱切換子分頁時按鈕外觀沒有跟著變化**：`switchSubtab()` 只切換 `active` class，但整份 CSS 從未定義 `.toolkit-subtab-btn.active` 的樣式；實際外觀（主色實心 vs. 灰色外框）其實是由 `btn` / `btn-secondary` 這兩個既有共用 class 決定，且原本只在初始 HTML 寫死一次、切換時從未增減。修正為切換分頁時同步以 `!isActive` 反向切換 `btn-secondary`，選中分頁移除 `btn-secondary`（變回主色實心），其餘分頁補回 `btn-secondary`（變回灰色外框）。
+  3. **即時互動牆分頁載入時 `GET /api/live-wall/courses/:id/active` 回應 500，前端顯示 `Cannot read properties of undefined (reading 'findFirst')`**：`prisma.liveSession` 為 `undefined`，經比對 `node_modules/.prisma/client` 內的型別定義確認是舊版 Prisma Client（[2026-09-02] Phase 4 新增 `LiveSession`/`LiveWallPost` 資料模型時未重新產生 Client）造成的過期問題，資料庫的 `live_sessions`/`live_wall_posts` 資料表本身沒有問題（`src/db.ts` 的 `initSchema()` 早已包含建表語句，非透過 `prisma migrate` 管理）。修正方式：先徵求使用者同意後結束佔用 Prisma query engine dll 的既有 `tsx watch` 開發伺服器行程，執行 `npx prisma generate` 重新產生 Client，再重新啟動開發伺服器。
+  4. 本次因需重啟開發伺服器才能重現/驗證修正效果，已徵求使用者同意後代為執行；程式碼修正部分僅為既有邏輯的行為修正，未新增外部依賴或資料庫結構變更。
+
 ## [2026-09-02] Phase 4：即時互動牆 Live Wall（自 kyps-class 移植，改接 TeachSYS 自有架構）
 
 - **修改模組/檔案**：`prisma/schema.prisma`、`src/db.ts`、`src/realtime.ts`、`src/routes/liveWall.ts`（新增）、`src/routes/studentLiveWall.ts`（新增）、`src/index.ts`、`static/js/realtime.js`、`static/js/app.js`、`static/js/projection.js`、`static/js/toolkit.js`、`static/js/student.js`、`static/index.html`、`static/student.html`、`static/projection.html`

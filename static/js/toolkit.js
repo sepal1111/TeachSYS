@@ -1758,6 +1758,7 @@
       document.getElementById('btn-livewall-start')?.addEventListener('click', () => this.start());
       document.getElementById('btn-livewall-clear')?.addEventListener('click', () => this.clear());
       document.getElementById('btn-livewall-end')?.addEventListener('click', () => this.end());
+      document.getElementById('btn-livewall-history')?.addEventListener('click', () => this.openHistory());
     },
 
     onEnterLiveWallTab() {
@@ -1804,15 +1805,20 @@
         const nameLine = `${p.student_number} 號 ${livewallEscapeHtml(p.student_name)}`;
         if (p.image_url) {
           card.innerHTML = `
-            <a href="${p.image_url}" target="_blank" rel="noopener"><img src="${p.image_url}" style="width:100%; border-radius:var(--radius-md); object-fit:cover; max-height:200px;" alt="貼文"></a>
+            <img src="${p.image_url}" style="width:100%; border-radius:var(--radius-md); object-fit:cover; max-height:200px; cursor:zoom-in;" alt="貼文">
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">${nameLine}</div>
           `;
+          // 改為彈出視窗放大檢視（可縮放/平移），取代原本開新分頁的做法，見 static/js/image-lightbox.js。
+          card.querySelector('img').addEventListener('click', () => {
+            window.ImageLightbox && window.ImageLightbox.open(p.image_url);
+          });
         } else {
           card.innerHTML = `
             <div style="white-space:pre-wrap; font-size:0.92rem;">${livewallEscapeHtml(p.text_content || '')}</div>
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">${nameLine}</div>
           `;
         }
+        // 進行中場次的即時看板一律唯讀——刪除紀錄的功能移到「📜 歷史紀錄」彈窗管理，不放在這裡。
         grid.appendChild(card);
       });
     },
@@ -1852,6 +1858,113 @@
         await API.post(`/api/live-wall/sessions/${this.currentSession.id}/close`);
         window.showToast && window.showToast('場次已結束', 'success');
         await this.refresh();
+      } catch (err) {
+        window.showToast && window.showToast(err.message, 'error');
+      }
+    },
+
+    // --- 歷史紀錄（教師端）：該課程所有場次、所有學生的完整上傳紀錄，與「進行中場次」的
+    // 即時看板分開——刪除紀錄的管理動作只在這裡進行，不影響/不出現在進行中場次的唯讀看板。
+
+    async openHistory() {
+      const courseId = window.AppState && window.AppState.currentCourseId;
+      if (!courseId) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
+      await this.loadHistory();
+      window.openModal && window.openModal('modal-livewall-history');
+    },
+
+    async loadHistory() {
+      const courseId = window.AppState && window.AppState.currentCourseId;
+      if (!courseId) return;
+      try {
+        const posts = await API.get(`/api/live-wall/courses/${courseId}/history`);
+        this.renderHistory(posts);
+      } catch (err) {
+        window.showToast && window.showToast(err.message, 'error');
+      }
+    },
+
+    // 依場次分組呈現為「日期－活動名稱（N 則）」的可展開分類，點開才顯示該場次所有學生的
+    // 送出內容——避免全部紀錄攤平成一長串列表不好找。groups 為後端回傳的 [{session, posts}]。
+    renderHistory(groups) {
+      const modeLabels = { text: '✏️ 文字', drawing: '🎨 手繪', photo: '📷 拍照' };
+      const list = document.getElementById('livewall-history-list');
+      const empty = document.getElementById('livewall-history-empty');
+      if (!list) return;
+      list.innerHTML = '';
+      if (empty) empty.style.display = groups.length ? 'none' : 'block';
+
+      groups.forEach((group) => {
+        const { session, posts } = group;
+        const dateLabel = (session.created_at || '').split(' ')[0];
+        const activityName = session.title || modeLabels[session.mode] || session.mode;
+
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'border:1px solid var(--card-border); border-radius:var(--radius-md); overflow:hidden;';
+
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.style.cssText = 'width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; background:var(--nav-bg); border:none; cursor:pointer; text-align:left; font-weight:700; font-size:0.92rem; color:var(--text-main);';
+        header.innerHTML = `
+          <span>📅 ${livewallEscapeHtml(dateLabel)}－${livewallEscapeHtml(activityName)}<span style="font-weight:400; color:var(--text-muted); margin-left:6px;">（${posts.length} 則）</span></span>
+          <span class="livewall-history-toggle-icon">▶</span>
+        `;
+
+        const body = document.createElement('div');
+        body.style.cssText = 'padding:10px; display:flex; flex-direction:column; gap:8px;';
+        body.hidden = true;
+        posts.forEach((p) => body.appendChild(this.renderHistoryPostRow(p)));
+
+        header.addEventListener('click', () => {
+          body.hidden = !body.hidden;
+          header.querySelector('.livewall-history-toggle-icon').textContent = body.hidden ? '▶' : '▼';
+        });
+
+        wrap.appendChild(header);
+        wrap.appendChild(body);
+        list.appendChild(wrap);
+      });
+    },
+
+    renderHistoryPostRow(p) {
+      const row = document.createElement('div');
+      row.className = 'glass-card';
+      row.style.cssText = 'padding:10px 12px; display:flex; align-items:center; gap:12px;';
+      const thumb = p.image_url
+        ? `<img src="${p.image_url}" style="width:56px; height:56px; object-fit:cover; border-radius:var(--radius-sm); cursor:zoom-in; flex-shrink:0;" alt="貼文">`
+        : `<div style="width:56px; height:56px; border-radius:var(--radius-sm); background:var(--nav-bg); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">✏️</div>`;
+      row.innerHTML = `
+        ${thumb}
+        <div style="flex:1; min-width:0;">
+          <div style="font-weight:700; font-size:0.9rem;">${p.student_number} 號 ${livewallEscapeHtml(p.student_name)}</div>
+          <div style="font-size:0.78rem; color:var(--text-muted);">${livewallEscapeHtml(p.created_at || '')}</div>
+          ${p.text_content ? `<div style="font-size:0.85rem; margin-top:4px; white-space:pre-wrap;">${livewallEscapeHtml(p.text_content)}</div>` : ''}
+        </div>
+      `;
+      if (p.image_url) {
+        row.querySelector('img').addEventListener('click', () => {
+          window.ImageLightbox && window.ImageLightbox.open(p.image_url);
+        });
+      }
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn-icon';
+      delBtn.title = '刪除這筆紀錄';
+      delBtn.style.cssText = 'flex-shrink:0;';
+      delBtn.textContent = '🗑️';
+      delBtn.addEventListener('click', () => this.deletePost(p.id));
+      row.appendChild(delBtn);
+      return row;
+    },
+
+    // 刪除單筆上傳紀錄（教師端專用，從「歷史紀錄」彈窗操作）：後端會連同伺服器上的手繪/拍照
+    // 檔案一併刪除，此動作無法復原。若該筆同時也還在進行中場次的看板上，一併重新整理看板。
+    async deletePost(postId) {
+      if (!confirm('確定要刪除這筆紀錄嗎？對應的檔案也會一併從伺服器刪除，此動作無法復原！')) return;
+      try {
+        await API.delete(`/api/live-wall/posts/${postId}`);
+        window.showToast && window.showToast('紀錄已刪除', 'success');
+        await Promise.all([this.loadHistory(), this.refresh()]);
       } catch (err) {
         window.showToast && window.showToast(err.message, 'error');
       }
@@ -1900,7 +2013,9 @@
 
     switchSubtab(subtab) {
       document.querySelectorAll('.toolkit-subtab-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.toolkitTab === subtab);
+        const isActive = b.dataset.toolkitTab === subtab;
+        b.classList.toggle('active', isActive);
+        b.classList.toggle('btn-secondary', !isActive);
       });
       document.querySelectorAll('.toolkit-subpane').forEach(p => {
         p.style.display = p.id === `toolkit-subpane-${subtab}` ? 'block' : 'none';
