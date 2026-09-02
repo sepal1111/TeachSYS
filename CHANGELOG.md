@@ -1,5 +1,35 @@
 # CHANGELOG
 
+## [2026-09-02 21:42] 移除學生介面「班級討論區」預設分頁按鈕
+
+- **修改模組/檔案**：`static/student.html`、`static/js/student.js`
+- **修改類別**：移除
+- **具體修改內容說明**：
+  1. **背景**：使用者要求移除學生介面分頁列中「💬 班級討論區」這個按鈕。該按鈕原本就是一個尚未串接後端的預覽佔位功能，點擊只會跳出「班級討論區功能開發中，敬請期待！」的 toast，不是真正可用的功能。
+  2. **`static/student.html`**：移除分頁列中的 `#btnContentTabStream` 按鈕，以及對應的 `#streamTabPane` 內容分頁（原本顯示「班級討論區即將推出」的佔位卡片）；一併移除只有這顆按鈕在用、現已無其他地方引用的 `.student-tab-btn.soon` 與 `.soon-badge` 兩條 CSS 規則（`.coming-soon-card` 仍被「即時互動牆」空狀態卡片使用，予以保留）。
+  3. **`static/js/student.js`**：移除 `btnContentTabStream`／`streamTabPane` 兩個 DOM 參照、`TAB_PANES` 物件裡的 `stream` 項目，以及該按鈕的點擊事件監聽器（原本只會彈出「開發中」提示）。分頁列剩下「課程與作業」「我的點數」「即時互動牆」三個按鈕。
+  4. 本次已用 `node --check student.js` 驗證語法，未啟動開發伺服器測試（依使用者要求）——**建議實機測試**：以學生帳號登入，確認分頁列不再顯示「班級討論區」按鈕，且「課程與作業」「我的點數」「即時互動牆」三個分頁切換皆正常。
+
+## [2026-09-02 21:31] 修正座位表編排／彈性分組／特殊表現紀錄三個分頁在無班級時不會顯示「尚無班級」提示區塊的問題
+
+- **修改模組/檔案**：`static/js/app.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：使用者回報系統內若沒有任何班級，切換到「座位表編排」「彈性分組」「特殊表現紀錄」這三個功能分頁時，理應跟計分、出席、儀表板、課程與教材、後台管理等其他分頁一樣顯示「目前系統中尚無任何班級」的行內提示區塊，但實際上沒有顯示、畫面是空的。
+  2. **根因**：`loadSeatingData()`（第 2111 行起）、`loadGroupingData()`（第 1648 行起）、`loadNotesData()`（第 2306 行起）與 `renderActiveTabEmptyNotice()`（第 794 行起）呼叫 `renderEmptyCourseNotice()` 時，分別傳入 `document.getElementById('seating-grid-container')`、`'grouping-grid-container'`、`'notes-students-list')` 這三個 ID——但 `static/index.html` 裡實際對應的容器 ID 其實是 `seating-grid`（座位表主格）、`group-columns-container`（分組欄位容器）、`notes-list-container`（特殊表現紀錄歷史列表），三個 ID 完全對不上。`renderEmptyCourseNotice()` 一開頭 `if (!container) return;` 拿到 `null` 就直接無聲返回，導致提示卡從未被渲染出來，是先前就存在但沒被發現的既有 bug，非本次新增功能造成。
+  3. **修正內容**：把上述四個位置共 4 處 `getElementById()` 的 ID 全部改成實際存在的正確容器 ID（`seating-grid`／`group-columns-container`／`notes-list-container`）。修正後，切到這三個分頁在無班級時會正確顯示與計分/出席分頁一致的「🏫 目前系統中尚無任何班級」提示卡（含建立班級按鈕與名冊範例檔下載）；有班級資料成功載入時，`renderSeatingGrid()`／`renderGroupColumns()`／筆記歷史清單渲染函式（皆為第 2338 行 `notes-list-container` 所在函式）本來就會整個 `innerHTML` 重繪覆蓋掉提示卡，故不影響正常顯示。
+  4. 本次已用 `node --check app.js` 驗證語法，未啟動開發伺服器測試（依使用者要求）——**建議實機測試**：刪除所有班級（或使用空系統帳號）後依序切換座位表編排、彈性分組、特殊表現紀錄三個分頁，確認皆會顯示「尚無班級」提示卡；接著建立班級，確認三個分頁能恢復正常顯示座位格/分組欄位/筆記表單與歷史紀錄。
+
+## [2026-09-02 21:27] 系統內尚無任何班級時，切換到任一功能分頁都會彈出建立班級提示視窗
+
+- **修改模組/檔案**：`static/js/app.js`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **背景**：使用者要求「當系統中沒有任何班級時，進入任何的功能都要顯示建立班級的提示視窗」。原本 `loadCourses()` 只有在登入後第一次載入、偵測到 `AppState.courses` 為空陣列時，才會呼叫 `openModal('modal-add-course')` 彈出一次建立班級視窗；使用者若把這個視窗關掉，之後切換到計分、出席、座位表、分組、筆記、課程與教材、教學小工具、後台管理等任一功能分頁，只會看到各分頁既有的行內「尚無班級」提示卡（`renderEmptyCourseNotice()`），不會再跳出視窗提醒。
+  2. **修改內容**：在 `switchTab()`（`app.js` 第 524 行起，唯一會在使用者點擊上方導覽分頁或手機版下拉選單時觸發的函式）尾端，於既有的 `refreshActiveTab(tabName)` 呼叫之後，新增檢查：只要 `AppState.courses` 是空的，就呼叫 `openModal('modal-add-course')` 重新彈出建立班級視窗。因此不論使用者切到哪一個功能分頁，只要系統內還沒有任何班級，都會再次看到提示視窗，而不只是行內提示卡。
+  3. `openModal()` 本身只是替 DOM 元素加上 `open` class（`app.js` 第 3557 行），重複呼叫不會有副作用，也不影響原本登入後首次自動彈窗、以及各功能按鈕點擊時 `ensureCourseSelected()` 顯示 toast＋開窗的既有邏輯。
+  4. 本次已用 `node --check app.js` 驗證語法，未啟動開發伺服器測試（依使用者要求）——**建議實機測試**：建立一個空系統帳號（或刪除所有班級後）登入，依序點擊每一個功能分頁，確認每次切換都會跳出建立班級視窗。
+
 ## [2026-09-02 16:19] 主登入畫面移除學生登入表單，改為「學生連線 QR Code」按鈕
 
 - **修改模組/檔案**：`static/index.html`、`static/js/app.js`、`static/js/i18n.js`、`src/routes/system.ts`

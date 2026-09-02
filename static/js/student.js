@@ -13,11 +13,9 @@
   const emptyState = document.getElementById('emptyState');
   const btnContentTabMaterials = document.getElementById('btnContentTabMaterials');
   const btnContentTabScores = document.getElementById('btnContentTabScores');
-  const btnContentTabStream = document.getElementById('btnContentTabStream');
   const btnContentTabLiveWall = document.getElementById('btnContentTabLiveWall');
   const materialsTabPane = document.getElementById('materialsTabPane');
   const scoresTabPane = document.getElementById('scoresTabPane');
-  const streamTabPane = document.getElementById('streamTabPane');
   const liveWallTabPane = document.getElementById('liveWallTabPane');
   const scoreLogsList = document.getElementById('scoreLogsList');
   const scoreEmptyState = document.getElementById('scoreEmptyState');
@@ -671,11 +669,10 @@
     });
   }
 
-  // --- Tab Bar (含兩個尚未開放後端的預覽分頁：班級討論區 / 即時互動牆) ---
+  // --- Tab Bar (含一個尚未開放後端的預覽分頁：即時互動牆) ---
   const TAB_PANES = {
     materials: { btn: btnContentTabMaterials, pane: materialsTabPane },
     scores: { btn: btnContentTabScores, pane: scoresTabPane },
-    stream: { btn: btnContentTabStream, pane: streamTabPane },
     liveWall: { btn: btnContentTabLiveWall, pane: liveWallTabPane },
   };
 
@@ -711,7 +708,6 @@
     }
   });
 
-  btnContentTabStream.addEventListener('click', () => showToast('班級討論區功能開發中，敬請期待！'));
   btnContentTabLiveWall.addEventListener('click', () => {
     switchTab('liveWall');
     LiveWall.refresh();

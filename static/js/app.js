@@ -565,6 +565,13 @@ function switchTab(tabName) {
   // to the course-independent Timer sub-tab). Gating this call on currentCourseId
   // used to skip that per-tab handling entirely whenever no course existed yet.
   refreshActiveTab(tabName);
+
+  // No class exists anywhere in the system yet — besides each pane's inline
+  // empty-course notice, also pop the create-class modal so it's impossible
+  // to miss regardless of which function tab was just entered.
+  if (!AppState.courses || AppState.courses.length === 0) {
+    openModal('modal-add-course');
+  }
 }
 
 function initNavTabs() {
@@ -787,9 +794,9 @@ function renderEmptyStudentRosterNotice(container) {
 function renderActiveTabEmptyNotice() {
   renderEmptyCourseNotice(document.getElementById('scoring-student-grid'));
   renderEmptyCourseNotice(document.getElementById('attendance-student-grid'));
-  renderEmptyCourseNotice(document.getElementById('seating-grid-container'));
-  renderEmptyCourseNotice(document.getElementById('grouping-grid-container'));
-  renderEmptyCourseNotice(document.getElementById('notes-students-list'));
+  renderEmptyCourseNotice(document.getElementById('seating-grid'));
+  renderEmptyCourseNotice(document.getElementById('group-columns-container'));
+  renderEmptyCourseNotice(document.getElementById('notes-list-container'));
   renderEmptyCourseNotice(document.getElementById('all-students-score-grid'));
   renderEmptyCourseNotice(document.getElementById('individual-leaderboard'));
   renderEmptyCourseNotice(document.getElementById('admin-students-list-container'));
@@ -1640,7 +1647,7 @@ async function saveAttendance() {
 // --- Grouping Pane & Drag & Drop ---
 async function loadGroupingData(targetPlanId) {
   if (!AppState.currentCourseId) {
-    renderEmptyCourseNotice(document.getElementById('grouping-grid-container'));
+    renderEmptyCourseNotice(document.getElementById('group-columns-container'));
     return;
   }
   try {
@@ -2103,7 +2110,7 @@ async function confirmDeleteGroup() {
 // --- Seating Chart Pane ---
 async function loadSeatingData() {
   if (!AppState.currentCourseId || (AppState.courses && AppState.courses.length === 0)) {
-    renderEmptyCourseNotice(document.getElementById('seating-grid-container'));
+    renderEmptyCourseNotice(document.getElementById('seating-grid'));
     return;
   }
   try {
@@ -2298,7 +2305,7 @@ async function runAutoGrouping() {
 // --- Qualitative Notes Pane ---
 async function loadNotesData() {
   if (!AppState.currentCourseId || (AppState.courses && AppState.courses.length === 0)) {
-    renderEmptyCourseNotice(document.getElementById('notes-students-list'));
+    renderEmptyCourseNotice(document.getElementById('notes-list-container'));
     return;
   }
   try {
