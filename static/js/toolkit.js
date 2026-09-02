@@ -907,7 +907,7 @@
               <span class="lucky-winner-name">${displayName}</span>
             </div>
             <div class="lucky-winner-actions">
-              <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.95rem;">
+              <span class="badge" style="background: rgba(123, 152, 224, 0.2); color: #93c5fd; border: 1px solid rgba(123, 152, 224, 0.4); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.95rem;">
                 ${t('draw_presenter_badge') || '🎤 請上台 / 發表'}
               </span>
             </div>
@@ -930,7 +930,7 @@
               <span class="lucky-winner-name">${groupName}</span>
             </div>
             <div class="lucky-winner-actions">
-              <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.95rem;">
+              <span class="badge" style="background: rgba(79, 174, 130, 0.2); color: #6ee7b7; border: 1px solid rgba(79, 174, 130, 0.4); padding: 6px 14px; border-radius: 20px; font-weight: 800; font-size: 0.95rem;">
                 ${t('draw_team_presenter_badge') || '🎤 小組代表發表'}
               </span>
             </div>
@@ -1418,7 +1418,7 @@
     updateCountdownControls() {
       const lang = window.I18n ? window.I18n.getLanguage() : 'zh-TW';
       const label = this.isCountdownRunning ? (lang === 'en' ? '⏸️ Pause' : '⏸️ 暫停計時') : (lang === 'en' ? '▶️ Start' : '▶️ 開始計時');
-      const bg = this.isCountdownRunning ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #10b981, #059669)';
+      const bg = this.isCountdownRunning ? 'linear-gradient(135deg, #d3a24c, #d97706)' : 'linear-gradient(135deg, #4fae82, #059669)';
 
       const btn = document.getElementById('btn-timer-toggle');
       if (btn) {
@@ -1556,7 +1556,7 @@
     updateStopwatchControls() {
       const lang = window.I18n ? window.I18n.getLanguage() : 'zh-TW';
       const label = this.isStopwatchRunning ? (lang === 'en' ? '⏸️ Pause' : '⏸️ 暫停') : (lang === 'en' ? '▶️ Start' : '▶️ 開始');
-      const bg = this.isStopwatchRunning ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'linear-gradient(135deg, #10b981, #059669)';
+      const bg = this.isStopwatchRunning ? 'linear-gradient(135deg, #d3a24c, #d97706)' : 'linear-gradient(135deg, #4fae82, #059669)';
 
       const btn = document.getElementById('btn-sw-toggle');
       if (btn) {
@@ -1694,15 +1694,15 @@
         if (fsIconEl) fsIconEl.textContent = '⏸️';
         if (textEl) textEl.textContent = isEn ? 'Pause Music' : '暫停音樂';
         if (fsTextEl) fsTextEl.textContent = isEn ? 'Pause Music' : '暫停音樂';
-        if (btn1) { btn1.style.background = 'linear-gradient(135deg, #10b981, #059669)'; }
-        if (btn2) { btn2.style.background = 'linear-gradient(135deg, #10b981, #059669)'; }
+        if (btn1) { btn1.style.background = 'linear-gradient(135deg, #4fae82, #059669)'; }
+        if (btn2) { btn2.style.background = 'linear-gradient(135deg, #4fae82, #059669)'; }
       } else {
         if (iconEl) iconEl.textContent = '▶️';
         if (fsIconEl) fsIconEl.textContent = '▶️';
         if (textEl) textEl.textContent = isEn ? 'Play Music' : '播放音樂';
         if (fsTextEl) fsTextEl.textContent = isEn ? 'Play Music' : '播放音樂';
-        if (btn1) { btn1.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'; }
-        if (btn2) { btn2.style.background = 'linear-gradient(135deg, #3b82f6, #1d4ed8)'; }
+        if (btn1) { btn1.style.background = 'linear-gradient(135deg, #7b98e0, #4a67ba)'; }
+        if (btn2) { btn2.style.background = 'linear-gradient(135deg, #7b98e0, #4a67ba)'; }
       }
 
       // Slider sync

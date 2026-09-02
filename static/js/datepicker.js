@@ -102,7 +102,7 @@
     }
 
     .cdp-nav-btn:hover {
-      background: #3b82f6 !important;
+      background: #7b98e0 !important;
       color: #ffffff !important;
       border-color: #60a5fa !important;
       transform: scale(1.05) !important;
@@ -151,7 +151,7 @@
     }
 
     .cdp-day-cell:hover {
-      background: rgba(59, 130, 246, 0.28) !important;
+      background: rgba(123, 152, 224, 0.28) !important;
       border-color: rgba(96, 165, 250, 0.6) !important;
       transform: scale(1.08) !important;
     }
@@ -161,16 +161,16 @@
     }
 
     .cdp-day-cell.cdp-today {
-      border-color: #3b82f6 !important;
+      border-color: #7b98e0 !important;
       font-weight: 800 !important;
       color: #60a5fa !important;
     }
 
     .cdp-day-cell.cdp-selected {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+      background: linear-gradient(135deg, #7b98e0, #4a67ba) !important;
       color: #ffffff !important;
       font-weight: 800 !important;
-      box-shadow: 0 2px 10px rgba(59, 130, 246, 0.5) !important;
+      box-shadow: 0 2px 10px rgba(123, 152, 224, 0.5) !important;
     }
 
     .cdp-footer {
@@ -206,7 +206,7 @@
     }
 
     .cdp-today-btn:hover {
-      background: rgba(59, 130, 246, 0.2) !important;
+      background: rgba(123, 152, 224, 0.2) !important;
       color: #93c5fd !important;
     }
 
@@ -243,8 +243,8 @@
     }
 
     .cdp-time-input:focus {
-      border-color: #3b82f6 !important;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25) !important;
+      border-color: #7b98e0 !important;
+      box-shadow: 0 0 0 3px rgba(123, 152, 224, 0.25) !important;
     }
 
     .cdp-time-input::-webkit-outer-spin-button,
@@ -259,7 +259,7 @@
     }
 
     .cdp-apply-btn {
-      background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important;
+      background: linear-gradient(135deg, #7b98e0, #4a67ba) !important;
       color: #ffffff !important;
       border: none !important;
       font-size: 0.85rem !important;

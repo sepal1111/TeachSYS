@@ -161,8 +161,8 @@
               <option value="right" data-i18n="seating_bb_right">➡️ 講台在右</option>
             </select>
             <button id="btn-save-seat-config" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="seating_btn_save_config">💾 儲存設定</button>
-            <button id="btn-arrange-number-seats" class="btn" style="font-size: 0.85rem; background: linear-gradient(135deg, #10b981, #059669);" data-i18n="seating_btn_arrange_number">🔢 依座號依序編排</button>
-            <button id="btn-arrange-gender-seats" class="btn" style="font-size: 0.85rem; background: linear-gradient(135deg, #ec4899, #3b82f6);" data-i18n="seating_btn_arrange_gender">⚖️ 性別平均排位</button>
+            <button id="btn-arrange-number-seats" class="btn" style="font-size: 0.85rem; background: linear-gradient(135deg, #4fae82, #059669);" data-i18n="seating_btn_arrange_number">🔢 依座號依序編排</button>
+            <button id="btn-arrange-gender-seats" class="btn" style="font-size: 0.85rem; background: linear-gradient(135deg, #ec4899, #7b98e0);" data-i18n="seating_btn_arrange_gender">⚖️ 性別平均排位</button>
             <button id="btn-arrange-random-seats" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="seating_btn_arrange_random">🎲 隨機排位</button>
           </div>
         </div>
@@ -195,20 +195,20 @@
       <div class="glass-card">
         
         <!-- Grouping Plan / Mode Selector Toolbar -->
-        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-lg); border: 1.5px solid rgba(59, 130, 246, 0.25);">
+        <div style="display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; background: rgba(123, 152, 224, 0.08); border-radius: var(--radius-lg); border: 1.5px solid rgba(123, 152, 224, 0.25);">
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <span style="font-weight: 800; font-size: 0.95rem; color: #60a5fa; display: flex; align-items: center; gap: 6px;">
               🏷️ <span data-i18n="group_plan_label">分組模式：</span>
             </span>
             <select id="group-plan-select" class="input-control" style="width: auto; min-width: 150px; font-weight: 700; background: var(--input-bg);"></select>
-            <span id="group-plan-active-badge" class="badge" style="background: #10b981; color: #fff; font-size: 0.82rem; padding: 5px 9px; border-radius: 6px; font-weight: 700;" data-i18n="group_plan_active_badge">⭐ 生效中模式</span>
+            <span id="group-plan-active-badge" class="badge" style="background: #4fae82; color: #fff; font-size: 0.82rem; padding: 5px 9px; border-radius: 6px; font-weight: 700;" data-i18n="group_plan_active_badge">⭐ 生效中模式</span>
             <button type="button" id="btn-set-active-group-plan" class="btn btn-secondary btn-sm" style="display: none; font-size: 0.85rem; padding: 4px 10px;" data-i18n="group_plan_btn_set_active">⭐ 設為目前生效模式</button>
           </div>
           <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-            <button type="button" id="btn-create-group-plan" class="btn btn-sm" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); font-weight: 700;" data-i18n="group_plan_btn_create">➕ 新增分組模式</button>
+            <button type="button" id="btn-create-group-plan" class="btn btn-sm" style="background: linear-gradient(135deg, #7b98e0, #4a67ba); font-weight: 700;" data-i18n="group_plan_btn_create">➕ 新增分組模式</button>
             <button type="button" id="btn-copy-group-plan" class="btn btn-secondary btn-sm" data-i18n="group_plan_btn_copy">📋 複製此模式</button>
             <button type="button" id="btn-rename-group-plan" class="btn btn-secondary btn-sm" data-i18n="group_plan_btn_rename">✏️ 重新命名</button>
-            <button type="button" id="btn-delete-group-plan" class="btn btn-secondary btn-sm" style="color: #ef4444;" data-i18n="group_plan_btn_delete">🗑️ 刪除模式</button>
+            <button type="button" id="btn-delete-group-plan" class="btn btn-secondary btn-sm" style="color: #d9807e;" data-i18n="group_plan_btn_delete">🗑️ 刪除模式</button>
           </div>
         </div>
 
@@ -283,7 +283,7 @@
             <button class="btn btn-secondary dashboard-period-btn" data-period="month" data-i18n="dash_period_month">當月</button>
             <button class="btn btn-secondary dashboard-period-btn" data-period="range" data-i18n="dash_period_range">指定日期區間</button>
             <button class="btn btn-secondary dashboard-period-btn" data-period="semester" data-i18n="dash_period_semester">學期總計</button>
-            <button id="btn-open-big-screen" class="btn" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); margin-left: 8px;" data-i18n="dash_btn_big_screen">📺 進入大螢幕投影模式</button>
+            <button id="btn-open-big-screen" class="btn" style="background: linear-gradient(135deg, #9a86c4, #ec4899); margin-left: 8px;" data-i18n="dash_btn_big_screen">📺 進入大螢幕投影模式</button>
           </div>
         </div>
 
@@ -436,9 +436,9 @@
               <button type="button" class="btn btn-sm btn-secondary btn-bulletin-theme" data-theme="clean-white" data-i18n="bulletin_theme_white">極簡白</button>
             </div>
             <div class="bulletin-tool-group" style="margin-left: auto; display: flex; gap: 8px;">
-              <button type="button" id="btn-bulletin-save" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); border:none; font-weight:700;" data-i18n="bulletin_btn_save">💾 儲存內容</button>
+              <button type="button" id="btn-bulletin-save" class="btn btn-sm" style="background: linear-gradient(135deg, #4fae82, #059669); border:none; font-weight:700;" data-i18n="bulletin_btn_save">💾 儲存內容</button>
               <button type="button" id="btn-bulletin-clear" class="btn btn-sm btn-secondary" style="color: #f87171;" data-i18n="bulletin_btn_clear">🗑️ 清除內容</button>
-              <button type="button" id="btn-bulletin-fullscreen" class="btn btn-sm" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border:none; font-weight:700;" data-i18n="bulletin_btn_fullscreen">⛶ 全螢幕投影</button>
+              <button type="button" id="btn-bulletin-fullscreen" class="btn btn-sm" style="background: linear-gradient(135deg, #7b98e0, #4a67ba); border:none; font-weight:700;" data-i18n="bulletin_btn_fullscreen">⛶ 全螢幕投影</button>
             </div>
           </div>
           <div id="bulletin-board-card" class="bulletin-board-card theme-chalk-green">
@@ -509,7 +509,7 @@
             <button type="button" class="btn btn-secondary btn-timer-mode" data-mode="stopwatch" data-i18n="timer_tab_stopwatch">⏱️ 正計時碼錶</button>
             <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
               <button type="button" id="btn-timer-mini-toggle" class="btn btn-secondary btn-sm" data-i18n="timer_mini_btn">📌 浮動迷你視窗</button>
-              <button type="button" id="btn-timer-fullscreen" class="btn btn-sm" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); border:none; font-weight:700;" data-i18n="timer_btn_fullscreen">⛶ 全螢幕投影</button>
+              <button type="button" id="btn-timer-fullscreen" class="btn btn-sm" style="background: linear-gradient(135deg, #7b98e0, #4a67ba); border:none; font-weight:700;" data-i18n="timer_btn_fullscreen">⛶ 全螢幕投影</button>
             </div>
           </div>
 
@@ -567,7 +567,7 @@
           <div class="timer-bgm-bar" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; padding: 10px 16px; background: var(--input-bg); border: 1px solid var(--card-border); border-radius: var(--radius-lg); flex-wrap: wrap;">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <span style="font-weight: 700; font-size: 0.9rem; color: #93c5fd;" data-i18n="timer_bgm_title">🎵 背景音樂：</span>
-              <button type="button" id="btn-timer-bgm-toggle" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; border: none; border-radius: var(--radius-md); padding: 5px 14px; display: inline-flex; align-items: center; gap: 6px;">
+              <button type="button" id="btn-timer-bgm-toggle" class="btn btn-sm" style="background: linear-gradient(135deg, #4fae82, #059669); color: #fff; font-weight: 700; border: none; border-radius: var(--radius-md); padding: 5px 14px; display: inline-flex; align-items: center; gap: 6px;">
                 <span id="timer-bgm-icon">⏸️</span> <span id="timer-bgm-btn-text" data-i18n="timer_bgm_pause">暫停音樂</span>
               </button>
               <button type="button" id="btn-timer-bgm-next" class="btn btn-secondary btn-sm" style="font-weight: 600; padding: 5px 12px;" title="隨機切換下一首" data-i18n="timer_bgm_next">
@@ -579,7 +579,7 @@
             </div>
             <div style="display: flex; align-items: center; gap: 8px; margin-left: auto;">
               <span style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="timer_bgm_vol">🔊 音量：</span>
-              <input type="range" id="timer-bgm-vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 90px; cursor: pointer; accent-color: #3b82f6;">
+              <input type="range" id="timer-bgm-vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 90px; cursor: pointer; accent-color: #7b98e0;">
             </div>
           </div>
         </div>
@@ -636,7 +636,7 @@
         <button class="btn admin-subtab-btn active" data-subtab="students" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🧑‍🎓 學生名冊管理</button>
         <button class="btn btn-secondary admin-subtab-btn" data-subtab="rules" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎯 評分項目設定</button>
         <button class="btn btn-secondary admin-subtab-btn" data-subtab="reports" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">📊 報表資料匯出</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="appearance" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🖼️ 標誌與外觀主題</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="appearance" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🖼️ 標誌設定</button>
         <button class="btn btn-secondary admin-subtab-btn" data-subtab="security" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🔐 密碼安全與手冊</button>
       </div>
 
@@ -753,26 +753,12 @@
           </div>
         </div>
 
-        <!-- Theme Switcher Card -->
-        <div class="glass-card">
-          <div class="glass-card-header">
-            <div class="glass-card-title" data-i18n="admin_theme_title">🎨 系統 UI 視覺主題設定</div>
-          </div>
-          <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
-            <label style="font-weight: bold; font-size: 0.95rem;" data-i18n="admin_theme_label">配色主題：</label>
-            <select id="theme-select" class="input-control" style="width: auto; min-width: 200px;">
-              <option value="dark" data-i18n="admin_theme_dark">🌙 現代深色系 (Dark Mode)</option>
-              <option value="light" data-i18n="admin_theme_light">☀️ 典雅亮色系 (Light Mode)</option>
-            </select>
-            <span style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="admin_theme_hint">💡 選擇後系統將自動記憶您的色彩視覺偏好</span>
-          </div>
-        </div>
       </div>
 
       <!-- 5. 密碼安全與手冊 Subpane -->
       <div id="admin-subpane-security" class="admin-subpane" style="display: none;">
         <!-- Teacher Operation Manual Card -->
-        <div class="glass-card" style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(124, 58, 237, 0.08)); border-color: rgba(59, 130, 246, 0.3);">
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(91, 124, 214, 0.08), rgba(149, 117, 196, 0.08)); border-color: rgba(123, 152, 224, 0.3);">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="glass-card-title" data-i18n="admin_manual_title">📖 教師系統操作指南與使用手冊</div>
             <a href="/guide" target="_blank" class="btn" style="text-decoration: none; font-size: 0.88rem; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;" data-i18n="admin_btn_open_guide">
@@ -1281,10 +1267,10 @@
       <div style="font-size: 0.92rem; color: var(--text-main); margin-bottom: 8px;">
         請學生用手機或平板掃描下方 QR Code，即可直接開啟<b>學生登入頁面</b>：
       </div>
-      <img id="qr-student-image" src="" alt="QR Code" style="width: 220px; height: 220px; margin: 10px auto; display: block; border-radius: 12px; background: #fff; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15);">
+      <img id="qr-student-image" src="" alt="QR Code" title="點擊以開新分頁放大至全螢幕" style="width: 220px; height: 220px; margin: 10px auto; display: block; border-radius: 12px; background: #fff; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); cursor: pointer;">
       <p id="qr-student-url-text" style="font-weight: bold; margin-top: 10px; color: var(--primary-light); font-size: 1.05rem; word-break: break-all;"></p>
       <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px; line-height: 1.5;">
-        💡 提示：手機/平板需連上與這台電腦相同的教室 Wi-Fi，才能掃碼連線成功。
+        💡 提示：手機/平板需連上與這台電腦相同的教室 Wi-Fi，才能掃碼連線成功。點擊 QR Code 圖片可開新分頁放大至全螢幕，方便全班快速掃描。
       </div>
     </div>
   </div>
@@ -1299,20 +1285,20 @@
       </div>
       <div style="display: flex; gap: 12px; justify-content: center;">
         <button class="btn btn-secondary close-modal" style="flex: 1;" data-i18n="modal_cancel">取消</button>
-        <button id="btn-confirm-forgot-reset" class="btn" style="flex: 1; background: linear-gradient(135deg, #ef4444, #dc2626); border: none;" data-i18n="forgot_btn_reset">確定重置</button>
+        <button id="btn-confirm-forgot-reset" class="btn" style="flex: 1; background: linear-gradient(135deg, #d9807e, #dc2626); border: none;" data-i18n="forgot_btn_reset">確定重置</button>
       </div>
     </div>
   </div>
 
   <!-- Beautiful Success Reset Modal (重置成功美化彈窗) -->
   <div id="modal-reset-success" class="modal-overlay" style="z-index: 100001;">
-    <div class="modal-content" style="max-width: 380px; text-align: center; padding: 30px 24px; border: 1.5px solid rgba(16, 185, 129, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.4);">
+    <div class="modal-content" style="max-width: 380px; text-align: center; padding: 30px 24px; border: 1.5px solid rgba(79, 174, 130, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.4);">
       <div style="font-size: 3rem; margin-bottom: 8px;">🔑</div>
       <div class="modal-title" style="margin-bottom: 10px; font-size: 1.3rem; color: var(--accent-positive);" data-i18n="reset_success_title">密碼重置成功</div>
       <div style="font-size: 0.92rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 22px;" data-i18n="reset_success_text">
         已成功將密碼重置為預設密碼！
       </div>
-      <button class="btn close-modal" style="width: 100%; font-size: 1.05rem; padding: 10px; background: linear-gradient(135deg, #10b981, #059669); border: none;" data-i18n="reset_success_btn">我知道了</button>
+      <button class="btn close-modal" style="width: 100%; font-size: 1.05rem; padding: 10px; background: linear-gradient(135deg, #4fae82, #059669); border: none;" data-i18n="reset_success_btn">我知道了</button>
     </div>
   </div>
 
@@ -1323,7 +1309,7 @@
         <div style="font-size: 2rem; font-weight: 900; color: #fff; display: flex; align-items: center; gap: 10px;">
           <span>📌</span> <span data-i18n="bulletin_title">課堂即時公布欄</span>
         </div>
-        <button type="button" class="btn close-modal" style="background: rgba(239, 68, 68, 0.85); color: #fff; border:none; font-size: 1.1rem; padding: 8px 20px; border-radius: var(--radius-lg);" data-i18n="bulletin_exit_fullscreen">
+        <button type="button" class="btn close-modal" style="background: rgba(217, 128, 126, 0.85); color: #fff; border:none; font-size: 1.1rem; padding: 8px 20px; border-radius: var(--radius-lg);" data-i18n="bulletin_exit_fullscreen">
           ✖ 關閉全螢幕
         </button>
       </div>
@@ -1348,7 +1334,7 @@
             <button type="button" class="btn btn-sm btn-secondary btn-fs-timer-mode" data-mode="stopwatch" data-i18n="timer_tab_stopwatch">⏱️ 正計時碼錶</button>
           </div>
           <button type="button" id="btn-timer-fs-browser-toggle" class="btn btn-secondary btn-sm" style="font-size: 0.92rem; padding: 6px 14px;" title="瀏覽器全螢幕">⛶</button>
-          <button type="button" class="btn close-modal" style="background: rgba(239, 68, 68, 0.85); color: #fff; border:none; font-size: 1.05rem; padding: 7px 18px; border-radius: var(--radius-lg); font-weight: 700;" data-i18n="timer_exit_fullscreen">
+          <button type="button" class="btn close-modal" style="background: rgba(217, 128, 126, 0.85); color: #fff; border:none; font-size: 1.05rem; padding: 7px 18px; border-radius: var(--radius-lg); font-weight: 700;" data-i18n="timer_exit_fullscreen">
             ✖ 關閉全螢幕
           </button>
         </div>
@@ -1366,7 +1352,7 @@
 
           <!-- Giant Progress Bar -->
           <div style="width: 90%; max-width: 900px; height: 18px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); box-shadow: inset 0 2px 6px rgba(0,0,0,0.5); margin-bottom: 32px;">
-            <div id="fs-timer-progress-fill" style="width: 100%; height: 100%; background: linear-gradient(90deg, #3b82f6, #60a5fa); border-radius: 999px; transition: width 0.3s linear;"></div>
+            <div id="fs-timer-progress-fill" style="width: 100%; height: 100%; background: linear-gradient(90deg, #7b98e0, #60a5fa); border-radius: 999px; transition: width 0.3s linear;"></div>
           </div>
 
           <!-- Quick Extend & Presets Pills in FS -->
@@ -1379,25 +1365,25 @@
             <button type="button" class="btn btn-secondary btn-sm btn-fs-timer-preset" data-seconds="600" data-i18n="timer_preset_10m">10 分鐘</button>
             <button type="button" class="btn btn-secondary btn-sm btn-fs-timer-preset" data-seconds="900" data-i18n="timer_preset_15m">15 分鐘</button>
             <span style="border-left: 1px solid rgba(255,255,255,0.2); margin: 0 4px;"></span>
-            <button type="button" id="btn-fs-add-30s" class="btn btn-secondary btn-sm" style="background: rgba(59, 130, 246, 0.25); border-color: rgba(59, 130, 246, 0.4);" data-i18n="timer_quick_add_30s">+30 秒</button>
-            <button type="button" id="btn-fs-add-1m" class="btn btn-secondary btn-sm" style="background: rgba(59, 130, 246, 0.25); border-color: rgba(59, 130, 246, 0.4);" data-i18n="timer_quick_add_1m">+1 分鐘</button>
+            <button type="button" id="btn-fs-add-30s" class="btn btn-secondary btn-sm" style="background: rgba(123, 152, 224, 0.25); border-color: rgba(123, 152, 224, 0.4);" data-i18n="timer_quick_add_30s">+30 秒</button>
+            <button type="button" id="btn-fs-add-1m" class="btn btn-secondary btn-sm" style="background: rgba(123, 152, 224, 0.25); border-color: rgba(123, 152, 224, 0.4);" data-i18n="timer_quick_add_1m">+1 分鐘</button>
           </div>
 
           <!-- Main Actions Row in FS -->
           <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
-            <button type="button" id="btn-fs-timer-toggle" class="btn btn-lg" style="font-size: 1.4rem; padding: 12px 42px; font-weight: 800; border-radius: 999px; background: linear-gradient(135deg, #10b981, #059669); border:none; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);" data-i18n="timer_btn_start">▶️ 開始計時</button>
+            <button type="button" id="btn-fs-timer-toggle" class="btn btn-lg" style="font-size: 1.4rem; padding: 12px 42px; font-weight: 800; border-radius: 999px; background: linear-gradient(135deg, #4fae82, #059669); border:none; box-shadow: 0 8px 25px rgba(79, 174, 130, 0.4);" data-i18n="timer_btn_start">▶️ 開始計時</button>
             <button type="button" id="btn-fs-timer-reset" class="btn btn-lg btn-secondary" style="font-size: 1.2rem; padding: 12px 30px; font-weight: 700; border-radius: 999px;" data-i18n="timer_btn_reset">🔄 重置</button>
           </div>
         </div>
 
         <!-- Stopwatch FS Display -->
         <div id="fs-stopwatch-container" style="width: 100%; display: none; flex-direction: column; align-items: center; justify-content: center;">
-          <div id="fs-stopwatch-digits" class="fs-timer-digits" style="font-size: clamp(5rem, 13vw, 11rem); font-weight: 900; font-family: ui-monospace, 'Courier New', monospace; letter-spacing: 4px; color: #10b981; text-shadow: 0 0 40px rgba(16, 185, 129, 0.4); line-height: 1; margin-bottom: 28px;">
+          <div id="fs-stopwatch-digits" class="fs-timer-digits" style="font-size: clamp(5rem, 13vw, 11rem); font-weight: 900; font-family: ui-monospace, 'Courier New', monospace; letter-spacing: 4px; color: #4fae82; text-shadow: 0 0 40px rgba(79, 174, 130, 0.4); line-height: 1; margin-bottom: 28px;">
             00:00.00
           </div>
 
           <div style="display: flex; gap: 20px; justify-content: center; align-items: center; margin-bottom: 24px;">
-            <button type="button" id="btn-fs-sw-toggle" class="btn btn-lg" style="font-size: 1.4rem; padding: 12px 42px; font-weight: 800; border-radius: 999px; background: linear-gradient(135deg, #10b981, #059669); border:none; box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);" data-i18n="sw_btn_start">▶️ 開始</button>
+            <button type="button" id="btn-fs-sw-toggle" class="btn btn-lg" style="font-size: 1.4rem; padding: 12px 42px; font-weight: 800; border-radius: 999px; background: linear-gradient(135deg, #4fae82, #059669); border:none; box-shadow: 0 8px 25px rgba(79, 174, 130, 0.4);" data-i18n="sw_btn_start">▶️ 開始</button>
             <button type="button" id="btn-fs-sw-lap" class="btn btn-lg btn-secondary" style="font-size: 1.2rem; padding: 12px 30px; font-weight: 700; border-radius: 999px;" data-i18n="sw_btn_lap">⏱️ 計圈 (Lap)</button>
             <button type="button" id="btn-fs-sw-reset" class="btn btn-lg btn-secondary" style="font-size: 1.2rem; padding: 12px 30px; font-weight: 700; border-radius: 999px;" data-i18n="timer_btn_reset">🔄 重置</button>
           </div>
@@ -1409,7 +1395,7 @@
         <!-- Fullscreen Background Music (BGM) Bar -->
         <div class="fs-timer-bgm-bar" style="margin-top: 24px; display: flex; align-items: center; justify-content: center; gap: 16px; padding: 8px 20px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 999px; flex-wrap: wrap;">
           <span style="font-weight: 700; font-size: 0.95rem; color: #93c5fd;" data-i18n="timer_bgm_title">🎵 背景音樂：</span>
-          <button type="button" id="btn-fs-timer-bgm-toggle" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; font-weight: 700; border: none; border-radius: 999px; padding: 6px 16px; display: inline-flex; align-items: center; gap: 6px;">
+          <button type="button" id="btn-fs-timer-bgm-toggle" class="btn btn-sm" style="background: linear-gradient(135deg, #4fae82, #059669); color: #fff; font-weight: 700; border: none; border-radius: 999px; padding: 6px 16px; display: inline-flex; align-items: center; gap: 6px;">
             <span id="fs-timer-bgm-icon">⏸️</span> <span id="fs-timer-bgm-btn-text" data-i18n="timer_bgm_pause">暫停音樂</span>
           </button>
           <button type="button" id="btn-fs-timer-bgm-next" class="btn btn-secondary btn-sm" style="font-weight: 600; padding: 6px 14px; border-radius: 999px;" title="隨機切換下一首" data-i18n="timer_bgm_next">
@@ -1420,7 +1406,7 @@
           </div>
           <div style="display: flex; align-items: center; gap: 8px; border-left: 1px solid rgba(255,255,255,0.2); padding-left: 12px;">
             <span style="font-size: 0.88rem; color: #cbd5e1;" data-i18n="timer_bgm_vol">🔊 音量：</span>
-            <input type="range" id="fs-timer-bgm-vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 100px; cursor: pointer; accent-color: #3b82f6;">
+            <input type="range" id="fs-timer-bgm-vol-slider" min="0" max="1" step="0.05" value="0.5" style="width: 100px; cursor: pointer; accent-color: #7b98e0;">
           </div>
         </div>
 
@@ -1431,8 +1417,8 @@
 
   <!-- Modal: 清除公布欄確認 (美化警示視窗) -->
   <div id="modal-confirm-clear-bulletin" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; border: 2px solid rgba(239, 68, 68, 0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); border: 2px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);">
+    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; border: 2px solid rgba(217, 128, 126, 0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(217, 128, 126, 0.15); border: 2px solid rgba(217, 128, 126, 0.4); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(217, 128, 126, 0.3);">
         🗑️
       </div>
       <h3 style="margin-bottom: 10px; font-weight: 800; font-size: 1.35rem; color: #ffffff;" data-i18n="bulletin_clear_title">確定清除公布欄內容？</h3>
@@ -1441,16 +1427,16 @@
       </p>
       <div style="display: flex; gap: 12px; justify-content: center;">
         <button type="button" class="btn btn-secondary close-modal" style="flex: 1; padding: 11px 0; font-weight: 700; font-size: 1rem;" data-i18n="common_cancel">取消</button>
-        <button type="button" id="btn-confirm-clear-bulletin-submit" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);" data-i18n="bulletin_btn_clear_confirm">確認清空</button>
+        <button type="button" id="btn-confirm-clear-bulletin-submit" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem; background: linear-gradient(135deg, #d9807e, #dc2626); border: none; box-shadow: 0 4px 14px rgba(217, 128, 126, 0.4);" data-i18n="bulletin_btn_clear_confirm">確認清空</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: 新增 / 重新命名佈告 (美化自訂輸入彈窗) -->
   <div id="modal-bulletin-post-title" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-        <div id="modal-bulletin-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.15); border: 1.5px solid rgba(59, 130, 246, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+        <div id="modal-bulletin-icon" style="width: 48px; height: 48px; border-radius: 12px; background: rgba(123, 152, 224, 0.15); border: 1.5px solid rgba(123, 152, 224, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
           ➕
         </div>
         <div>
@@ -1464,15 +1450,15 @@
       </div>
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary close-modal" style="padding: 10px 20px; font-weight: 700;" data-i18n="common_cancel">取消</button>
-        <button type="button" id="btn-submit-bulletin-post-title" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" data-i18n="common_confirm">確定</button>
+        <button type="button" id="btn-submit-bulletin-post-title" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #7b98e0, #4a67ba); border: none;" data-i18n="common_confirm">確定</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: 刪除佈告確認 (美化自訂警示彈窗) -->
   <div id="modal-confirm-delete-bulletin-post" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; border: 2px solid rgba(239, 68, 68, 0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
-      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); border: 2px solid rgba(239, 68, 68, 0.4); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);">
+    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; border: 2px solid rgba(217, 128, 126, 0.45); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div style="width: 68px; height: 68px; border-radius: 50%; background: rgba(217, 128, 126, 0.15); border: 2px solid rgba(217, 128, 126, 0.4); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px; box-shadow: 0 4px 16px rgba(217, 128, 126, 0.3);">
         🗑️
       </div>
       <h3 style="margin-bottom: 10px; font-weight: 800; font-size: 1.35rem; color: #ffffff;" data-i18n="bulletin_delete_post_title">確定刪除此佈告？</h3>
@@ -1481,7 +1467,7 @@
       </p>
       <div style="display: flex; gap: 12px; justify-content: center;">
         <button type="button" class="btn btn-secondary close-modal" style="flex: 1; padding: 11px 0; font-weight: 700; font-size: 1rem;" data-i18n="common_cancel">取消</button>
-        <button type="button" id="btn-confirm-delete-bulletin-post-submit" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem; background: linear-gradient(135deg, #ef4444, #dc2626); border: none; box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);" data-i18n="bulletin_btn_delete_confirm">確認刪除</button>
+        <button type="button" id="btn-confirm-delete-bulletin-post-submit" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem; background: linear-gradient(135deg, #d9807e, #dc2626); border: none; box-shadow: 0 4px 14px rgba(217, 128, 126, 0.4);" data-i18n="bulletin_btn_delete_confirm">確認刪除</button>
       </div>
     </div>
   </div>
@@ -1503,7 +1489,7 @@
 
   <!-- Lucky Draw Result Modal (抽籤結果慶祝彈窗) -->
   <div id="modal-lucky-draw-result" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; text-align: center; padding: 32px 28px; border: 2px solid rgba(245, 158, 11, 0.45); box-shadow: 0 24px 60px rgba(0,0,0,0.5);">
+    <div class="modal-content" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; text-align: center; padding: 32px 28px; border: 2px solid rgba(211, 162, 76, 0.45); box-shadow: 0 24px 60px rgba(0,0,0,0.5);">
       <div style="font-size: 3.2rem; margin-bottom: 6px; flex-shrink: 0; animation: bounce 0.6s infinite alternate;">🎯</div>
       <div class="modal-title" style="margin-bottom: 16px; font-size: 1.5rem; color: var(--accent-warning); flex-shrink: 0;" data-i18n="draw_winner_title">🎯 抽選名單 (請上台 / 發表)</div>
 
@@ -1513,7 +1499,7 @@
         <!-- Winners items injected by JS -->
       </div>
 
-      <button type="button" class="btn close-modal" style="width: 100%; font-size: 1.1rem; padding: 12px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none; font-weight: 800; flex-shrink: 0;" data-i18n="draw_btn_close">
+      <button type="button" class="btn close-modal" style="width: 100%; font-size: 1.1rem; padding: 12px; background: linear-gradient(135deg, #7b98e0, #4a67ba); border: none; font-weight: 800; flex-shrink: 0;" data-i18n="draw_btn_close">
         確定
       </button>
     </div>
@@ -1521,9 +1507,9 @@
 
   <!-- Modal: 新增分組模式 -->
   <div id="modal-create-group-plan" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 460px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <div class="modal-content glass-card" style="max-width: 460px; padding: 28px 24px; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.15); border: 1.5px solid rgba(59, 130, 246, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(123, 152, 224, 0.15); border: 1.5px solid rgba(123, 152, 224, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
           🏷️
         </div>
         <div>
@@ -1543,16 +1529,16 @@
       </div>
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary close-modal" style="padding: 10px 20px; font-weight: 700;" data-i18n="common_cancel">取消</button>
-        <button type="button" id="btn-submit-create-group-plan" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" data-i18n="common_confirm">建立模式</button>
+        <button type="button" id="btn-submit-create-group-plan" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #7b98e0, #4a67ba); border: none;" data-i18n="common_confirm">建立模式</button>
       </div>
     </div>
   </div>
 
   <!-- Modal: 重新命名分組模式 -->
   <div id="modal-rename-group-plan" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+    <div class="modal-content glass-card" style="max-width: 440px; padding: 28px 24px; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
       <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
-        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(59, 130, 246, 0.15); border: 1.5px solid rgba(59, 130, 246, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+        <div style="width: 48px; height: 48px; border-radius: 12px; background: rgba(123, 152, 224, 0.15); border: 1.5px solid rgba(123, 152, 224, 0.35); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
           ✏️
         </div>
         <div>
@@ -1566,7 +1552,7 @@
       </div>
       <div style="display: flex; gap: 10px; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary close-modal" style="padding: 10px 20px; font-weight: 700;" data-i18n="common_cancel">取消</button>
-        <button type="button" id="btn-submit-rename-group-plan" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #1d4ed8); border: none;" data-i18n="common_confirm">儲存名稱</button>
+        <button type="button" id="btn-submit-rename-group-plan" class="btn" style="padding: 10px 22px; font-weight: 800; background: linear-gradient(135deg, #7b98e0, #4a67ba); border: none;" data-i18n="common_confirm">儲存名稱</button>
       </div>
     </div>
   </div>
@@ -1577,7 +1563,7 @@
        避免捲軸本身蓋在圓角上方超出邊界——兩者疊在同一層時，Chrome 在 modal 開啟動畫用到 transform 的
        情況下，原生捲軸有時不會被圓角裁切。 -->
   <div id="modal-lms-add-content" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 620px; padding: 0; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content glass-card" style="max-width: 620px; padding: 0; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; overflow: hidden; display: flex; flex-direction: column;">
     <div style="padding: 28px 24px; overflow-y: auto; flex: 1; min-height: 0;">
       <h3 id="text-lms-add-content-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">➕ 新增內容／作業</h3>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 18px;">請填寫教學素材或作業需求相關細節</div>
@@ -1680,7 +1666,7 @@
 
   <!-- Modal: 作業繳交與評分 (LMS) -->
   <div id="modal-lms-grading" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 720px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; display: flex; flex-direction: column;">
+    <div class="modal-content glass-card" style="max-width: 720px; padding: 28px 24px; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 88vh; display: flex; flex-direction: column;">
       <h3 id="text-lms-grading-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📋 作業繳交與評分</h3>
       <div id="text-lms-grading-meta" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px;"></div>
       <div style="display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap;">
@@ -1695,7 +1681,7 @@
 
   <!-- Modal: 已讀／未讀學生名單 (LMS，教學素材小單元的進度徽章點擊後開啟) -->
   <div id="modal-lms-reading-list" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto;">
+    <div class="modal-content glass-card" style="max-width: 480px; padding: 28px 24px; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 80vh; overflow-y: auto;">
       <h3 id="text-lms-reading-list-title" style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📊 閱讀狀態</h3>
       <div id="text-lms-reading-list-meta" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 14px;"></div>
       <div id="list-lms-reading-viewed" style="margin-bottom: 16px;"></div>
@@ -1709,7 +1695,7 @@
   <!-- Modal: 即時互動牆歷史紀錄（教師端）——該課程所有場次、所有學生的完整上傳紀錄，
        與進行中場次的唯讀看板分開，刪除紀錄的管理動作只在這裡進行。 -->
   <div id="modal-livewall-history" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 640px; padding: 0; border: 1.5px solid rgba(59, 130, 246, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
+    <div class="modal-content glass-card" style="max-width: 640px; padding: 0; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
       <div style="padding: 28px 24px 16px;">
         <h3 style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📜 即時互動牆歷史紀錄</h3>
         <div style="font-size: 0.85rem; color: var(--text-muted);">全班所有場次的上傳紀錄，學生無法自行刪除，僅教師可在此管理刪除。</div>

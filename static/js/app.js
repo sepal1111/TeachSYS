@@ -517,19 +517,7 @@ function getTaiwanNowDateTimeStr() {
 }
 
 function initTheme() {
-  const savedTheme = localStorage.getItem('theme') || 'dark';
-  setSystemTheme(savedTheme, false);
-}
-
-function setSystemTheme(theme, save = true) {
-  document.documentElement.setAttribute('data-theme', theme);
-  if (save) {
-    localStorage.setItem('theme', theme);
-  }
-  const selectEl = document.getElementById('theme-select');
-  if (selectEl && selectEl.value !== theme) {
-    selectEl.value = theme;
-  }
+  document.documentElement.setAttribute('data-theme', 'light');
 }
 
 // --- Tab Navigation ---
@@ -731,7 +719,7 @@ function renderEmptyCourseNotice(container, customTitle = null) {
   const dlCsv = isEn ? '📥 Download CSV Sample (.csv)' : '📥 下載 CSV 範例檔 (.csv)';
 
   container.innerHTML = `
-    <div class="glass-card" style="text-align: center; padding: 36px 20px; background: linear-gradient(135deg, rgba(37,99,235,0.06), rgba(124,58,237,0.06)); border: 2px dashed var(--primary-light); grid-column: 1 / -1; margin: 10px 0;">
+    <div class="glass-card" style="text-align: center; padding: 36px 20px; background: linear-gradient(135deg, rgba(91, 124, 214,0.06), rgba(149, 117, 196,0.06)); border: 2px dashed var(--primary-light); grid-column: 1 / -1; margin: 10px 0;">
       <div style="font-size: 3rem; margin-bottom: 12px;">🏫</div>
       <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">${title}</div>
       <div style="font-size: 0.92rem; color: var(--text-muted); max-width: 500px; margin: 0 auto 20px; line-height: 1.6;">
@@ -1068,7 +1056,7 @@ function renderQuickGroupBar() {
         <img src="${getGroupAvatarSrc(g, idx)}" alt="${g.group_name}" style="width: 18px; height: 18px; object-fit: contain;">
         <span class="quick-group-name-label">${g.group_name}</span>
       </div>
-      <div class="quick-group-score-badge" style="font-size: 0.75rem; font-weight: 800; color: #f59e0b; background: rgba(245, 158, 11, 0.15); padding: 1px 8px; border-radius: 9999px; border: 1px solid rgba(245, 158, 11, 0.35); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px;">
+      <div class="quick-group-score-badge" style="font-size: 0.75rem; font-weight: 800; color: #d3a24c; background: rgba(211, 162, 76, 0.15); padding: 1px 8px; border-radius: 9999px; border: 1px solid rgba(211, 162, 76, 0.35); display: inline-flex; align-items: center; justify-content: center; margin-top: 1px;">
         <span>${groupScore} ${t('pts')}</span>
       </div>
     `;
@@ -1239,7 +1227,7 @@ function renderScoringStudentGrid() {
           : 0);
 
     const groupTagHtml = student.group_name
-      ? `<div class="student-card-group-tag" style="font-size: 0.72rem; color: #60a5fa; font-weight: 700; background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25); padding: 1px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px;"><span>🏷️ ${student.group_name}</span> <span style="color: #f59e0b; font-weight: 800;">${grpScore} ${scoreUnit}</span></div>`
+      ? `<div class="student-card-group-tag" style="font-size: 0.72rem; color: #60a5fa; font-weight: 700; background: rgba(123, 152, 224, 0.12); border: 1px solid rgba(123, 152, 224, 0.25); padding: 1px 7px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; max-width: 92%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 3px;"><span>🏷️ ${student.group_name}</span> <span style="color: #d3a24c; font-weight: 800;">${grpScore} ${scoreUnit}</span></div>`
       : '';
 
     if (AppState.quickScoringMode) {
@@ -1479,14 +1467,14 @@ function showToast(message, type = 'info') {
   }
   const toast = document.createElement('div');
   toast.className = `toast-undo toast-${type}`;
-  toast.style.cssText = 'background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(59, 130, 246, 0.4); color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(12px); display: flex; align-items: center; gap: 10px; animation: slideInUp 0.25s ease;';
+  toast.style.cssText = 'background: rgba(15, 23, 42, 0.95); border: 1.5px solid rgba(123, 152, 224, 0.4); color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; font-size: 0.95rem; box-shadow: 0 10px 30px rgba(0,0,0,0.5); backdrop-filter: blur(12px); display: flex; align-items: center; gap: 10px; animation: slideInUp 0.25s ease;';
   
   if (type === 'positive' || type === 'success') {
-    toast.style.borderColor = 'rgba(16, 185, 129, 0.6)';
-    toast.style.boxShadow = '0 10px 30px rgba(16, 185, 129, 0.25)';
+    toast.style.borderColor = 'rgba(79, 174, 130, 0.6)';
+    toast.style.boxShadow = '0 10px 30px rgba(79, 174, 130, 0.25)';
   } else if (type === 'error') {
-    toast.style.borderColor = 'rgba(239, 68, 68, 0.6)';
-    toast.style.boxShadow = '0 10px 30px rgba(239, 68, 68, 0.25)';
+    toast.style.borderColor = 'rgba(217, 128, 126, 0.6)';
+    toast.style.boxShadow = '0 10px 30px rgba(217, 128, 126, 0.25)';
   }
 
   toast.innerHTML = `<div>${message}</div>`;
@@ -1612,12 +1600,12 @@ function renderAttendanceSummary(summary) {
   const container = document.getElementById('attendance-summary');
   const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
   container.innerHTML = `
-    <span style="color: #10b981; background: rgba(16,185,129,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_present', {count: summary.present || 0})}</span>
-    <span style="color: #8b5cf6; background: rgba(139,92,246,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_sick_leave', {count: summary.sick_leave || 0})}</span>
+    <span style="color: #4fae82; background: rgba(79, 174, 130,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_present', {count: summary.present || 0})}</span>
+    <span style="color: #9a86c4; background: rgba(154, 134, 196,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_sick_leave', {count: summary.sick_leave || 0})}</span>
     <span style="color: #ec4899; background: rgba(236,72,153,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_personal_leave', {count: summary.personal_leave || 0})}</span>
-    <span style="color: #0ea5e9; background: rgba(14,165,233,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_official_leave', {count: summary.official_leave || 0})}</span>
+    <span style="color: #5f9fcf; background: rgba(95, 159, 207,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_official_leave', {count: summary.official_leave || 0})}</span>
     <span style="color: #475569; background: rgba(71,85,105,0.12); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_bereavement_leave', {count: summary.bereavement_leave || 0})}</span>
-    <span style="color: #f59e0b; background: rgba(245,158,11,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_late', {count: summary.late || 0})}</span>
+    <span style="color: #d3a24c; background: rgba(211, 162, 76,0.1); padding: 5px 12px; border-radius: 9999px; font-size: 0.88rem; font-weight: 800;">${t('att_summary_late', {count: summary.late || 0})}</span>
   `;
 }
 
@@ -2021,8 +2009,8 @@ function updatePresetIconSelection(activeSrc) {
   document.querySelectorAll('.group-preset-icon-btn').forEach(btn => {
     if (activeSrc && btn.dataset.icon === activeSrc) {
       btn.style.borderColor = 'var(--primary-light)';
-      btn.style.background = 'rgba(139, 92, 246, 0.25)';
-      btn.style.boxShadow = '0 0 8px rgba(139, 92, 246, 0.4)';
+      btn.style.background = 'rgba(154, 134, 196, 0.25)';
+      btn.style.boxShadow = '0 0 8px rgba(154, 134, 196, 0.4)';
     } else {
       btn.style.borderColor = 'var(--card-border)';
       btn.style.background = 'rgba(255,255,255,0.05)';
@@ -2575,7 +2563,7 @@ function renderLeaderboards(data) {
             </div>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <div class="${animClass}" style="font-weight: 900; font-size: 1.15rem; color: #f59e0b; display: inline-block;">${s.score} ${t('pts')}</div>
+            <div class="${animClass}" style="font-weight: 900; font-size: 1.15rem; color: #d3a24c; display: inline-block;">${s.score} ${t('pts')}</div>
             <button class="btn btn-secondary btn-log-detail" style="font-size: 0.75rem; padding: 3px 9px; border-radius: var(--radius-full);" title="${detailBtnText}">${detailBtnText}</button>
           </div>
         `;
@@ -2628,7 +2616,7 @@ function renderLeaderboards(data) {
               <div style="font-weight: 800; font-size: 1rem;">${g.group_name} <span style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal;">${memberText}</span></div>
             </div>
           </div>
-          <div class="${animClass}" style="font-weight: 900; font-size: 1.18rem; color: #f59e0b; display: inline-block;">${totalText}</div>
+          <div class="${animClass}" style="font-weight: 900; font-size: 1.18rem; color: #d3a24c; display: inline-block;">${totalText}</div>
         `;
         grpContainer.appendChild(item);
       });
@@ -2654,7 +2642,7 @@ function renderLeaderboards(data) {
           const scoreType = s.score > 0 ? 'positive' : s.score < 0 ? 'negative' : 'neutral';
           const absentClass = s.is_absent ? 'absent' : '';
           const leaveLabel = isEn ? '(Leave)' : '(請假)';
-          const absentBadge = s.is_absent ? `<span style="color:#ef4444; font-size:0.72rem; margin-left:4px;">${leaveLabel}</span>` : '';
+          const absentBadge = s.is_absent ? `<span style="color:#d9807e; font-size:0.72rem; margin-left:4px;">${leaveLabel}</span>` : '';
           const detailBtnText = t('dash_log_detail_btn');
 
           card.id = `dash-student-card-${s.id}`;
@@ -3442,9 +3430,9 @@ async function loadStudentScoreLogs() {
       const negText = data.negative_score;
       const totalPrefix = data.total_score > 0 ? '+' : '';
       summaryBadges.innerHTML = `
-        <span style="color: #10b981; background: rgba(16,185,129,0.12); padding: 4px 10px; border-radius: 9999px;">${t('badge_positive')}: ${posText}</span>
-        <span style="color: #ef4444; background: rgba(239,68,68,0.12); padding: 4px 10px; border-radius: 9999px;">${t('badge_negative')}: ${negText}</span>
-        <span style="color: #f59e0b; background: rgba(245,158,11,0.15); padding: 4px 10px; border-radius: 9999px; font-size: 0.92rem;">⭐ ${isEn ? 'Total' : '總分'}: ${totalPrefix}${data.total_score}</span>
+        <span style="color: #4fae82; background: rgba(79, 174, 130,0.12); padding: 4px 10px; border-radius: 9999px;">${t('badge_positive')}: ${posText}</span>
+        <span style="color: #d9807e; background: rgba(217, 128, 126,0.12); padding: 4px 10px; border-radius: 9999px;">${t('badge_negative')}: ${negText}</span>
+        <span style="color: #d3a24c; background: rgba(211, 162, 76,0.15); padding: 4px 10px; border-radius: 9999px; font-size: 0.92rem;">⭐ ${isEn ? 'Total' : '總分'}: ${totalPrefix}${data.total_score}</span>
       `;
     }
 
@@ -3477,16 +3465,16 @@ async function loadStudentScoreLogs() {
       const displayTitle = window.I18n ? window.I18n.getRuleDisplayTitle(log.rule_title) : log.rule_title;
 
       const groupTagHtml = (log.group_name || log.plan_name)
-        ? `<span style="font-size: 0.74rem; background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.35); padding: 2px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">🏷️ ${log.plan_name ? log.plan_name + ' · ' : ''}${log.group_name || ''}</span>`
+        ? `<span style="font-size: 0.74rem; background: rgba(123, 152, 224, 0.15); color: #60a5fa; border: 1px solid rgba(123, 152, 224, 0.35); padding: 2px 8px; border-radius: 6px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">🏷️ ${log.plan_name ? log.plan_name + ' · ' : ''}${log.group_name || ''}</span>`
         : `<span style="font-size: 0.74rem; background: rgba(255, 255, 255, 0.08); color: var(--text-muted); padding: 2px 7px; border-radius: 6px; font-weight: 600;">👤 ${t('score_log_personal_tag')}</span>`;
 
       const undoneBadgeHtml = isUndone
-        ? `<span style="font-size: 0.72rem; color: #ef4444; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 700;">${t('score_log_revoked_badge')}</span>`
+        ? `<span style="font-size: 0.72rem; color: #d9807e; background: rgba(217, 128, 126, 0.15); border: 1px solid rgba(217, 128, 126, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 700;">${t('score_log_revoked_badge')}</span>`
         : '';
 
       const actionBtnHtml = isUndone
-        ? `<button class="btn-restore-score-log btn" style="font-size: 0.75rem; padding: 4px 10px; background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; font-weight: 700; cursor: pointer;" title="${t('score_log_restore_btn')}">${t('score_log_restore_btn')}</button>`
-        : `<button class="btn-del-score-log btn-icon" style="width: 28px; height: 28px; font-size: 0.8rem; color: #ef4444;" title="${t('admin_delete')}">🗑️</button>`;
+        ? `<button class="btn-restore-score-log btn" style="font-size: 0.75rem; padding: 4px 10px; background: rgba(79, 174, 130, 0.2); color: #4fae82; border: 1px solid rgba(79, 174, 130, 0.4); border-radius: 6px; font-weight: 700; cursor: pointer;" title="${t('score_log_restore_btn')}">${t('score_log_restore_btn')}</button>`
+        : `<button class="btn-del-score-log btn-icon" style="width: 28px; height: 28px; font-size: 0.8rem; color: #d9807e;" title="${t('admin_delete')}">🗑️</button>`;
 
       item.innerHTML = `
         <div style="display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1;">
@@ -3602,26 +3590,26 @@ function showAlertModal(options) {
 
   // Auto detect type & icon if not explicitly provided
   let icon = opts.icon || 'ℹ️';
-  let iconBg = opts.iconBg || 'rgba(59, 130, 246, 0.15)';
-  let iconBorder = opts.iconBorder || 'rgba(59, 130, 246, 0.4)';
-  let btnGradient = opts.okGradient || 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+  let iconBg = opts.iconBg || 'rgba(123, 152, 224, 0.15)';
+  let iconBorder = opts.iconBorder || 'rgba(123, 152, 224, 0.4)';
+  let btnGradient = opts.okGradient || 'linear-gradient(135deg, #7b98e0, #4a67ba)';
 
   const textToCheck = (opts.title + ' ' + (opts.desc || '')).toLowerCase();
   if (opts.type === 'error' || textToCheck.includes('失敗') || textToCheck.includes('錯誤') || textToCheck.includes('failed') || textToCheck.includes('error')) {
     icon = opts.icon || '❌';
-    iconBg = 'rgba(239, 68, 68, 0.15)';
-    iconBorder = 'rgba(239, 68, 68, 0.4)';
-    btnGradient = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    iconBg = 'rgba(217, 128, 126, 0.15)';
+    iconBorder = 'rgba(217, 128, 126, 0.4)';
+    btnGradient = 'linear-gradient(135deg, #d9807e, #dc2626)';
   } else if (opts.type === 'success' || textToCheck.includes('成功') || textToCheck.includes('success')) {
     icon = opts.icon || '✨';
-    iconBg = 'rgba(16, 185, 129, 0.15)';
-    iconBorder = 'rgba(16, 185, 129, 0.4)';
-    btnGradient = 'linear-gradient(135deg, #10b981, #059669)';
+    iconBg = 'rgba(79, 174, 130, 0.15)';
+    iconBorder = 'rgba(79, 174, 130, 0.4)';
+    btnGradient = 'linear-gradient(135deg, #4fae82, #059669)';
   } else if (opts.type === 'warning' || textToCheck.includes('請先') || textToCheck.includes('請輸入') || textToCheck.includes('注意') || textToCheck.includes('警告') || textToCheck.includes('請選擇')) {
     icon = opts.icon || '⚠️';
-    iconBg = 'rgba(245, 158, 11, 0.15)';
-    iconBorder = 'rgba(245, 158, 11, 0.4)';
-    btnGradient = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    iconBg = 'rgba(211, 162, 76, 0.15)';
+    iconBorder = 'rgba(211, 162, 76, 0.4)';
+    btnGradient = 'linear-gradient(135deg, #d3a24c, #d97706)';
   }
 
   const overlay = document.getElementById('modal-generic-confirm');
@@ -3687,26 +3675,26 @@ function showConfirmModal(options) {
   }
 
   let icon = opts.icon || '❓';
-  let iconBg = opts.iconBg || 'rgba(59, 130, 246, 0.15)';
-  let iconBorder = opts.iconBorder || 'rgba(59, 130, 246, 0.4)';
-  let confirmGradient = opts.confirmGradient || 'linear-gradient(135deg, #3b82f6, #1d4ed8)';
+  let iconBg = opts.iconBg || 'rgba(123, 152, 224, 0.15)';
+  let iconBorder = opts.iconBorder || 'rgba(123, 152, 224, 0.4)';
+  let confirmGradient = opts.confirmGradient || 'linear-gradient(135deg, #7b98e0, #4a67ba)';
 
   const textToCheck = (opts.title + ' ' + (opts.desc || '')).toLowerCase();
   if (opts.danger || textToCheck.includes('刪除') || textToCheck.includes('撤銷') || textToCheck.includes('delete') || textToCheck.includes('revoke')) {
     icon = opts.icon || '🗑️';
-    iconBg = 'rgba(239, 68, 68, 0.15)';
-    iconBorder = 'rgba(239, 68, 68, 0.4)';
-    confirmGradient = 'linear-gradient(135deg, #ef4444, #dc2626)';
+    iconBg = 'rgba(217, 128, 126, 0.15)';
+    iconBorder = 'rgba(217, 128, 126, 0.4)';
+    confirmGradient = 'linear-gradient(135deg, #d9807e, #dc2626)';
   } else if (textToCheck.includes('回復') || textToCheck.includes('restore')) {
     icon = opts.icon || '↩️';
-    iconBg = 'rgba(16, 185, 129, 0.15)';
-    iconBorder = 'rgba(16, 185, 129, 0.4)';
-    confirmGradient = 'linear-gradient(135deg, #10b981, #059669)';
+    iconBg = 'rgba(79, 174, 130, 0.15)';
+    iconBorder = 'rgba(79, 174, 130, 0.4)';
+    confirmGradient = 'linear-gradient(135deg, #4fae82, #059669)';
   } else if (textToCheck.includes('提醒') || textToCheck.includes('注意') || textToCheck.includes('缺席') || textToCheck.includes('請假')) {
     icon = opts.icon || '⚠️';
-    iconBg = 'rgba(245, 158, 11, 0.15)';
-    iconBorder = 'rgba(245, 158, 11, 0.4)';
-    confirmGradient = 'linear-gradient(135deg, #f59e0b, #d97706)';
+    iconBg = 'rgba(211, 162, 76, 0.15)';
+    iconBorder = 'rgba(211, 162, 76, 0.4)';
+    confirmGradient = 'linear-gradient(135deg, #d3a24c, #d97706)';
   }
 
   const overlay = document.getElementById('modal-generic-confirm');
@@ -3819,6 +3807,73 @@ async function showStudentQrModal() {
   } catch (err) {
     alert(`獲取 QR Code 失敗：${err.message}`);
   }
+}
+
+// 點擊「學生連線 QR Code」圖片：以彈出視窗放大顯示，方便全班快速掃描登入
+function openQrFullscreenTab(imgSrc, urlText) {
+  if (!imgSrc) return;
+  const w = screen.availWidth;
+  const h = screen.availHeight;
+  const win = window.open(
+    '',
+    'qr-fullscreen-popup',
+    `width=${w},height=${h},left=0,top=0,menubar=no,toolbar=no,location=no,status=no,scrollbars=no,resizable=yes`
+  );
+  if (!win) {
+    alert('請允許瀏覽器開啟彈出視窗，才能放大顯示 QR Code');
+    return;
+  }
+  win.document.title = '學生連線 QR Code';
+  const style = win.document.createElement('style');
+  style.textContent = `
+    html, body { margin: 0; height: 100%; background: #0f172a; }
+    .qr-fullscreen-wrap { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; height: 100%; box-sizing: border-box; padding: 24px; }
+    .qr-fullscreen-wrap img { width: min(80vw, 80vh); height: min(80vw, 80vh); background: #fff; border-radius: 24px; padding: 24px; box-sizing: border-box; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+    .qr-fullscreen-wrap p { color: #fff; font-family: "Segoe UI", "Microsoft JhengHei", sans-serif; font-size: 1.4rem; font-weight: bold; word-break: break-all; text-align: center; margin: 0; }
+    .qr-fullscreen-wrap .btn-row { display: flex; gap: 12px; }
+    .qr-fullscreen-wrap button { font-size: 1rem; padding: 10px 20px; border-radius: 10px; border: none; background: #6366f1; color: #fff; cursor: pointer; }
+    .qr-fullscreen-wrap .btn-close { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; padding: 0; border-radius: 50%; background: rgba(255,255,255,0.12); font-size: 1.2rem; line-height: 1; }
+  `;
+  win.document.head.appendChild(style);
+
+  const wrap = win.document.createElement('div');
+  wrap.className = 'qr-fullscreen-wrap';
+
+  const closeBtn = win.document.createElement('button');
+  closeBtn.className = 'btn-close';
+  closeBtn.textContent = '✕';
+  closeBtn.title = '關閉';
+  closeBtn.addEventListener('click', () => win.close());
+
+  const img = win.document.createElement('img');
+  img.src = imgSrc;
+  img.alt = 'QR Code';
+
+  const p = win.document.createElement('p');
+  p.textContent = urlText || '';
+
+  const btnRow = win.document.createElement('div');
+  btnRow.className = 'btn-row';
+
+  const fsBtn = win.document.createElement('button');
+  fsBtn.textContent = '🖥️ 進入全螢幕';
+  fsBtn.addEventListener('click', () => {
+    const el = win.document.documentElement;
+    if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  });
+
+  const closeBtn2 = win.document.createElement('button');
+  closeBtn2.textContent = '✕ 關閉視窗';
+  closeBtn2.addEventListener('click', () => win.close());
+
+  btnRow.appendChild(fsBtn);
+  btnRow.appendChild(closeBtn2);
+
+  wrap.appendChild(closeBtn);
+  wrap.appendChild(img);
+  wrap.appendChild(p);
+  wrap.appendChild(btnRow);
+  win.document.body.appendChild(wrap);
 }
 
 // --- Global Event Listeners ---
@@ -4237,6 +4292,12 @@ function initEventListeners() {
   document.getElementById('btn-open-forgot-password-modal').addEventListener('click', openForgotConfirmModal);
   document.getElementById('student-login-form').addEventListener('submit', submitStudentLogin);
   document.getElementById('btn-show-student-qr').addEventListener('click', showStudentQrModal);
+  document.getElementById('qr-student-image').addEventListener('click', () => {
+    openQrFullscreenTab(
+      document.getElementById('qr-student-image').src,
+      document.getElementById('qr-student-url-text').textContent
+    );
+  });
   document.getElementById('btn-confirm-forgot-reset').addEventListener('click', confirmForgotReset);
   document.getElementById('btn-save-password-prefix').addEventListener('click', savePasswordPrefix);
 
@@ -4252,13 +4313,6 @@ function initEventListeners() {
   document.getElementById('btn-export-excel').addEventListener('click', exportExcel);
   document.getElementById('btn-add-rule-modal').addEventListener('click', openAddRuleModal);
   document.getElementById('btn-reset-rules-default').addEventListener('click', resetRulesDefault);
-
-  const themeSelect = document.getElementById('theme-select');
-  if (themeSelect) {
-    themeSelect.addEventListener('change', (e) => {
-      setSystemTheme(e.target.value);
-    });
-  }
 
   // Modal Confirm: Add / Edit Rule
   document.getElementById('btn-confirm-add-rule').addEventListener('click', confirmSaveRule);

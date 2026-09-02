@@ -174,7 +174,7 @@
       'admin_subtab_students': '🧑‍🎓 學生名冊管理',
       'admin_subtab_rules': '🎯 評分項目設定',
       'admin_subtab_reports': '📊 報表資料匯出',
-      'admin_subtab_appearance': '🖼️ 標誌與外觀主題',
+      'admin_subtab_appearance': '🖼️ 標誌設定',
       'admin_subtab_security': '🔐 密碼安全與手冊',
       'admin_students_title': '🧑‍🎓 學生名單編輯與管理',
       'admin_btn_add_student': '➕ 新增單一學生',
@@ -197,11 +197,6 @@
       'admin_logo_desc': '可上傳您學校的專屬校徽或班級 Logo（支援 <b>PNG</b>、<b>JPG</b> 或 <b>SVG</b> 格式），系統頂部標誌、登入畫面與瀏覽器分頁圖示 (Favicon) 將同步即時替換。',
       'admin_btn_upload_logo': '💾 上傳更換 Logo / Favicon',
       'admin_btn_reset_logo': '🔄 恢復系統預設 Logo',
-      'admin_theme_title': '🎨 系統 UI 視覺主題設定',
-      'admin_theme_label': '配色主題：',
-      'admin_theme_dark': '🌙 現代深色系 (Dark Mode)',
-      'admin_theme_light': '☀️ 典雅亮色系 (Light Mode)',
-      'admin_theme_hint': '💡 選擇後系統將自動記憶您的色彩視覺偏好',
       'admin_manual_title': '📖 教師系統操作指南與使用手冊',
       'admin_btn_open_guide': '📚 開啟完整操作說明網頁',
       'admin_manual_desc': '包含「3 步驟快速上手、即時評分、5 大出缺席假別、座位拖曳與梅花座編排、彈性分組、質性影音筆記、大螢幕奧運頒獎台投影」等全功能詳細步驟圖文說明。',
@@ -616,7 +611,7 @@
       'admin_subtab_students': '🧑‍🎓 Student Roster',
       'admin_subtab_rules': '🎯 Scoring Rules',
       'admin_subtab_reports': '📊 Export Reports',
-      'admin_subtab_appearance': '🖼️ Logo & Theme',
+      'admin_subtab_appearance': '🖼️ Logo Settings',
       'admin_subtab_security': '🔐 Password & Security',
       'admin_students_title': '🧑‍🎓 Student Roster Management',
       'admin_btn_add_student': '➕ Add Single Student',
@@ -639,11 +634,6 @@
       'admin_logo_desc': 'Upload your school crest or class logo (supports <b>PNG</b>, <b>JPG</b>, or <b>SVG</b> format). The top header, login screen, and browser favicon will be replaced synchronously.',
       'admin_btn_upload_logo': '💾 Upload New Logo / Favicon',
       'admin_btn_reset_logo': '🔄 Restore Default Logo',
-      'admin_theme_title': '🎨 System UI Visual Theme',
-      'admin_theme_label': 'Color Theme: ',
-      'admin_theme_dark': '🌙 Modern Dark Mode',
-      'admin_theme_light': '☀️ Elegant Light Mode',
-      'admin_theme_hint': '💡 The system will automatically save your visual theme preference.',
       'admin_manual_title': '📖 Teacher System User Guide',
       'admin_btn_open_guide': '📚 Open Full User Guide Webpage',
       'admin_manual_desc': 'Comprehensive visual step-by-step guides covering Quick Start, Live Scoring, 5 Attendance types, Drag-and-drop Seating, Group Competitions, Multimedia Notes, and Big-Screen Olympic Podium.',
@@ -1301,12 +1291,6 @@
     if (ruleCatSelect) {
       if (ruleCatSelect.options[0]) ruleCatSelect.options[0].textContent = t('rule_category_pos');
       if (ruleCatSelect.options[1]) ruleCatSelect.options[1].textContent = t('rule_category_neg');
-    }
-
-    const themeSelect = document.getElementById('theme-select');
-    if (themeSelect) {
-      if (themeSelect.options[0]) themeSelect.options[0].textContent = t('admin_theme_dark');
-      if (themeSelect.options[1]) themeSelect.options[1].textContent = t('admin_theme_light');
     }
 
     const currentPwdInput = document.getElementById('admin-current-password-input');
