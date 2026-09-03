@@ -9,7 +9,17 @@
   let selectedCardsMap = {};
 
   function getActiveCourseId() {
-    return window.currentCourseId || (window.CURRENT_COURSE && window.CURRENT_COURSE.id) || null;
+    if (window.AppState && window.AppState.currentCourseId) {
+      return Number(window.AppState.currentCourseId);
+    }
+    const select = document.getElementById('course-select');
+    if (select && select.value) {
+      const val = Number(select.value);
+      if (!isNaN(val) && val > 0) return val;
+    }
+    if (window.currentCourseId) return Number(window.currentCourseId);
+    if (window.CURRENT_COURSE && window.CURRENT_COURSE.id) return Number(window.CURRENT_COURSE.id);
+    return null;
   }
 
   // 1. 載入點數卡與系列資料
@@ -232,12 +242,15 @@
   // 8. 批次匯入點數卡
   async function submitImportPointCards() {
     const courseId = getActiveCourseId();
+    if (!courseId) {
+      alert('請先在上方選擇班級！');
+      return;
+    }
     const fileInput = document.getElementById('ptcard-import-file-input');
     const seriesSelect = document.getElementById('ptcard-import-series-select');
     const newSeriesInput = document.getElementById('ptcard-import-new-series-name');
     const themeSelect = document.getElementById('ptcard-import-theme-select');
 
-    if (!courseId) return;
     if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
       alert('請先選擇要匯入的 Excel (.xlsx) 或 CSV 檔案！');
       return;
@@ -287,7 +300,8 @@
   }
 
   // 9. 風格系列管理彈窗渲染與操作
-  function openSeriesModal() {
+  async function openSeriesModal() {
+    await loadPointCardsData();
     renderSeriesListModal();
     openModal('modal-manage-series');
   }
@@ -350,8 +364,13 @@
 
     // 授權班級勾選
     if (coursesWrap) {
-      const allowedIds = seriesObj ? seriesObj.allowed_course_ids || [] : [getActiveCourseId()];
-      coursesWrap.innerHTML = availableCourses
+      const activeId = getActiveCourseId();
+      const allowedIds = seriesObj ? seriesObj.allowed_course_ids || [] : (activeId ? [activeId] : []);
+      const coursesList = (availableCourses && availableCourses.length > 0)
+        ? availableCourses
+        : ((window.AppState && window.AppState.courses) || []);
+
+      coursesWrap.innerHTML = coursesList
         .map((c) => {
           const checked = allowedIds.includes(c.id);
           return `
@@ -370,6 +389,10 @@
 
   async function saveSeriesSubmit() {
     const courseId = getActiveCourseId();
+    if (!courseId) {
+      alert('請先在上方選擇班級！');
+      return;
+    }
     const idInput = document.getElementById('ptcard-series-edit-id');
     const nameInput = document.getElementById('ptcard-series-edit-name');
     const themeSelect = document.getElementById('ptcard-series-edit-theme');
@@ -577,7 +600,13 @@
     // 6. 開啟批次匯入彈窗
     const btnOpenImport = document.getElementById('btn-open-ptcard-import-modal');
     if (btnOpenImport) {
-      btnOpenImport.addEventListener('click', () => {
+      btnOpenImport.addEventListener('click', async () => {
+        const courseId = getActiveCourseId();
+        if (!courseId) {
+          alert('請先在上方選擇班級！');
+          return;
+        }
+        await loadPointCardsData();
         // 填入系列選單
         const seriesSelect = document.getElementById('ptcard-import-series-select');
         if (seriesSelect) {
@@ -693,4 +722,5 @@
   window.PointCardsManager = {
     reload: loadPointCardsData,
   };
+  window.PointCardsModule = window.PointCardsManager;
 })();

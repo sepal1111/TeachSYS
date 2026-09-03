@@ -37,6 +37,18 @@ studentContentRouter.get("/me/scores", async (req, res) => {
   const groups = await prisma.group.findMany({ where: { id: { in: groupIds } } });
   const groupNameMap = new Map(groups.map((g) => [g.id, g.groupName]));
 
+  const logIds = logs.map((l) => l.id);
+  const redemptions = await prisma.pointCardRedemption.findMany({
+    where: { scoreLogId: { in: logIds } },
+    include: { pointCard: true },
+  });
+  const cardNoByLogId = new Map<number, string>();
+  for (const r of redemptions) {
+    if (r.scoreLogId != null && r.pointCard?.cardNo) {
+      cardNoByLogId.set(r.scoreLogId, r.pointCard.cardNo);
+    }
+  }
+
   const enriched = logs.map((l) => ({
     id: l.id,
     rule_title: l.ruleTitle,
@@ -45,6 +57,7 @@ studentContentRouter.get("/me/scores", async (req, res) => {
     date: l.date,
     timestamp: l.timestamp,
     group_name: l.groupId != null ? groupNameMap.get(l.groupId) ?? null : null,
+    card_no: cardNoByLogId.get(l.id) ?? null,
   }));
 
   const totalScore = enriched.reduce((sum, l) => sum + l.score, 0);

@@ -12,14 +12,26 @@ import { getBundleDir } from "../paths";
 export const studentPointCardsRouter = autoCatch(Router());
 studentPointCardsRouter.use(requireStudentAuth);
 
-function resolveCardImage(theme: string, score: number, customImage?: string | null): string {
+export function resolveCardImage(theme: string, score: number, customImage?: string | null): string {
+  const validThemes = ["score_card_A", "score_card_B"];
+  const selectedTheme = validThemes.includes(theme) ? theme : "score_card_A";
+
   if (customImage && customImage.trim()) {
-    return customImage.trim();
+    const trimmed = customImage.trim();
+    if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
+      return trimmed;
+    }
+    // 如果是像 "score_card_A_4.jpg" 的純檔名，轉為完整的靜態網址
+    if (trimmed.startsWith("score_card_B_")) {
+      return `/static/pic/score_card/score_card_B/${trimmed}`;
+    }
+    if (trimmed.startsWith("score_card_A_")) {
+      return `/static/pic/score_card/score_card_A/${trimmed}`;
+    }
+    return `/static/pic/score_card/${selectedTheme}/${trimmed}`;
   }
 
   const staticDir = path.join(getBundleDir(), "static");
-  const validThemes = ["score_card_A", "score_card_B"];
-  const selectedTheme = validThemes.includes(theme) ? theme : "score_card_A";
   const absScore = Math.abs(score);
 
   const candidateRel = `/static/pic/score_card/${selectedTheme}/${selectedTheme}_${absScore}.jpg`;
@@ -29,9 +41,22 @@ function resolveCardImage(theme: string, score: number, customImage?: string | n
     return candidateRel;
   }
 
-  // Fallback: 若無剛好對應的面額圖檔，尋找同系列任一張或預設圖
+  // Fallback: 若無剛好對應的面額圖檔，尋找同系列預設圖
   const fallbackRel = `/static/pic/score_card/${selectedTheme}/${selectedTheme}_1.jpg`;
   return fallbackRel;
+}
+
+export function getSafeCardLabel(card: { label?: string | null; code?: string | null; series?: { name: string } | null; cardNo?: string | null }): string {
+  const lbl = (card.label || "").trim();
+  const cde = (card.code || "").trim();
+  // 嚴格防護：若 label 為空、或等於 code、或為十六進位/隨機卡號代碼，一律替換為系列名稱，絕對不可洩露 card_code
+  if (!lbl || lbl.toLowerCase() === cde.toLowerCase() || /^[a-z0-9]{6,16}$/i.test(lbl)) {
+    if (card.series && card.series.name && card.series.name.trim()) {
+      return card.series.name.trim();
+    }
+    return "榮譽點數卡";
+  }
+  return lbl;
 }
 
 // 1. 學生掃描點數卡加分
@@ -78,12 +103,15 @@ studentPointCardsRouter.post("/scan", async (req, res) => {
   }
 
   const now = getNowStrTaipei();
+  const safeLabel = getSafeCardLabel(card);
+
+  const cardNoSuffix = card.cardNo ? ` (卡號：${card.cardNo})` : "";
   const log = await prisma.scoreLog.create({
     data: {
       courseId,
       studentId,
       ruleId: null,
-      ruleTitle: `🎫 ${card.label}`,
+      ruleTitle: `🎫 ${safeLabel}${cardNoSuffix}`,
       score: card.score,
       category: card.score >= 0 ? "positive" : "negative",
       date: today,
@@ -103,11 +131,11 @@ studentPointCardsRouter.post("/scan", async (req, res) => {
 
   res.json({
     card_value: card.score,
-    card_code: card.code,
     card_no: card.cardNo ?? "",
-    label: card.label,
+    label: safeLabel,
     card_image: cardImage,
-    message: `成功獲得「${card.label}」${card.score >= 0 ? "+" : ""}${card.score} 分！`,
+    series_name: card.series?.name ?? "未分類",
+    message: `成功獲得「${safeLabel}」${card.score >= 0 ? "+" : ""}${card.score} 分！`,
   });
 });
 
@@ -132,12 +160,12 @@ studentPointCardsRouter.get("/my-cards", async (req, res) => {
     const card = r.pointCard;
     const theme = card.series?.cardTheme ?? "score_card_A";
     const img = resolveCardImage(theme, card.score, card.image);
+    const safeLabel = getSafeCardLabel(card);
 
     const cardItem = {
       id: r.id,
       card_no: card.cardNo ?? "",
-      code: card.code,
-      label: card.label,
+      label: safeLabel,
       score: card.score,
       image: img,
       series_name: card.series?.name ?? "未分類",

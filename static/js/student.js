@@ -645,6 +645,109 @@
     return n > 0 ? `+${n}` : String(n);
   }
 
+  // --- 得分紀錄清單分頁與篩選狀態（預設折疊，展開顯示最近五筆，支援下一頁/指定日期/顯示全部） ---
+  let allScoreLogs = [];
+  let scoreLogsPage = 1;
+  const SCORE_LOGS_PAGE_SIZE = 5;
+  let scoreLogsDateFilter = '';
+  let scoreLogsShowAllMode = false;
+  let isScoreLogsExpanded = false; // 預設折疊
+
+  function toggleScoreLogsSection() {
+    isScoreLogsExpanded = !isScoreLogsExpanded;
+    const body = document.getElementById('scoreLogsBody');
+    const hint = document.getElementById('scoreLogsToggleHint');
+    const icon = document.getElementById('scoreLogsToggleIcon');
+    if (!body) return;
+
+    body.style.display = isScoreLogsExpanded ? 'block' : 'none';
+    if (hint) hint.textContent = isScoreLogsExpanded ? '收起清單' : '點擊展開';
+    if (icon) icon.style.transform = isScoreLogsExpanded ? 'rotate(180deg)' : 'rotate(0deg)';
+  }
+
+  function renderScoreLogs() {
+    const listEl = document.getElementById('scoreLogsList');
+    const emptyEl = document.getElementById('scoreEmptyState');
+    const countBadge = document.getElementById('scoreLogsCountBadge');
+    const pageInfo = document.getElementById('textScoreLogsPageInfo');
+    const prevBtn = document.getElementById('btnScoreLogsPrevPage');
+    const nextBtn = document.getElementById('btnScoreLogsNextPage');
+
+    if (!listEl) return;
+
+    // 依據日期篩選
+    let filtered = allScoreLogs;
+    if (scoreLogsDateFilter) {
+      filtered = allScoreLogs.filter((l) => l.date === scoreLogsDateFilter);
+    }
+
+    if (countBadge) {
+      countBadge.textContent = `共 ${filtered.length} 筆`;
+    }
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = '';
+      if (emptyEl) emptyEl.style.display = 'block';
+      if (pageInfo) pageInfo.textContent = '第 0 / 0 頁';
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+      return;
+    }
+
+    if (emptyEl) emptyEl.style.display = 'none';
+
+    // 處理分頁（預設一頁 5 筆）
+    const totalPages = Math.ceil(filtered.length / SCORE_LOGS_PAGE_SIZE) || 1;
+    if (scoreLogsPage > totalPages) scoreLogsPage = totalPages;
+    if (scoreLogsPage < 1) scoreLogsPage = 1;
+
+    let itemsToDisplay = filtered;
+    if (!scoreLogsShowAllMode) {
+      const startIdx = (scoreLogsPage - 1) * SCORE_LOGS_PAGE_SIZE;
+      itemsToDisplay = filtered.slice(startIdx, startIdx + SCORE_LOGS_PAGE_SIZE);
+      if (pageInfo) pageInfo.textContent = `第 ${scoreLogsPage} / ${totalPages} 頁`;
+      if (prevBtn) prevBtn.disabled = scoreLogsPage <= 1;
+      if (nextBtn) nextBtn.disabled = scoreLogsPage >= totalPages;
+    } else {
+      // 顯示全部模式
+      if (pageInfo) pageInfo.textContent = `全部 (${filtered.length} 筆)`;
+      if (prevBtn) prevBtn.disabled = true;
+      if (nextBtn) nextBtn.disabled = true;
+    }
+
+    listEl.innerHTML = '';
+    itemsToDisplay.forEach((l) => {
+      const item = document.createElement('div');
+      item.className = 'score-log-item';
+      const groupSuffix = l.group_name ? `（小組：${escapeHtml(l.group_name)}）` : '';
+
+      // 檢查是否為實體點數卡：若是實體卡，顯式標示卡號
+      let cardBadgeHtml = '';
+      let displayRuleTitle = l.rule_title || '點數異動';
+      if (l.card_no) {
+        if (!displayRuleTitle.includes(l.card_no)) {
+          cardBadgeHtml = `<span class="badge" style="font-size: 0.76rem; font-weight: 800; color: var(--primary); background: rgba(91, 124, 214, 0.12); padding: 2px 7px; border-radius: 6px; margin-left: 6px;">卡號：${escapeHtml(l.card_no)}</span>`;
+        }
+      }
+
+      const timeStr = l.timestamp ? l.timestamp.slice(11, 16) : '';
+      const dateDisplay = timeStr ? `${escapeHtml(l.date)} ${timeStr}` : escapeHtml(l.date);
+
+      item.innerHTML = `
+        <div>
+          <div class="score-log-title" style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+            <span>${escapeHtml(displayRuleTitle)}</span>
+            ${cardBadgeHtml}
+            ${groupSuffix}
+          </div>
+          <div class="score-log-meta">${dateDisplay}</div>
+        </div>
+        <div class="score-log-value ${l.score >= 0 ? 'positive' : 'negative'}">${formatScoreValue(l.score)}</div>
+      `;
+      listEl.appendChild(item);
+    });
+  }
+
   async function loadScores() {
     const data = await api('/api/student/me/scores');
     document.getElementById('scoreTotalValue').textContent = formatScoreValue(data.total_score);
@@ -652,21 +755,8 @@
     document.getElementById('scorePositiveValue').textContent = formatScoreValue(data.positive_score);
     document.getElementById('scoreNegativeValue').textContent = formatScoreValue(data.negative_score);
 
-    scoreLogsList.innerHTML = '';
-    scoreEmptyState.hidden = data.logs.length > 0;
-    data.logs.forEach((l) => {
-      const item = document.createElement('div');
-      item.className = 'score-log-item';
-      const groupSuffix = l.group_name ? `（小組：${escapeHtml(l.group_name)}）` : '';
-      item.innerHTML = `
-        <div>
-          <div class="score-log-title">${escapeHtml(l.rule_title)}${groupSuffix}</div>
-          <div class="score-log-meta">${escapeHtml(l.date)}</div>
-        </div>
-        <div class="score-log-value ${l.score >= 0 ? 'positive' : 'negative'}">${formatScoreValue(l.score)}</div>
-      `;
-      scoreLogsList.appendChild(item);
-    });
+    allScoreLogs = data.logs || [];
+    renderScoreLogs();
 
     // 同步載入點數卡收集冊
     await loadMyPointCards().catch((err) => console.warn('Load my cards error:', err));
@@ -1013,6 +1103,16 @@
   let html5Scanner = null;
   let isScannerActive = false;
   let isSubmittingCard = false;
+  let userCardsCache = {};
+
+  function sanitizeCardLabel(label, seriesName) {
+    const l = (label || '').trim();
+    // 嚴格過濾：若為空、或為 6~16 位之英數字代碼（如十六進位哈希），一律隱藏並替換為系列名稱
+    if (!l || /^[a-z0-9]{6,16}$/i.test(l)) {
+      return (seriesName && seriesName.trim()) ? seriesName.trim() : '榮譽點數卡';
+    }
+    return l;
+  }
 
   // 1. 載入個人點數卡收集冊
   async function loadMyPointCards() {
@@ -1033,29 +1133,36 @@
       }
 
       if (emptyState) emptyState.style.display = 'none';
+      userCardsCache = {};
 
       albumContainer.innerHTML = res.groups
         .map((group) => {
           const cardsHtml = group.cards
             .map((card) => {
+              userCardsCache[card.id] = card;
               const scoreColor = card.score >= 0 ? 'var(--accent-positive)' : 'var(--accent-negative)';
               const scorePrefix = card.score >= 0 ? '+' : '';
               const timeStr = card.timestamp ? card.timestamp.slice(11, 16) : '';
+              const cardNoStr = card.card_no ? escapeHtml(card.card_no) : '';
+              const cardNoBadge = cardNoStr
+                ? `<div style="display:inline-block; font-size:0.76rem; font-weight:800; color:var(--primary); background:rgba(91, 124, 214, 0.12); padding:2px 8px; border-radius:6px; margin-bottom:4px;">卡號：${cardNoStr}</div>`
+                : '';
+              const displayTitle = sanitizeCardLabel(card.label, card.series_name);
 
               return `
-                <div class="my-card-tile" style="background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:var(--radius-lg); padding:10px; text-align:center; box-shadow:var(--shadow-xs); transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                <div class="my-card-tile" data-card-id="${card.id}" style="background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:var(--radius-lg); padding:10px; text-align:center; box-shadow:var(--shadow-xs); transition:transform 0.15s ease, box-shadow 0.15s ease; cursor:pointer;" title="點擊放大卡片">
                   <div style="width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#f1f5f9; margin-bottom:8px; display:flex; align-items:center; justify-content:center;">
-                    <img src="${card.image}" alt="${escapeHtml(card.label)}" style="width:100%; height:100%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                    <img src="${card.image}" alt="${escapeHtml(displayTitle)}" style="width:100%; height:100%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
                   </div>
-                  <div style="font-weight:800; font-size:0.85rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px;" title="${escapeHtml(card.label)}">
-                    ${escapeHtml(card.label)}
+                  ${cardNoBadge}
+                  <div style="font-weight:800; font-size:0.88rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px;" title="${escapeHtml(displayTitle)}">
+                    ${escapeHtml(displayTitle)}
                   </div>
                   <div style="font-weight:900; font-size:0.95rem; color:${scoreColor}; margin-bottom:2px;">
                     ${scorePrefix}${card.score} 分
                   </div>
-                  <div style="font-size:0.75rem; color:var(--text-subtle); display:flex; justify-content:space-between; align-items:center;">
-                    <span>${card.card_no ? `#${escapeHtml(card.card_no)}` : ''}</span>
-                    <span>${timeStr}</span>
+                  <div style="font-size:0.72rem; color:var(--text-muted); margin-top:2px;">
+                    ${timeStr}
                   </div>
                 </div>
               `;
@@ -1107,6 +1214,7 @@
 
       // 重新載入最新分數與收集冊
       await loadScores();
+      await loadMyPointCards();
     } catch (err) {
       if (statusMsg) {
         statusMsg.textContent = `❌ ${err.message}`;
@@ -1126,91 +1234,270 @@
     }
   }
 
-  // 3. 開啟相機掃描對話框
-  async function openCardScannerModal() {
-    const modal = document.getElementById('modalStudentScanner');
+  // 3. 相機掃描鏡頭控制（智慧裝置判斷 + 自動選用主鏡頭）
+  let cachedCameras = [];
+  let currentCameraConfig = null;
+  let currentFacingMode = 'environment';
+
+  // 裝置類型智慧判斷
+  function getDeviceInfo() {
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/i.test(ua);
+    const isMobile = isIOS || isAndroid || /Mobi|Tablet|Touch/i.test(ua);
+    return {
+      isIOS,
+      isAndroid,
+      isMobile,
+      isDesktop: !isMobile,
+      platformName: isIOS ? 'iPhone / iPad (iOS)' : (isAndroid ? 'Android 手機' : '電腦 / 筆電')
+    };
+  }
+
+  // 依據裝置類型與鏡頭特徵自動選用「主相機」
+  function pickPrimaryCamera(cameras, dev) {
+    if (!cameras || cameras.length === 0) {
+      // 無法枚舉或無鏡頭清單：手機預設 environment (後置)，電腦預設 user (前置)
+      return dev.isMobile ? { facingMode: 'environment' } : { facingMode: 'user' };
+    }
+
+    if (dev.isMobile) {
+      // 行動裝置端：尋找後置/主鏡頭（排除前鏡頭）
+      const backCams = cameras.filter((c) => {
+        const l = (c.label || '').toLowerCase();
+        const isFront = l.includes('front') || l.includes('user') || l.includes('前') || l.includes('selfie') || l.includes('facing front');
+        const isBack = l.includes('back') || l.includes('rear') || l.includes('environment') || l.includes('後') || l.includes('主') || l.includes('wide') || l.includes('facing back');
+        return isBack && !isFront;
+      });
+
+      if (backCams.length > 0) {
+        // 優先找標準主鏡頭（非超廣角、非望遠鏡頭）
+        const primaryBack = backCams.find((c) => {
+          const l = (c.label || '').toLowerCase();
+          return !l.includes('ultra') && !l.includes('tele');
+        }) || backCams[0];
+        return primaryBack.id;
+      }
+
+      // 若相機有標籤但沒 match 到 back，檢查是否所有相機都沒有 label（iOS 尚未授權時 label 為空字串）
+      const hasLabels = cameras.some((c) => !!c.label);
+      if (!hasLabels) {
+        // iOS Safari 在未授權前 label 為空，此時使用 facingMode: 'environment' 是最穩定的後置鏡頭指令
+        return { facingMode: 'environment' };
+      }
+
+      // 如果有標籤但找不到後鏡頭，最後一個相機在大多數多鏡頭手機上為後相機
+      return cameras[cameras.length - 1].id;
+    } else {
+      // 電腦端：主相機通常為第一個網路攝影機
+      return cameras[0].id;
+    }
+  }
+
+  async function startCameraScanner(cameraConfig) {
     const loadingOverlay = document.getElementById('scannerLoadingOverlay');
     const statusMsg = document.getElementById('scannerStatusMsg');
-    const cameraSelectWrap = document.getElementById('scannerCameraSelectWrap');
-    const cameraSelect = document.getElementById('scannerCameraSelect');
-    const manualInput = document.getElementById('inputManualCardCode');
 
-    if (!modal) return;
-    modal.style.display = 'flex';
-    if (manualInput) manualInput.value = '';
     if (loadingOverlay) loadingOverlay.style.display = 'flex';
     if (statusMsg) {
       statusMsg.textContent = '正在啟動相機鏡頭...';
       statusMsg.style.color = 'var(--text-muted)';
     }
 
-    if (!window.Html5Qrcode) {
-      if (loadingOverlay) loadingOverlay.style.display = 'none';
-      if (statusMsg) statusMsg.textContent = '⚠️ 無法載入相機模組，請使用下方手動輸入卡號';
-      return;
+    if (!html5Scanner) {
+      html5Scanner = new Html5Qrcode('ptcard-qr-reader');
     }
 
-    try {
-      if (!html5Scanner) {
-        html5Scanner = new Html5Qrcode('ptcard-qr-reader');
-      }
+    if (isScannerActive) {
+      try {
+        await html5Scanner.stop();
+      } catch (_) {}
+      isScannerActive = false;
+    }
 
-      // 取得鏡頭清單
-      const cameras = await Html5Qrcode.getCameras().catch(() => []);
-      if (cameras && cameras.length > 1 && cameraSelect) {
-        cameraSelect.innerHTML = cameras
-          .map((cam, idx) => `<option value="${cam.id}">${cam.label || `相機 ${idx + 1}`}</option>`)
-          .join('');
-        if (cameraSelectWrap) cameraSelectWrap.style.display = 'block';
-      }
+    const config = {
+      fps: 15,
+      qrbox: (viewfinderWidth, viewfinderHeight) => {
+        // 取視窗寬高最小值的 70%，保證長寬嚴格相等的正方形
+        const edge = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.70);
+        const squareSize = Math.max(160, Math.min(edge, 300));
+        return { width: squareSize, height: squareSize };
+      },
+      aspectRatio: 1.0,
+    };
 
-      const selectedCamId = cameraSelect && cameraSelect.value ? cameraSelect.value : null;
-      const cameraConfig = selectedCamId ? selectedCamId : { facingMode: 'environment' };
-
-      const config = {
-        fps: 10,
-        qrbox: (viewfinderWidth, viewfinderHeight) => {
-          const edge = Math.min(viewfinderWidth, viewfinderHeight) * 0.72;
-          return { width: Math.max(180, edge), height: Math.max(180, edge) };
-        },
-        aspectRatio: 1.0,
-      };
-
+    const tryStart = async (camConf) => {
       await html5Scanner.start(
-        cameraConfig,
+        camConf,
         config,
         async (decodedText) => {
           if (!isScannerActive || isSubmittingCard) return;
-          // 暫停一下避免連環刷入
-          try {
-            await html5Scanner.pause();
-          } catch (_) {}
+          try { await html5Scanner.pause(); } catch (_) {}
           await processPointCardCode(decodedText);
           setTimeout(() => {
             if (isScannerActive && html5Scanner) {
-              try {
-                html5Scanner.resume();
-              } catch (_) {}
+              try { html5Scanner.resume(); } catch (_) {}
             }
           }, 1500);
         },
         () => {}
       );
+    };
 
+    try {
+      await tryStart(cameraConfig);
       isScannerActive = true;
-      if (loadingOverlay) loadingOverlay.style.display = 'none';
-      if (statusMsg) statusMsg.textContent = '請將卡片上的 QR Code 對準上方鏡頭方框';
-    } catch (camErr) {
-      console.warn('Camera start error:', camErr);
+      currentCameraConfig = cameraConfig;
       if (loadingOverlay) loadingOverlay.style.display = 'none';
       if (statusMsg) {
-        statusMsg.textContent = '無法取得相機權限或無相機可用，請直接手動輸入卡號';
-        statusMsg.style.color = 'var(--accent-negative)';
+        statusMsg.textContent = '請將卡片上的 QR Code 對準上方鏡頭方框';
+        statusMsg.style.color = 'var(--text-muted)';
+      }
+    } catch (camErr) {
+      console.warn('Camera start error with config:', cameraConfig, camErr);
+
+      // 若指定相機失敗，自動嘗試降級候選模式
+      let fallbackSuccess = false;
+      const dev = getDeviceInfo();
+      const fallbacks = dev.isMobile
+        ? [{ facingMode: 'environment' }, { facingMode: 'user' }]
+        : [{ facingMode: 'user' }, { facingMode: 'environment' }];
+
+      if (cachedCameras && cachedCameras.length > 0) {
+        cachedCameras.forEach((c) => {
+          if (c.id !== cameraConfig) fallbacks.push(c.id);
+        });
+      }
+
+      for (const fb of fallbacks) {
+        try {
+          await tryStart(fb);
+          isScannerActive = true;
+          currentCameraConfig = fb;
+          fallbackSuccess = true;
+          console.log('Fallback camera started successfully:', fb);
+          break;
+        } catch (_) {}
+      }
+
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (fallbackSuccess) {
+        if (statusMsg) {
+          statusMsg.textContent = '請將卡片上的 QR Code 對準上方鏡頭方框';
+          statusMsg.style.color = 'var(--text-muted)';
+        }
+      } else {
+        if (statusMsg) {
+          const isNotHttps = location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+          if (isNotHttps) {
+            statusMsg.innerHTML = `⚠️ 瀏覽器相機必須在 <b>HTTPS</b> 連線下使用。<br>請改用 <code>https://${location.host}</code> 連線！`;
+          } else {
+            statusMsg.textContent = '無法取得相機權限或無相機可用，請直接手動輸入卡號';
+          }
+          statusMsg.style.color = 'var(--accent-negative)';
+        }
       }
     }
   }
 
-  // 4. 關閉相機掃描對話框
+  function updateCameraDropdownUI(activeConfig) {
+    const cameraSelectWrap = document.getElementById('scannerCameraSelectWrap');
+    const cameraSelect = document.getElementById('scannerCameraSelect');
+    if (!cameraSelect) return;
+
+    const dev = getDeviceInfo();
+    let opts = `
+      <option value="facing_back">📷 後置主鏡頭 (${dev.isMobile ? '手機推薦' : '環境鏡頭'})</option>
+      <option value="facing_front">🤳 前置鏡頭 (自拍/視訊鏡頭)</option>
+    `;
+
+    if (cachedCameras && cachedCameras.length > 0) {
+      cachedCameras.forEach((cam, idx) => {
+        const labelLower = (cam.label || '').toLowerCase();
+        const isBack = labelLower.includes('back') || labelLower.includes('rear') || labelLower.includes('environment') || labelLower.includes('後') || labelLower.includes('主');
+        const isFront = labelLower.includes('front') || labelLower.includes('user') || labelLower.includes('前');
+        let tag = '';
+        if (isBack) tag = ' (後置主相機)';
+        else if (isFront) tag = ' (前鏡頭)';
+        const displayName = cam.label ? `${cam.label}${tag}` : `相機鏡頭 ${idx + 1}`;
+        opts += `<option value="${cam.id}">${escapeHtml(displayName)}</option>`;
+      });
+    }
+
+    cameraSelect.innerHTML = opts;
+
+    if (typeof activeConfig === 'string') {
+      cameraSelect.value = activeConfig;
+    } else if (activeConfig && activeConfig.facingMode === 'user') {
+      cameraSelect.value = 'facing_front';
+    } else {
+      cameraSelect.value = 'facing_back';
+    }
+
+    if (cameraSelectWrap) cameraSelectWrap.style.display = 'flex';
+  }
+
+  async function toggleCameraFacing() {
+    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+    const targetConf = { facingMode: currentFacingMode };
+    await startCameraScanner(targetConf);
+    updateCameraDropdownUI(targetConf);
+  }
+
+  // 4. 開啟相機掃描對話框
+  async function openCardScannerModal() {
+    const modal = document.getElementById('modalStudentScanner');
+    const loadingOverlay = document.getElementById('scannerLoadingOverlay');
+    const statusMsg = document.getElementById('scannerStatusMsg');
+    const manualInput = document.getElementById('inputManualCardCode');
+
+    if (!modal) return;
+    modal.style.display = 'flex';
+    if (manualInput) manualInput.value = '';
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+
+    // 檢查 HTTPS 安全連線環境
+    const isNotHttps = location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+    if (isNotHttps) {
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (statusMsg) {
+        statusMsg.innerHTML = `⚠️ 瀏覽器規定相機必須在 <b>HTTPS</b> 安全連線下使用。<br>請改以 <code>https://${location.host}</code> 連線！`;
+        statusMsg.style.color = 'var(--accent-negative)';
+      }
+      return;
+    }
+
+    if (!window.Html5Qrcode) {
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (statusMsg) statusMsg.textContent = '⚠️ 無法載入相機模組，請使用手動輸入卡號';
+      return;
+    }
+
+    const dev = getDeviceInfo();
+    if (statusMsg) {
+      statusMsg.textContent = `正在啟動 ${dev.platformName} 主相機...`;
+      statusMsg.style.color = 'var(--text-muted)';
+    }
+
+    // 1. 於啟動相機前取得鏡頭清單（避免串流啟動後造成 Safari getUserMedia 衝突）
+    try {
+      cachedCameras = await Html5Qrcode.getCameras().catch(() => []);
+    } catch (_) {
+      cachedCameras = [];
+    }
+
+    // 2. 智慧挑選最佳主相機
+    const primaryCamConfig = pickPrimaryCamera(cachedCameras, dev);
+    currentFacingMode = (typeof primaryCamConfig === 'object' && primaryCamConfig.facingMode === 'user') ? 'user' : 'environment';
+
+    // 3. 啟動相機掃描
+    await startCameraScanner(primaryCamConfig);
+
+    // 4. 更新鏡頭選單 UI
+    updateCameraDropdownUI(primaryCamConfig);
+  }
+
+  // 5. 關閉相機掃描對話框
   async function closeCardScannerModal() {
     const modal = document.getElementById('modalStudentScanner');
     if (modal) modal.style.display = 'none';
@@ -1223,7 +1510,9 @@
     }
   }
 
-  // 5. 獲得卡片獎勵彈窗
+  // 6. 獲得卡片獎勵彈窗
+  let currentRevealedCard = null;
+
   function showCardRewardModal(cardData) {
     const modal = document.getElementById('modalCardRewardReveal');
     const labelEl = document.getElementById('revealCardLabel');
@@ -1231,8 +1520,40 @@
     const badgeEl = document.getElementById('revealScoreBadge');
 
     if (!modal) return;
-    if (labelEl) labelEl.textContent = cardData.label || '榮譽點數卡';
-    if (imgEl) imgEl.src = cardData.card_image || '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+    currentRevealedCard = cardData;
+    const displayTitle = sanitizeCardLabel(cardData.label, cardData.series_name);
+    if (labelEl) labelEl.textContent = displayTitle;
+
+    const cardNoEl = document.getElementById('revealCardNo');
+    if (cardNoEl) {
+      if (cardData.card_no) {
+        cardNoEl.textContent = `卡號：${cardData.card_no}`;
+        cardNoEl.style.display = 'block';
+      } else {
+        cardNoEl.style.display = 'none';
+      }
+    }
+
+    let imgSrc = cardData.card_image || cardData.image || '';
+    if (imgSrc && !imgSrc.startsWith('/') && !imgSrc.startsWith('http')) {
+      if (imgSrc.startsWith('score_card_B_')) {
+        imgSrc = `/static/pic/score_card/score_card_B/${imgSrc}`;
+      } else {
+        imgSrc = `/static/pic/score_card/score_card_A/${imgSrc}`;
+      }
+    }
+    if (!imgSrc) {
+      imgSrc = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+    }
+
+    if (imgEl) {
+      imgEl.src = imgSrc;
+      imgEl.onerror = function () {
+        this.onerror = null;
+        this.src = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+      };
+    }
+
     if (badgeEl) {
       const isPos = cardData.card_value >= 0;
       badgeEl.textContent = `${isPos ? '+' : ''}${cardData.card_value} 分`;
@@ -1248,15 +1569,119 @@
     if (modal) modal.style.display = 'none';
   }
 
+  // 7. 卡片大圖檢視 (點選卡片放大檢視)
+
+  function openCardZoom(cardData) {
+    if (!cardData) return;
+    const modal = document.getElementById('modalCardZoom');
+    const labelEl = document.getElementById('zoomCardLabel');
+    const imgEl = document.getElementById('zoomCardImg');
+    const seriesEl = document.getElementById('zoomCardSeries');
+    const scoreEl = document.getElementById('zoomCardScore');
+
+    if (!modal) return;
+    const displayTitle = sanitizeCardLabel(cardData.label, cardData.series_name);
+    if (labelEl) labelEl.textContent = displayTitle;
+
+    let imgSrc = cardData.card_image || cardData.image || '';
+    if (imgSrc && !imgSrc.startsWith('/') && !imgSrc.startsWith('http')) {
+      if (imgSrc.startsWith('score_card_B_')) {
+        imgSrc = `/static/pic/score_card/score_card_B/${imgSrc}`;
+      } else {
+        imgSrc = `/static/pic/score_card/score_card_A/${imgSrc}`;
+      }
+    }
+    if (!imgSrc) {
+      imgSrc = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+    }
+
+    if (imgEl) {
+      imgEl.src = imgSrc;
+      imgEl.onerror = function () {
+        this.onerror = null;
+        this.src = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+      };
+    }
+
+    if (seriesEl) {
+      const serName = cardData.series_name ? `系列：${cardData.series_name}` : '系列：-';
+      seriesEl.textContent = serName;
+    }
+
+    const cardNoEl = document.getElementById('zoomCardNo');
+    if (cardNoEl) {
+      cardNoEl.textContent = cardData.card_no ? `卡號：${cardData.card_no}` : '卡號：-';
+    }
+
+    if (scoreEl) {
+      const score = typeof cardData.card_value === 'number' ? cardData.card_value : (cardData.score || 0);
+      const isPos = score >= 0;
+      scoreEl.textContent = `${isPos ? '+' : ''}${score} 分`;
+      scoreEl.style.color = isPos ? 'var(--accent-positive)' : 'var(--accent-negative)';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeCardZoom() {
+    const modal = document.getElementById('modalCardZoom');
+    if (modal) modal.style.display = 'none';
+  }
+
   // 事件綁定
+  // 得分紀錄清單事件綁定（折疊、分頁、指定日期、顯示全部）
+  document.getElementById('btnToggleScoreLogs')?.addEventListener('click', toggleScoreLogsSection);
+
+  document.getElementById('inputScoreLogDate')?.addEventListener('change', (e) => {
+    scoreLogsDateFilter = e.target.value;
+    scoreLogsShowAllMode = false;
+    scoreLogsPage = 1;
+    const showAllBtn = document.getElementById('btnScoreLogsShowAll');
+    if (showAllBtn) showAllBtn.textContent = '顯示全部';
+    renderScoreLogs();
+  });
+
+  document.getElementById('btnScoreLogsShowAll')?.addEventListener('click', () => {
+    const dateInput = document.getElementById('inputScoreLogDate');
+    if (dateInput) dateInput.value = '';
+    scoreLogsDateFilter = '';
+    scoreLogsShowAllMode = !scoreLogsShowAllMode;
+    const showAllBtn = document.getElementById('btnScoreLogsShowAll');
+    if (showAllBtn) {
+      showAllBtn.textContent = scoreLogsShowAllMode ? '分頁瀏覽' : '顯示全部';
+    }
+    scoreLogsPage = 1;
+    renderScoreLogs();
+  });
+
+  document.getElementById('btnScoreLogsPrevPage')?.addEventListener('click', () => {
+    if (scoreLogsPage > 1) {
+      scoreLogsPage--;
+      renderScoreLogs();
+    }
+  });
+
+  document.getElementById('btnScoreLogsNextPage')?.addEventListener('click', () => {
+    scoreLogsPage++;
+    renderScoreLogs();
+  });
+
   document.getElementById('btnOpenCardScanner')?.addEventListener('click', openCardScannerModal);
   document.getElementById('btnCloseScannerModal')?.addEventListener('click', closeCardScannerModal);
+  document.getElementById('btnSwitchCamera')?.addEventListener('click', toggleCameraFacing);
 
-  document.getElementById('formManualCardInput')?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const input = document.getElementById('inputManualCardCode');
-    if (input && input.value) {
-      processPointCardCode(input.value);
+  document.getElementById('btnZoomRevealedCard')?.addEventListener('click', () => {
+    if (currentRevealedCard) openCardZoom(currentRevealedCard);
+  });
+
+  document.getElementById('btnCloseCardZoom')?.addEventListener('click', closeCardZoom);
+  document.getElementById('modalCardZoom')?.addEventListener('click', closeCardZoom);
+
+  document.getElementById('myCardsAlbumContainer')?.addEventListener('click', (e) => {
+    const tile = e.target.closest('.my-card-tile');
+    if (tile && tile.dataset.cardId) {
+      const card = userCardsCache[tile.dataset.cardId];
+      if (card) openCardZoom(card);
     }
   });
 
@@ -1266,12 +1691,21 @@
     openCardScannerModal();
   });
 
-  document.getElementById('scannerCameraSelect')?.addEventListener('change', async () => {
-    if (isScannerActive && html5Scanner) {
-      try {
-        await html5Scanner.stop();
-      } catch (_) {}
-      openCardScannerModal();
+  document.getElementById('scannerCameraSelect')?.addEventListener('change', async (e) => {
+    const val = e.target.value;
+    let targetConf;
+    if (val === 'facing_back') {
+      currentFacingMode = 'environment';
+      targetConf = { facingMode: 'environment' };
+    } else if (val === 'facing_front') {
+      currentFacingMode = 'user';
+      targetConf = { facingMode: 'user' };
+    } else if (val) {
+      targetConf = val;
+    }
+    if (targetConf) {
+      await startCameraScanner(targetConf);
+      updateCameraDropdownUI(targetConf);
     }
   });
 

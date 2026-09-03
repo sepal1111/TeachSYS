@@ -1,5 +1,156 @@
 # CHANGELOG
 
+## [2026-09-03 21:35] 學生端得分紀錄清單實施「預設折疊、最近五筆分頁、指定日期、顯示全部」與實體卡顯式標示 card_no
+
+- **修改模組/檔案**：
+  - 前端：`static/student.html`、`static/js/student.js`
+  - 後端：`src/routes/studentContent.ts`、`src/routes/studentPointCards.ts`
+  - 資料庫：更新歷史點數卡記錄之標題為帶有卡號格式
+- **修改類別**：新增功能 / 體驗優化
+- **具體修改內容說明**：
+  1. **得分紀錄清單預設折疊（可展開收合）**：
+     - 將學生得分紀錄清單包裝入獨立卡片（`#scoreLogsCard`），預設狀態為**折疊收起**（`display: none`），呈現「📋 得分紀錄清單 共 X 筆 點擊展開 ▼」。
+     - 點擊標題列即可平滑展開或收回，節省手機螢幕垂直空間。
+  2. **展開後預設僅列出「最近 5 筆紀錄」並支援分頁**：
+     - 展開後預設以第 1 頁顯示最新的前 5 筆得分紀錄。
+     - 工具列右側提供「上一頁 / 下一頁」分頁按鈕與目前頁數標示（如 `第 1 / 3 頁`），超出 5 筆時可輕鬆翻頁瀏覽。
+  3. **指定日期查詢與顯示全部功能**：
+     - 提供「📅 指定日期」原生日期選取器，可精準挑選某一日期的歷史加扣分記錄。
+     - 提供「顯示全部」按鈕，點選後可一鍵解除 5 筆分頁限制、查看全部得分明細，或切換回分頁模式。
+  4. **實體點數卡記錄顯式標示 `card_no`（卡號）**：
+     - 後端 `GET /api/student/me/scores` 關聯 `PointCardRedemption` 與 `PointCard`，在回傳資料中附帶 `card_no` 欄位。
+     - 學生端成績清單若是實體卡記錄，即時加上淡藍色精緻徽章標記（例如：`卡號：A_147`），清晰辨識每張卡號。
+     - 掃描新卡時後端寫入的日誌標題亦統一標記卡號（例如：`🎫 竹塹風情 (卡號：A_147)`），歷史資料已全數同步修正。
+  5. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 21:30] 徹底杜絕任何卡片代碼（card_code）出現在學生端任何介面
+
+- **修改模組/檔案**：
+  - 前端：`static/js/student.js`
+  - 後端：`src/routes/studentPointCards.ts`、`src/utils/pointCardImport.ts`
+  - 資料庫：修復資料庫既有 240 筆卡片與得分歷史
+- **修改類別**：修正 / 資安防護
+- **具體修改內容說明**：
+  1. **根因剖析**：
+     - 先前 Excel / CSV 匯入時若無提供自訂「名稱」，底層會將 `code`（如 `AEB4828F`、`ABAE0EA6`）暫代寫入 `label` 欄位。
+     - 導致學生端在卡片收集冊卡磚、掃描獲獎彈窗、點開大圖彈窗與成績記錄中，卡片標題處直接印出 `AEB4828F`（即 QR Code 實體秘鑰代碼）。
+  2. **全面嚴格過濾與替換**：
+     - 後端新增 `getSafeCardLabel`，當 `label` 等於 `code` 或屬於隨機英數雜湊時，一律自動替換為系列名稱（如 `竹塹風情`）或「榮譽點數卡」，絕不向學生端回傳 `code`。
+     - 前端加入 `sanitizeCardLabel` 雙重保險防禦，若標題為英數代碼格式一律以系列名稱展示。
+     - 匯入程式（`pointCardImport.ts`）防呆，未給名稱時絕不以 `code` 填補。
+  3. **現有資料庫數據清洗**：
+     - 已批次清洗資料庫既有 240 張點數卡的 `label` 欄位（改為所屬系列名稱 `竹塹風情`）。
+     - 已同步修正歷史領卡得分記錄（`scoreLog`）中的規則標題，不再殘留任何卡片秘鑰代碼。
+  4. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 21:22] 修復學生端收集冊顯示異常與全面顯式顯示卡片編號（card_no）
+
+- **修改模組/檔案**：
+  - 前端：`static/student.html`、`static/js/student.js`
+- **修改類別**：修正 / 增強
+- **具體修改內容說明**：
+  1. **修復「我的點數卡收集冊」卡片顯示不出問題**：
+     - 排查發現函式名稱與容器 DOM ID（`myCardsAlbumContainer`）在重構時不一致，導致初始化與得分後的收集冊載入失敗。
+     - 已恢復標準函式名稱 `loadMyPointCards` 並對齊 `myCardsAlbumContainer` 容器 ID，同時在掃描成功後自動觸發即時重新載入。
+  2. **全面顯式展示卡片編號（`card_no`）**：
+     - **個人收集冊（我的卡片）**：在卡面縮圖下方新增醒目的專屬編號標籤（例如：`卡號：A_147`），讓學生一眼清楚識別卡片序號。
+     - **獲得卡片獎勵彈窗**：在揭曉彈窗中加入卡號資訊（`#revealCardNo`，例如：`卡號：A_147`）。
+     - **卡片大圖放大彈窗**：在大圖彈窗頂部與底部同步顯示卡號（`#zoomCardNo`），便於學生仔細觀看時核對。
+  3. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 21:20] 學生端點數卡資安防護（隱藏 QR Code 內容、移除手動代碼輸入）與點選卡片放大檢視功能
+
+- **修改模組/檔案**：
+  - 前端：`static/student.html`、`static/js/student.js`
+  - 後端：`src/routes/studentPointCards.ts`
+- **修改類別**：修正 / 增強
+- **具體修改內容說明**：
+  1. **禁止學生介面出現 QR Code 內容（代碼）**：
+     - 在後端 `POST /api/student/point-cards/scan` 回傳中移除 `card_code` 欄位。
+     - 在後端 `GET /api/student/point-cards/my-cards` 回傳中移除 `code` 欄位。
+     - 確保學生端介面、原始碼及網路回應中均無任何點數卡 QR Code 實體秘鑰或明文，徹底防止背誦與外流。
+  2. **全面移除學生手動輸入代碼功能**：
+     - 自 `static/student.html` 移除 `#formManualCardInput` 輸入框與送出按鈕。
+     - 自 `static/js/student.js` 移除手動輸入的監聽處理函式及相關提示文字，防止學生隨意嘗試、猜測或手動刷入代碼。
+  3. **學生點選卡片放大檢視功能（`#modalCardZoom`）**：
+     - 在 `static/student.html` 中新增專屬卡片大圖彈窗元件，具備大尺寸卡面、名稱、系列及分數資訊展示。
+     - 在個人收集冊（我的卡片收集冊）中，所有卡片磚（`.my-card-tile`）均支援點擊一鍵放大。
+     - 在獲得卡片獎勵彈窗中，卡面圖片支援點擊直接放大預覽，並支援點擊背景任意處或 ✕ 按鈕關閉。
+  4. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 21:10] 學生端相機對焦框設為正方形與修復掃描後卡片圖檔顯示問題
+
+- **修改模組/檔案**：
+  - 前端：`static/css/style.css`、`static/student.html`、`static/js/student.js`
+  - 後端：`src/routes/studentPointCards.ts`、`src/routes/pointCards.ts`
+- **修改類別**：修正 / 優化
+- **具體修改內容說明**：
+  1. **相機偵測框強制正方形與對焦定位導引框優化**：
+     - 原相機容器因視訊串流長寬比（4:3 或 16:9）且未限制等比例覆蓋，導致底層 `html5-qrcode` 計算 shaded box 時產生縱向拉伸與偏移，形成非正方形與下半部遭裁切之異常。
+     - 在 CSS 中對 `.scanner-square-viewport` 及 `#ptcard-qr-reader`、`#ptcard-qr-reader video` 強制設定 `aspect-ratio: 1 / 1 !important` 與 `object-fit: cover !important`，確保視窗與內部視訊一律為正方形。
+     - 在 `html5Scanner.start` 之 `qrbox` 計算中，採用嚴格等邊的正方形尺寸（`{ width: side, height: side }`）。
+     - 在視訊層之上覆蓋科技質感的專屬正方形對焦框（`.scanner-target-square`），帶有四角高亮定位標記與動態雷射掃描線（`.scanner-laser-line`），視覺與實際 QR Code 偵測範圍 100% 契合。
+  2. **修復「掃描後的卡片圖無法顯示」**：
+     - 排查發現資料庫儲存之卡片圖檔為純檔名（如 `score_card_A_4.jpg`），而後端 `resolveCardImage` 原先直接 return 該字串，導致瀏覽器請求不存在的根路徑 `/score_card_A_4.jpg` 報 404 Not Found。
+     - 更新 `resolveCardImage`，將純檔名字串智能解析轉換為完整靜態資源路徑 `/static/pic/score_card/<theme>/<filename>`。
+     - 在前端揭曉彈窗 `revealCardImg` 與 `showCardRewardModal` 加入路徑防呆與 `onerror` 自動降級機制，保證卡面圖片永久正常渲染。
+  3. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 21:00] 學生端相機掃描實施「自動判斷裝置類型」並智慧直取「主相機」（修復無法偵測到相機問題）
+
+- **修改模組/檔案**：
+  - 前端：`static/js/student.js`
+- **修改類別**：修正 / 增強
+- **具體修改內容說明**：
+  1. **修復「無法偵測到相機」之硬體競爭 Bug**：
+     - 排查發現原程式在 `startCameraScanner` 啟動相機後，緊接著執行 `Html5Qrcode.getCameras()`。由於底層會發起第二次 `getUserMedia` 並立即強制 stop 軌道，導致 iOS Safari 將剛啟動中的相機連線中斷或觸發 `NotReadableError` / `AbortError`。
+     - 改為在相機啟動前（尚未建立串流時）一次性安全快取相機清單，徹底避免串流競爭衝突。
+  2. **智慧裝置判斷（`getDeviceInfo`）**：
+     - 自動精準識別目前執行環境為：iPhone / iPad（iOS）、Android 行動裝置，或電腦筆記型電腦。
+  3. **自動解析並取用「主相機」（`pickPrimaryCamera`）**：
+     - **行動裝置（iPhone / Android）**：演算法自動篩選鏡頭名稱中含有 `back`、`rear`、`environment`、`後`、`主`、`wide` 的主鏡頭（自動排除前鏡頭、超廣角與望遠鏡頭）。若為 iOS Safari 尚未授權的階段（名稱為空），則自動採用標準 `{ facingMode: 'environment' }` 優先啟動後置鏡頭。
+     - **電腦 / 筆電端**：自動採用標準視訊攝影機（`user` / 預設攝影機），避免電腦端因強求環境後鏡頭而報錯。
+  4. **全自動多層容錯降級（Fallback）**：
+     - 當首選相機因硬體占用或約束限制啟動失敗時，程式自動依序嘗試其他候選鏡頭與模式，若非 HTTPS 安全連線則明確提示使用者切換為 `https://`。
+  5. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 20:50] 學生端點數卡掃描相機優先採用後置鏡頭並支援一鍵鏡頭翻轉切換
+
+- **修改模組/檔案**：
+  - 前端介面與邏輯：`static/student.html`、`static/js/student.js`
+- **修改類別**：修正 / 增強
+- **具體修改內容說明**：
+  1. **相機優先採用後置鏡頭（`facingMode: 'environment'`）**：
+     - 原程式碼在 iOS / Safari 環境下取得相機陣列時，自動以陣列第一個項目（通常為 iPhone 的前置鏡頭）作為預設 ID，導致學生開啟掃描時總是先開起自拍鏡頭。
+     - 調整啟動策略，預設一律傳入 WebRTC 標準之 `{ facingMode: 'environment' }`，並於選單中標記後置環境主鏡頭，讓 iPhone、iPad 與 Android 手機開啟掃描時精準啟動後置鏡頭。
+  2. **相機切換機制健全化**：
+     - 修正原 `scannerCameraSelect` 下拉選單切換鏡頭時，因重新呼叫 `openCardScannerModal()` 而覆蓋清空選單內容的 Bug。現在切換選單或裝置 ID 時，直接在既有串流上平滑重啟對應鏡頭（`startCameraScanner`），維持選單狀態。
+  3. **新增「🔄 切換鏡頭」快捷按鈕**：
+     - 在學生端相機彈窗上方新增快捷切換按鈕，支援學生於「📷 後置鏡頭」與「🤳 前置鏡頭」間一鍵翻轉切換，大幅提升手機操作便利度。
+  4. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證通過。
+
+## [2026-09-03 20:25] 修復點數卡「無法建立新風格系列」與「無法匯入點數卡」之重大異常
+
+- **修改模組/檔案**：
+  - 前端：`static/js/point-cards.js`、`static/js/app.js`
+  - 後端：`src/utils/pointCardImport.ts`、`src/routes/pointCards.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **前端 `getActiveCourseId` 與生命週期連動修復**：
+     - 原 `point-cards.js` 僅讀取未定義的 `window.currentCourseId`，導致 `courseId` 一律為 `null`，引發新增風格系列呼叫 `/api/point-cards/null/series`、匯入卡片在 `if (!courseId) return;` 靜默終止且完全無任何反應。
+     - 修正 `getActiveCourseId()` 優先由 `window.AppState.currentCourseId` 與 `#course-select` 下拉選單讀取目前有效班級 ID。
+     - 在 `app.js` 的 `loadAdminData`、切換子分頁以及切換班級事件中，加入呼叫 `window.PointCardsManager.reload()`，確保點數卡列表與風格系列隨時與當前班級同步。
+     - 在開啟「風格系列管理彈窗」與「批次匯入彈窗」前均先以 `await loadPointCardsData()` 取得最新系列清單與授權班級資料。
+  2. **Excel 與 CSV 檔案解析相容性全面強化**：
+     - 系統下載之 Excel 範本欄位為「卡號 (QR碼內容)」與「點數分數」，而原先解析器僅精準比對「卡號」與「分數」，導致匯入自家範本時所有資料列均被誤判無效（0 筆有效資料）。
+     - 擴充 `src/utils/pointCardImport.ts` 中的 `findValue` 與關鍵字比對邏輯，支援「卡號 (QR碼內容)」、「qr碼內容」、「qrcode」、「點數分數」、「卡片分數」、「卡片名稱」、「序列號」等多種中英文與標點組合。
+     - 修正 CSV 標題列偵測，改為檢查該列任一欄位是否含有關鍵字，避免第 1 欄為「序列號」時遭誤判而略過標題對應。
+     - 強化 ExcelJS 單元格數值轉換（支援數字、公式運算結果 `result`、富文本 `richText`），徹底杜絕物件序列化異常。
+  3. **後端 API 健全化與防重複機制**：
+     - 在 `src/routes/pointCards.ts` 的所有路由加入 `courseId` 數值驗證，防範 `NaN` 傳入 Prisma 導致內部伺服器錯誤。
+     - 新增風格系列時若已存在同名系列，自動更新其風格外觀與授權班級設定，避免重複建立重複紀錄。
+  4. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過，並完成 Excel/CSV 模擬匯入及系列建置整合測試。
+
 ## [2026-09-03 19:00] 將預設點數卡風格系列設定為「竹塹風情」與「台灣之美」
 
 - **修改模組/檔案**：`src/routes/pointCards.ts`、`static/index.html`、`static/js/point-cards.js`

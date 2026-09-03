@@ -7,6 +7,7 @@ import { prisma } from "../db";
 import { autoCatch } from "../asyncRoute";
 import { getNowStrTaipei } from "../timezone";
 import { parseCsvPointCards, parseExcelPointCards, ParsedPointCard } from "../utils/pointCardImport";
+import { resolveCardImage } from "./studentPointCards";
 
 export const pointCardsRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
@@ -87,7 +88,7 @@ pointCardsRouter.get("/:courseId", async (req, res) => {
     code: c.code,
     label: c.label,
     score: c.score,
-    image: c.image ?? "",
+    image: resolveCardImage(c.series?.cardTheme ?? "score_card_A", c.score, c.image),
     created_at: c.createdAt,
     redemption_count: c._count.redemptions,
   }));
@@ -98,6 +99,10 @@ pointCardsRouter.get("/:courseId", async (req, res) => {
 // 2. 批次匯入點數卡（支援 Excel .xlsx / .xls 與 .csv）
 pointCardsRouter.post("/:courseId/upload", upload.single("file"), async (req, res) => {
   const courseId = Number(req.params.courseId);
+  if (isNaN(courseId) || courseId <= 0) {
+    res.status(400).json({ detail: "無效的班級 ID，請先選擇班級" });
+    return;
+  }
   const file = req.file;
   if (!file) {
     res.status(400).json({ detail: "請選擇要上傳的 Excel 或 CSV 檔案" });
@@ -130,18 +135,27 @@ pointCardsRouter.post("/:courseId/upload", upload.single("file"), async (req, re
   const now = getNowStrTaipei();
 
   if (newSeriesName) {
-    const createdSeries = await prisma.pointCardSeries.create({
-      data: {
-        courseId,
+    let existingSeries = await prisma.pointCardSeries.findFirst({
+      where: {
         name: newSeriesName,
-        cardTheme: cardTheme || "score_card_A",
-        allowedCourseIds: String(courseId),
-        createdAt: now,
+        OR: [{ courseId }, { courseId: null }],
       },
     });
-    seriesId = createdSeries.id;
+    if (!existingSeries) {
+      existingSeries = await prisma.pointCardSeries.create({
+        data: {
+          courseId,
+          name: newSeriesName,
+          cardTheme: cardTheme || "score_card_A",
+          allowedCourseIds: String(courseId),
+          createdAt: now,
+        },
+      });
+    }
+    seriesId = existingSeries.id;
   } else if (seriesIdParam && seriesIdParam !== "uncategorized" && seriesIdParam !== "none") {
-    seriesId = Number(seriesIdParam);
+    const parsedSid = Number(seriesIdParam);
+    seriesId = !isNaN(parsedSid) && parsedSid > 0 ? parsedSid : null;
   }
 
   let createdCount = 0;
@@ -188,6 +202,10 @@ pointCardsRouter.post("/:courseId/upload", upload.single("file"), async (req, re
 // 3. 系列管理 API
 pointCardsRouter.get("/:courseId/series", async (req, res) => {
   const courseId = Number(req.params.courseId);
+  if (isNaN(courseId) || courseId <= 0) {
+    res.status(400).json({ detail: "無效的班級 ID，請先選擇班級" });
+    return;
+  }
 
   // 確保預設的兩個系列「竹塹風情」與「台灣之美」必定存在
   const now = getNowStrTaipei();
@@ -257,6 +275,10 @@ pointCardsRouter.get("/:courseId/series", async (req, res) => {
 // 新增或更新系列
 pointCardsRouter.post("/:courseId/series", async (req, res) => {
   const courseId = Number(req.params.courseId);
+  if (isNaN(courseId) || courseId <= 0) {
+    res.status(400).json({ detail: "無效的班級 ID，請先選擇班級" });
+    return;
+  }
   const { id, name, card_theme, allowed_course_ids } = req.body;
 
   if (!name || !String(name).trim()) {
@@ -282,6 +304,25 @@ pointCardsRouter.post("/:courseId/series", async (req, res) => {
     });
     res.json({ message: "系列已更新", series: updated });
   } else {
+    // 若已存在相同名稱系列，則更新該系列風格與授權
+    const existing = await prisma.pointCardSeries.findFirst({
+      where: {
+        name: String(name).trim(),
+        OR: [{ courseId }, { courseId: null }],
+      },
+    });
+    if (existing) {
+      const updated = await prisma.pointCardSeries.update({
+        where: { id: existing.id },
+        data: {
+          cardTheme: theme,
+          allowedCourseIds: allowedStr,
+        },
+      });
+      res.json({ message: "系列已存在並更新設定", series: updated });
+      return;
+    }
+
     const created = await prisma.pointCardSeries.create({
       data: {
         courseId,

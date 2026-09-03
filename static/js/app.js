@@ -3045,6 +3045,10 @@ async function loadAdminData() {
   }
   loadAdminStudentsData();
   loadAdminRulesData();
+  const activeSubtab = document.querySelector('.admin-subtab-btn.active')?.dataset.subtab;
+  if (activeSubtab === 'pointcards' && window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {
+    window.PointCardsManager.reload();
+  }
 }
 
 async function loadAdminStudentsData() {
@@ -3899,6 +3903,9 @@ function initEventListeners() {
     AppState.selectedStudentIds.clear();
     syncAppRealtimeConnection();
     refreshActiveTab(getActiveTabName());
+    if (window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {
+      window.PointCardsManager.reload();
+    }
   });
 
   // Header & Mode buttons
@@ -4358,6 +4365,9 @@ function initEventListeners() {
       if (targetPane) {
         targetPane.style.display = 'block';
         targetPane.classList.add('active');
+      }
+      if (targetSubtab === 'pointcards' && window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {
+        window.PointCardsManager.reload();
       }
     });
   });

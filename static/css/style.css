@@ -3528,6 +3528,90 @@ body.mobile-scoring-only #quick-group-bar .btn {
   100% { transform: scale(1); opacity: 1; }
 }
 
+/* 點數卡正方形相機視窗與 QR Code 專屬對焦框 */
+.scanner-square-viewport {
+  width: 100%;
+  aspect-ratio: 1 / 1 !important;
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+  margin-bottom: 14px;
+}
+
+#ptcard-qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  position: relative !important;
+  border: none !important;
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+#ptcard-qr-reader video {
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  object-fit: cover !important;
+  border-radius: var(--radius-lg);
+}
+
+#ptcard-qr-reader canvas {
+  display: none !important;
+}
+
+/* 強化正方形掃描定位框 */
+.scanner-target-square {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  aspect-ratio: 1 / 1;
+  pointer-events: none;
+  border: 2.5px solid rgba(91, 124, 214, 0.95);
+  border-radius: 18px;
+  box-shadow: 0 0 0 2000px rgba(15, 23, 42, 0.45), 0 0 16px rgba(91, 124, 214, 0.45);
+  z-index: 6;
+  box-sizing: border-box;
+}
+
+/* 四角高亮標記 */
+.scanner-target-square::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 20px;
+  border: 3px solid transparent;
+  border-top-color: #38bdf8;
+  border-bottom-color: #38bdf8;
+  pointer-events: none;
+}
+
+/* 動態雷射掃描線 */
+.scanner-laser-line {
+  position: absolute;
+  top: 6%;
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #818cf8, #38bdf8, transparent);
+  box-shadow: 0 0 10px #38bdf8, 0 0 4px #fff;
+  border-radius: 2px;
+  animation: laserSweep 2.2s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes laserSweep {
+  0% { top: 6%; opacity: 0.3; }
+  50% { top: 92%; opacity: 1; }
+  100% { top: 6%; opacity: 0.3; }
+}
+
+
 
 
 
