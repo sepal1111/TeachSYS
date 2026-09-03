@@ -86,6 +86,25 @@ const API = {
     return res.json();
   },
 
+  async putFormData(url, formData) {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: formData,
+      credentials: 'same-origin'
+    });
+    if (res.status === 401) {
+      this.handleUnauthorized();
+      const err = await res.json().catch(() => ({ detail: '未登入或身分驗證已逾期' }));
+      throw new Error(err.detail || '未登入或身分驗證已逾期');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || '請求失敗');
+    }
+    return res.json();
+  },
+
   async put(url, data) {
     const res = await fetch(url, {
       method: 'PUT',

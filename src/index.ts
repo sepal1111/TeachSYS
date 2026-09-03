@@ -32,6 +32,8 @@ import { liveWallRouter } from "./routes/liveWall";
 import { studentLiveWallRouter } from "./routes/studentLiveWall";
 import { pointCardsRouter } from "./routes/pointCards";
 import { studentPointCardsRouter } from "./routes/studentPointCards";
+import { rewardsRouter } from "./routes/rewards";
+import { studentRewardsRouter } from "./routes/studentRewards";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
 const bundleDir = getBundleDir();
@@ -42,6 +44,7 @@ const photoDir = path.join(binDir, "photo");
 fs.mkdirSync(path.join(uploadsDir, "notes"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "groups"), { recursive: true });
 fs.mkdirSync(path.join(uploadsDir, "live_wall"), { recursive: true });
+fs.mkdirSync(path.join(uploadsDir, "rewards"), { recursive: true });
 fs.mkdirSync(photoDir, { recursive: true });
 
 const app = express();
@@ -216,12 +219,14 @@ app.use("/api/reports", requireAuth, reportsRouter);
 app.use("/api/units", requireAuth, unitsRouter);
 app.use("/api/live-wall", requireAuth, liveWallRouter);
 app.use("/api/point-cards", requireAuth, pointCardsRouter);
+app.use("/api/rewards", requireAuth, rewardsRouter);
 
 // --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
 app.use("/api/auth/student", studentAuthRouter);
 app.use("/api/student", studentContentRouter);
 app.use("/api/student/live-wall", studentLiveWallRouter);
 app.use("/api/student/point-cards", studentPointCardsRouter);
+app.use("/api/student/rewards", studentRewardsRouter);
 
 // --- Global error handler: isolate a single request's failure instead of
 // letting an unhandled rejection crash the whole process (all other teachers'

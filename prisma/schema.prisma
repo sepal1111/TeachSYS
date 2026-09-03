@@ -39,6 +39,8 @@ model Course {
   liveSessions     LiveSession[]
   pointCards       PointCard[]
   pointCardSeries  PointCardSeries[]
+  rewardItems      RewardItem[]
+  rewardRedemptions RewardRedemption[]
 
   @@map("courses")
 }
@@ -119,6 +121,7 @@ model Student {
   submissionComments SubmissionComment[]
   liveWallPosts    LiveWallPost[]
   pointCardRedemptions PointCardRedemption[]
+  rewardRedemptions RewardRedemption[]
 
   @@map("students")
 }
@@ -467,4 +470,46 @@ model PointCardRedemption {
 
   @@unique([pointCardId, studentId, date])
   @@map("point_card_redemptions")
+}
+
+model RewardItem {
+  id          Int     @id @default(autoincrement())
+  courseId    Int     @map("course_id")
+  name        String
+  description String?
+  rewardType  String  @map("reward_type") // "badge" | "collectible_card" | "physical"
+  pointsCost  Int     @map("points_cost")
+  stock       Int     @default(-1) // -1 is unlimited
+  imageUrl    String  @map("image_url")
+  cardSeries  String? @map("card_series")
+  isActive    Int     @default(1) @map("is_active")
+  orderIndex  Int     @default(0) @map("order_index")
+  createdAt   String  @map("created_at")
+  updatedAt   String? @map("updated_at")
+
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  redemptions RewardRedemption[]
+
+  @@map("reward_items")
+}
+
+model RewardRedemption {
+  id          Int     @id @default(autoincrement())
+  rewardId    Int     @map("reward_id")
+  studentId   Int     @map("student_id")
+  courseId    Int     @map("course_id")
+  pointsSpent Int     @map("points_spent")
+  status      String  // "requested" | "approved_held" | "completed" | "rejected" | "cancelled"
+  scoreLogId  Int?    @map("score_log_id")
+  requestNote String? @map("request_note")
+  teacherNote String? @map("teacher_note")
+  createdAt   String  @map("created_at")
+  approvedAt  String? @map("approved_at")
+  fulfilledAt String? @map("fulfilled_at")
+
+  reward  RewardItem @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  student Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course  Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("reward_redemptions")
 }

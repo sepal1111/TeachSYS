@@ -340,26 +340,26 @@
       <div class="glass-card">
         <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
           <div>
-            <div class="glass-card-title" id="materials-course-title">📚 課程與教材</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">點選課程主題，查看教材或繳交作業</div>
+            <div class="glass-card-title" id="materials-course-title" data-i18n="materials_title">📚 課程與教材</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" data-i18n="materials_subtitle">點選課程主題，查看教材或繳交作業</div>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <button id="btn-materials-open-folder" class="btn btn-secondary" style="font-size: 0.85rem; color: #b45309; border-color: #fcd34d; background: rgba(252, 211, 77, 0.12);">📁 開啟班級雲端資料夾</button>
-            <button id="btn-materials-export-excel" class="btn btn-secondary" style="font-size: 0.85rem;">📊 匯出課程成績</button>
-            <button id="btn-materials-toggle-edit" class="btn" style="font-size: 0.85rem;">✏️ 編輯課程內容</button>
+            <button id="btn-materials-open-folder" class="btn btn-secondary" style="font-size: 0.85rem; color: #b45309; border-color: #fcd34d; background: rgba(252, 211, 77, 0.12);" data-i18n="materials_btn_open_folder">📁 開啟班級雲端資料夾</button>
+            <button id="btn-materials-export-excel" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="materials_btn_export_excel">📊 匯出課程成績</button>
+            <button id="btn-materials-toggle-edit" class="btn" style="font-size: 0.85rem;" data-i18n="materials_btn_toggle_edit">✏️ 編輯課程內容</button>
           </div>
         </div>
 
         <div style="display: flex; align-items: center; gap: 8px; margin: 4px 0 12px;">
-          <span style="font-weight: 800;">課程內容</span>
-          <span title="建立章節與教材，學生從本網址用「帳號 + 密碼」登入即可瀏覽（帳號可於「學生管理」分頁查看或設定）" style="cursor: help; color: var(--text-muted);">ⓘ</span>
-          <button id="btn-materials-add-unit" class="btn btn-secondary" style="font-size: 0.82rem; margin-left: auto; display: none;">➕ 新增章節</button>
+          <span style="font-weight: 800;" data-i18n="materials_content_label">課程內容</span>
+          <span title="建立章節與教材，學生從本網址用「帳號 + 密碼」登入即可瀏覽（帳號可於「學生管理」分頁查看或設定）" data-i18n-title="materials_content_tooltip" style="cursor: help; color: var(--text-muted);">ⓘ</span>
+          <button id="btn-materials-add-unit" class="btn btn-secondary" style="font-size: 0.82rem; margin-left: auto; display: none;" data-i18n="materials_btn_add_unit">➕ 新增章節</button>
         </div>
 
         <div id="materials-new-unit-inline-form" style="display: none; border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 14px; background: var(--card-bg);">
-          <div style="font-weight: 800; margin-bottom: 10px;">➕ 新增章節</div>
-          <input type="text" id="input-lms-unit-title-inline" class="input-control" style="width: 100%; margin-bottom: 10px; box-sizing: border-box;" placeholder="請輸入章節名稱（例如：第一課 認識電腦）" maxlength="60" autocomplete="off">
-          <button type="button" id="btn-submit-lms-unit-inline" class="btn" style="width: 100%;">建立章節</button>
+          <div style="font-weight: 800; margin-bottom: 10px;" data-i18n="materials_new_unit_title">➕ 新增章節</div>
+          <input type="text" id="input-lms-unit-title-inline" class="input-control" style="width: 100%; margin-bottom: 10px; box-sizing: border-box;" placeholder="請輸入章節名稱（例如：第一課 認識電腦）" data-i18n-placeholder="materials_new_unit_placeholder" maxlength="60" autocomplete="off">
+          <button type="button" id="btn-submit-lms-unit-inline" class="btn" style="width: 100%;" data-i18n="materials_btn_create_unit">建立章節</button>
         </div>
 
         <div id="materials-units-list"><!-- Units rendered by materials.js --></div>
@@ -633,12 +633,13 @@
     <section id="pane-admin" class="tab-pane">
       <!-- Admin Sub-Navigation Mode Switcher (後台分類切換按鈕列) -->
       <div class="admin-subnav-bar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; padding: 6px; background: var(--input-bg); border-radius: var(--radius-xl); border: 1.5px solid var(--card-border); box-shadow: var(--shadow-xs);">
-        <button class="btn admin-subtab-btn active" data-subtab="students" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🧑‍🎓 學生名冊管理</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="rules" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎯 評分項目設定</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="reports" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">📊 報表資料匯出</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="appearance" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🖼️ 標誌設定</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="pointcards" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎫 實體點數卡管理</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="security" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🔐 密碼安全與手冊</button>
+        <button class="btn admin-subtab-btn active" data-subtab="students" data-i18n="admin_subtab_students" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🧑‍🎓 學生名冊管理</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="rules" data-i18n="admin_subtab_rules" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎯 評分項目設定</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="reports" data-i18n="admin_subtab_reports" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">📊 報表資料匯出</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="appearance" data-i18n="admin_subtab_appearance" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🖼️ 標誌設定</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="pointcards" data-i18n="admin_subtab_pointcards" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎫 實體點數卡管理</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="rewards" data-i18n="admin_subtab_rewards" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎁 獎勵兌換管理</button>
+        <button class="btn btn-secondary admin-subtab-btn" data-subtab="security" data-i18n="admin_subtab_security" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🔐 密碼安全與手冊</button>
       </div>
 
       <!-- 1. 學生名冊管理 Subpane (預設顯示) -->
@@ -795,15 +796,15 @@
         <!-- Overview Stat Cards -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
           <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">🃏 發行點數卡總數</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="ptcard_stat_total_cards">🃏 發行點數卡總數</div>
             <div id="ptcard-stat-total-cards" style="font-size: 2rem; font-weight: 900; color: var(--primary);">0</div>
           </div>
           <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">🏷️ 風格系列數</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="ptcard_stat_total_series">🏷️ 風格系列數</div>
             <div id="ptcard-stat-total-series" style="font-size: 2rem; font-weight: 900; color: var(--accent-warning);">0</div>
           </div>
           <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;">⚡ 累計兌換加分次數</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="ptcard_stat_total_redeemed">⚡ 累計兌換加分次數</div>
             <div id="ptcard-stat-total-redeemed" style="font-size: 2rem; font-weight: 900; color: var(--accent-positive);">0</div>
           </div>
         </div>
@@ -811,16 +812,16 @@
         <!-- Main Cards Manager Glass Card -->
         <div class="glass-card">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="glass-card-title">🎫 實體點數卡管理</div>
+            <div class="glass-card-title" data-i18n="ptcard_main_title">🎫 實體點數卡管理</div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button id="btn-open-ptcard-import-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;">📥 批次匯入點數卡</button>
-              <button id="btn-open-ptcard-series-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">🏷️ 風格系列管理</button>
-              <button id="btn-open-ptcard-stats-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">📊 統計分析</button>
+              <button id="btn-open-ptcard-import-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_batch_import">📥 批次匯入點數卡</button>
+              <button id="btn-open-ptcard-series-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_manage_series">🏷️ 風格系列管理</button>
+              <button id="btn-open-ptcard-stats-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_stats">📊 統計分析</button>
               <div class="dropdown-wrapper" style="display: inline-block;">
-                <button type="button" class="btn btn-secondary" id="btn-ptcard-templates-menu" style="font-size: 0.85rem; padding: 6px 14px;" onclick="const el=document.getElementById('ptcard-dl-menu'); el.style.display = el.style.display === 'block' ? 'none' : 'block';">📥 下載範本 ▾</button>
+                <button type="button" class="btn btn-secondary" id="btn-ptcard-templates-menu" style="font-size: 0.85rem; padding: 6px 14px;" onclick="const el=document.getElementById('ptcard-dl-menu'); el.style.display = el.style.display === 'block' ? 'none' : 'block';" data-i18n="ptcard_btn_download_templates">📥 下載範本 ▾</button>
                 <div id="ptcard-dl-menu" style="display: none; position: absolute; right: 0; background: var(--card-bg); border: 1.5px solid var(--card-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 100; min-width: 180px; padding: 6px;">
-                  <a href="/api/point-cards/template/excel" download style="display: block; padding: 8px 12px; font-size: 0.85rem; color: var(--text-main); text-decoration: none; border-radius: 6px;" onmouseover="this.style.background='var(--nav-bg)'" onmouseout="this.style.background='none'">📊 Excel 範本 (.xlsx)</a>
-                  <a href="/api/point-cards/template/csv" download style="display: block; padding: 8px 12px; font-size: 0.85rem; color: var(--text-main); text-decoration: none; border-radius: 6px;" onmouseover="this.style.background='var(--nav-bg)'" onmouseout="this.style.background='none'">📄 CSV 範本 (.csv)</a>
+                  <a href="/api/point-cards/template/excel" download style="display: block; padding: 8px 12px; font-size: 0.85rem; color: var(--text-main); text-decoration: none; border-radius: 6px;" onmouseover="this.style.background='var(--nav-bg)'" onmouseout="this.style.background='none'" data-i18n="ptcard_template_excel">📊 Excel 範本 (.xlsx)</a>
+                  <a href="/api/point-cards/template/csv" download style="display: block; padding: 8px 12px; font-size: 0.85rem; color: var(--text-main); text-decoration: none; border-radius: 6px;" onmouseover="this.style.background='var(--nav-bg)'" onmouseout="this.style.background='none'" data-i18n="ptcard_template_csv">📄 CSV 範本 (.csv)</a>
                 </div>
               </div>
             </div>
@@ -829,40 +830,40 @@
           <!-- Filter & Action Toolbar -->
           <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);">系列篩選：</span>
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="ptcard_filter_series_label">系列篩選：</span>
               <select id="ptcard-filter-series" class="input-control" style="width: auto; min-width: 170px; padding: 5px 10px; font-size: 0.88rem;">
-                <option value="all">全部卡片</option>
+                <option value="all" data-i18n="ptcard_filter_all_series">全部卡片</option>
               </select>
 
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted); margin-left: 8px;">排序：</span>
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted); margin-left: 8px;" data-i18n="ptcard_sort_label">排序：</span>
               <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
-                <button type="button" class="btn btn-secondary btn-ptcard-sort active" data-sort="card_no" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none;">序號</button>
-                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="score" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);">分數</button>
-                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="redemption_count" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);">使用率</button>
+                <button type="button" class="btn btn-secondary btn-ptcard-sort active" data-sort="card_no" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none;" data-i18n="ptcard_sort_no">序號</button>
+                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="score" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_score">分數</button>
+                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="redemption_count" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_rate">使用率</button>
               </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 10px;">
               <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; color: var(--text-main); font-weight: 600;">
                 <input type="checkbox" id="ptcard-select-all" style="width: 17px; height: 17px; accent-color: var(--primary);">
-                <span>全選本系列</span>
+                <span data-i18n="ptcard_select_all">全選本系列</span>
               </label>
-              <button id="btn-clear-all-ptcards" class="btn btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; color: var(--accent-negative); border-color: var(--accent-negative-border);">🗑️ 清空全部卡片</button>
+              <button id="btn-clear-all-ptcards" class="btn btn-secondary" style="font-size: 0.8rem; padding: 5px 10px; color: var(--accent-negative); border-color: var(--accent-negative-border);" data-i18n="ptcard_btn_clear_all">🗑️ 清空全部卡片</button>
             </div>
           </div>
 
           <!-- Batch Operations Floating Bar (選取時顯示) -->
           <div id="ptcard-batch-actions-bar" style="display: none; align-items: center; justify-content: space-between; padding: 10px 16px; background: rgba(91, 124, 214, 0.12); border: 1.5px solid var(--primary-light); border-radius: var(--radius-lg); margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
             <div style="font-size: 0.9rem; font-weight: 700; color: var(--primary-dark);">
-              已選取 <span id="ptcard-selected-count" style="font-size: 1.1rem; color: var(--primary); font-weight: 900;">0</span> 張點數卡
+              <span data-i18n="ptcard_selected_count_prefix">已選取</span> <span id="ptcard-selected-count" style="font-size: 1.1rem; color: var(--primary); font-weight: 900;">0</span> <span data-i18n="ptcard_selected_count_suffix">張點數卡</span>
             </div>
             <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span style="font-size: 0.85rem; color: var(--text-main);">移動至：</span>
+              <span style="font-size: 0.85rem; color: var(--text-main);" data-i18n="ptcard_batch_move_label">移動至：</span>
               <select id="ptcard-batch-target-series" class="input-control" style="width: auto; min-width: 140px; padding: 4px 8px; font-size: 0.85rem;">
-                <option value="null">未分類</option>
+                <option value="null" data-i18n="ptcard_batch_unclassified">未分類</option>
               </select>
-              <button id="btn-ptcard-batch-move" class="btn" style="font-size: 0.82rem; padding: 6px 12px;">確認移動</button>
-              <button id="btn-ptcard-batch-delete" class="btn btn-danger" style="font-size: 0.82rem; padding: 6px 12px;">🗑️ 批次刪除</button>
+              <button id="btn-ptcard-batch-move" class="btn" style="font-size: 0.82rem; padding: 6px 12px;" data-i18n="ptcard_btn_confirm_move">確認移動</button>
+              <button id="btn-ptcard-batch-delete" class="btn btn-danger" style="font-size: 0.82rem; padding: 6px 12px;" data-i18n="ptcard_btn_batch_delete">🗑️ 批次刪除</button>
             </div>
           </div>
 
@@ -874,10 +875,99 @@
           <!-- Empty State -->
           <div id="ptcard-empty-state" style="display: none; text-align: center; padding: 48px 20px; color: var(--text-muted);">
             <div style="font-size: 3rem; margin-bottom: 10px;">🃏</div>
-            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;">目前尚無點數卡資料</div>
-            <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto 16px auto;">
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main); margin-bottom: 6px;" data-i18n="ptcard_empty_title">目前尚無點數卡資料</div>
+            <p style="font-size: 0.88rem; max-width: 420px; margin: 0 auto 16px auto;" data-i18n="ptcard_empty_desc">
               點擊右上角「📥 批次匯入點數卡」，支援 Excel (.xlsx) 與 CSV 檔案一鍵匯入全班的實體卡片！
             </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 7. 獎勵兌換管理 Subpane -->
+      <div id="admin-subpane-rewards" class="admin-subpane" style="display: none;">
+        <!-- Overview Stat Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_total_items">🎁 上架獎勵項目</div>
+            <div id="reward-stat-total-items" style="font-size: 2rem; font-weight: 900; color: var(--primary);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_pending">⏳ 待審核/待發放申請</div>
+            <div id="reward-stat-pending" style="font-size: 2rem; font-weight: 900; color: var(--accent-warning);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_completed">🎉 累計已完成兌換</div>
+            <div id="reward-stat-completed" style="font-size: 2rem; font-weight: 900; color: var(--accent-positive);">0</div>
+          </div>
+        </div>
+
+        <!-- 獎勵功能二級標籤切換 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1.5px solid var(--card-border); padding-bottom: 10px;">
+          <button type="button" id="btn-rewards-tab-items" class="btn active" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="reward_tab_items">🎁 獎勵品項管理</button>
+          <button type="button" id="btn-rewards-tab-redemptions" class="btn btn-secondary" style="font-size: 0.88rem; padding: 6px 16px;"><span data-i18n="reward_tab_redemptions">📋 學生實體兌換審核台</span> <span id="badge-redemption-pending-count" class="badge" style="display:none; background:var(--accent-negative); color:#fff; border-radius:10px; padding:1px 6px; font-size:0.75rem; margin-left:4px;">0</span></button>
+        </div>
+
+        <!-- 二級頁籤 A: 獎勵品項管理 -->
+        <div id="rewards-panel-items" class="glass-card">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title" data-i18n="reward_panel_items_title">🎁 獎勵品項清單（虛擬徽章、特殊圖卡、實體獎品）</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btn-open-add-reward-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="reward_btn_add_item">➕ 新增獎勵品項</button>
+            </div>
+          </div>
+
+          <!-- 篩選列 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_type_label">類型篩選：</span>
+              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                <button type="button" class="btn btn-secondary btn-reward-filter-type active" data-type="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_filter_all">全部</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="badge" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_badge">🏅 榮譽徽章</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="collectible_card" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_collectible_card">🎴 特殊圖卡</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="physical" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_physical">🎁 實體獎品</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 獎勵品項卡片網格 -->
+          <div id="reward-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+            <!-- JS dynamically injects items -->
+          </div>
+          <div id="reward-items-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_items_empty_hint">
+            目前尚未建立任何獎勵品項，點擊上方「➕ 新增獎勵品項」開始設定吧！
+          </div>
+        </div>
+
+        <!-- 二級頁籤 B: 學生實體兌換審核台 -->
+        <div id="rewards-panel-redemptions" class="glass-card" style="display: none;">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title" data-i18n="reward_panel_redemptions_title">📋 學生實體兌換審核與發放台</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="reward_panel_redemptions_subtitle">
+              實體兌換採三階段安全流程：學生提出申請 ➔ 教師核准（暫時預扣點數） ➔ 確認拿取（真實扣點）
+            </div>
+          </div>
+
+          <!-- 審核狀態篩選 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_status_label">審核進度：</span>
+              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                <button type="button" class="btn btn-secondary btn-redemption-filter active" data-status="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_status_filter_all">全部</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="requested" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_requested">📌 待審核</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="approved_held" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_approved_held">⏳ 待領取 (預扣中)</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="completed" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_completed">✅ 已完成發放</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="rejected" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_rejected">❌ 已駁回/取消</button>
+              </div>
+            </div>
+            <button type="button" id="btn-refresh-redemptions" class="btn btn-secondary" style="font-size: 0.82rem; padding: 5px 12px;" data-i18n="reward_btn_refresh">🔄 重新整理</button>
+          </div>
+
+          <!-- 兌換紀錄列表 -->
+          <div id="redemptions-list-container">
+            <!-- JS dynamically injects redemptions -->
+          </div>
+          <div id="redemptions-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_redemptions_empty_hint">
+            目前沒有符合條件的兌換紀錄。
           </div>
         </div>
       </div>
@@ -1823,48 +1913,48 @@
   <div id="modal-import-point-cards" class="modal-overlay" style="z-index: 100010;">
     <div class="modal-content glass-card" style="max-width: 520px; padding: 26px;">
       <div class="modal-header" style="margin-bottom: 16px;">
-        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;">📥 批次匯入點數卡</div>
+        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="ptcard_import_modal_title">📥 批次匯入點數卡</div>
         <button type="button" class="btn-icon close-modal">✕</button>
       </div>
 
-      <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 18px;">
+      <div style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 18px;" data-i18n-html="ptcard_import_modal_desc">
         支援 <b>Excel (.xlsx, .xls)</b> 與 <b>CSV (.csv)</b> 格式檔案。<br>
         必要欄位：<b>卡號 (code)</b> 與 <b>分數 (score/value)</b>；可選欄位：<b>卡名 (label)</b>、<b>序列號 (card_no)</b>。
       </div>
 
       <!-- 選擇檔案 -->
       <div style="margin-bottom: 18px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);">1. 選擇匯入檔案：</label>
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);" data-i18n="ptcard_import_step1">1. 選擇匯入檔案：</label>
         <input type="file" id="ptcard-import-file-input" accept=".xlsx, .xls, .csv" class="input-control" style="padding: 7px 10px;">
       </div>
 
       <!-- 歸屬系列 -->
       <div style="margin-bottom: 18px;">
-        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);">2. 卡片歸屬系列：</label>
+        <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: var(--text-main);" data-i18n="ptcard_import_step2">2. 卡片歸屬系列：</label>
         <select id="ptcard-import-series-select" class="input-control">
-          <option value="none">未分類 (不指定系列)</option>
-          <option value="create_new" selected>➕ 直接建立新系列...</option>
+          <option value="none" data-i18n="ptcard_import_series_none">未分類 (不指定系列)</option>
+          <option value="create_new" selected data-i18n="ptcard_import_series_new">➕ 直接建立新系列...</option>
         </select>
       </div>
 
       <!-- 若選擇建立新系列 -->
       <div id="ptcard-import-new-series-wrap" style="padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); border: 1.5px dashed var(--primary-light); margin-bottom: 20px;">
         <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;">新系列名稱：</label>
-          <input type="text" id="ptcard-import-new-series-name" class="input-control" placeholder="例如：竹塹風情、台灣之美、段考獎勵卡" style="font-size: 0.9rem;">
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_new_series_name_label">新系列名稱：</label>
+          <input type="text" id="ptcard-import-new-series-name" class="input-control" placeholder="例如：竹塹風情、台灣之美、段考獎勵卡" data-i18n-placeholder="ptcard_import_new_series_placeholder" style="font-size: 0.9rem;">
         </div>
         <div>
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;">卡片外觀風格：</label>
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_theme_label">卡片外觀風格：</label>
           <select id="ptcard-import-theme-select" class="input-control" style="font-size: 0.9rem;">
-            <option value="score_card_A">🏛️ 竹塹風情 (風格 A)</option>
-            <option value="score_card_B">🌄 台灣之美 (風格 B)</option>
+            <option value="score_card_A" data-i18n="ptcard_theme_style_a">🏛️ 竹塹風情 (風格 A)</option>
+            <option value="score_card_B" data-i18n="ptcard_theme_style_b">🌄 台灣之美 (風格 B)</option>
           </select>
         </div>
       </div>
 
       <div style="display: flex; justify-content: flex-end; gap: 10px;">
-        <button type="button" class="btn btn-secondary close-modal">取消</button>
-        <button type="button" id="btn-submit-ptcard-import" class="btn">📤 確認匯入卡片</button>
+        <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_cancel">取消</button>
+        <button type="button" id="btn-submit-ptcard-import" class="btn" data-i18n="ptcard_btn_confirm_import">📤 確認匯入卡片</button>
       </div>
     </div>
   </div>
@@ -1873,11 +1963,11 @@
   <div id="modal-manage-series" class="modal-overlay" style="z-index: 100010;">
     <div class="modal-content glass-card" style="max-width: 600px; padding: 26px; max-height: 88vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="margin-bottom: 14px;">
-        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;">🏷️ 點數卡風格系列管理</div>
+        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="ptcard_series_modal_title">🏷️ 點數卡風格系列管理</div>
         <button type="button" class="btn-icon close-modal">✕</button>
       </div>
 
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;">
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;" data-i18n="ptcard_series_modal_desc">
         建立風格系列可管理不同批次或主題的點數卡，並可授權指定班級使用，防止跨班級誤刷。
       </div>
 
@@ -1890,31 +1980,31 @@
       <div id="ptcard-series-form-section" style="display: none; padding: 14px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1.5px solid var(--primary-light); margin-bottom: 16px;">
         <input type="hidden" id="ptcard-series-edit-id">
         <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;">系列名稱：</label>
-          <input type="text" id="ptcard-series-edit-name" class="input-control" placeholder="輸入系列名稱 (如: 竹塹風情、台灣之美)">
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_new_series_name_label">系列名稱：</label>
+          <input type="text" id="ptcard-series-edit-name" class="input-control" placeholder="輸入系列名稱 (如: 竹塹風情、台灣之美)" data-i18n-placeholder="ptcard_import_new_series_placeholder">
         </div>
         <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;">卡面外觀風格：</label>
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_theme_label">卡面外觀風格：</label>
           <select id="ptcard-series-edit-theme" class="input-control">
-            <option value="score_card_A">🏛️ 竹塹風情 (風格 A)</option>
-            <option value="score_card_B">🌄 台灣之美 (風格 B)</option>
+            <option value="score_card_A" data-i18n="ptcard_theme_style_a">🏛️ 竹塹風情 (風格 A)</option>
+            <option value="score_card_B" data-i18n="ptcard_theme_style_b">🌄 台灣之美 (風格 B)</option>
           </select>
         </div>
         <div>
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 6px;">授權使用班級（勾選可刷此系列的班級）：</label>
+          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 6px;" data-i18n="ptcard_series_allowed_courses_label">授權使用班級（勾選可刷此系列的班級）：</label>
           <div id="ptcard-series-allowed-courses-wrap" style="display: flex; gap: 8px; flex-wrap: wrap;">
             <!-- Course checkboxes injected by JS -->
           </div>
         </div>
         <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px;">
-          <button type="button" id="btn-cancel-series-edit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 5px 12px;">取消</button>
-          <button type="button" id="btn-save-series-submit" class="btn" style="font-size: 0.82rem; padding: 5px 14px;">💾 儲存系列</button>
+          <button type="button" id="btn-cancel-series-edit" class="btn btn-secondary" style="font-size: 0.82rem; padding: 5px 12px;" data-i18n="modal_cancel">取消</button>
+          <button type="button" id="btn-save-series-submit" class="btn" style="font-size: 0.82rem; padding: 5px 14px;" data-i18n="ptcard_btn_save_series">💾 儲存系列</button>
         </div>
       </div>
 
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 14px;">
-        <button type="button" id="btn-add-new-series" class="btn" style="font-size: 0.85rem; padding: 6px 14px;">➕ 新增風格系列</button>
-        <button type="button" class="btn btn-secondary close-modal">關閉</button>
+        <button type="button" id="btn-add-new-series" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_add_new_series">➕ 新增風格系列</button>
+        <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_close">關閉</button>
       </div>
     </div>
   </div>
@@ -1923,31 +2013,31 @@
   <div id="modal-pointcard-stats" class="modal-overlay" style="z-index: 100010;">
     <div class="modal-content glass-card" style="max-width: 580px; padding: 26px; max-height: 88vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="margin-bottom: 14px;">
-        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;">📊 點數卡使用統計分析</div>
+        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="ptcard_stats_modal_title">📊 點數卡使用統計分析</div>
         <button type="button" class="btn-icon close-modal">✕</button>
       </div>
 
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
         <div style="padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); text-align: center; border: 1px solid var(--card-border);">
-          <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700;">發行卡片總數</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700;" data-i18n="ptcard_stat_total_cards">發行卡片總數</div>
           <div id="ptcard-modal-stats-total" style="font-size: 1.8rem; font-weight: 900; color: var(--primary);">0</div>
         </div>
         <div style="padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); text-align: center; border: 1px solid var(--card-border);">
-          <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700;">累計兌換加分次數</div>
+          <div style="font-size: 0.82rem; color: var(--text-muted); font-weight: 700;" data-i18n="ptcard_stat_total_redeemed">累計兌換加分次數</div>
           <div id="ptcard-modal-stats-scans" style="font-size: 1.8rem; font-weight: 900; color: var(--accent-positive);">0</div>
         </div>
       </div>
 
       <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px;">
         <div>
-          <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">🔥 最常使用卡片排行 (Top 10)</h4>
+          <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;" data-i18n="ptcard_stats_top_cards">🔥 最常使用卡片排行 (Top 10)</h4>
           <div id="ptcard-modal-top-cards" style="background: var(--input-bg); border-radius: var(--radius-md); padding: 10px 14px; border: 1px solid var(--card-border);">
             <!-- List injected by JS -->
           </div>
         </div>
 
         <div>
-          <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;">🏆 學生刷卡獲得總分排行 (Top 10)</h4>
+          <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;" data-i18n="ptcard_stats_top_students">🏆 學生刷卡獲得總分排行 (Top 10)</h4>
           <div id="ptcard-modal-top-students" style="background: var(--input-bg); border-radius: var(--radius-md); padding: 10px 14px; border: 1px solid var(--card-border);">
             <!-- List injected by JS -->
           </div>
@@ -1955,8 +2045,94 @@
       </div>
 
       <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--card-border); padding-top: 12px;">
-        <button type="button" class="btn btn-secondary close-modal">關閉</button>
+        <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_close">關閉</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Modal: 新增/編輯獎勵品項 -->
+  <div id="modal-reward-item-editor" class="modal-overlay" style="z-index: 100020;">
+    <div class="modal-content glass-card" style="max-width: 560px; padding: 26px;">
+      <div class="modal-header" style="margin-bottom: 16px;">
+        <div class="modal-title" id="reward-editor-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="reward_modal_title_add">🎁 新增獎勵品項</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-reward-editor">✕</button>
+      </div>
+      <form id="form-reward-item" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="reward-item-id">
+
+        <div>
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_name_label">品項名稱：*</label>
+          <input type="text" id="reward-item-name" class="input-control" placeholder="例如：課堂發言之星徽章、古典神獸圖卡、高級自動鉛筆" data-i18n-placeholder="reward_modal_name_placeholder" required>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_type_label">獎勵種類：*</label>
+            <select id="reward-item-type" class="input-control" required>
+              <option value="badge" data-i18n="reward_type_opt_badge">🏅 虛擬榮譽徽章 (立即點亮)</option>
+              <option value="collectible_card" data-i18n="reward_type_opt_card">🎴 虛擬特殊圖卡 (圖鑑收集)</option>
+              <option value="physical" data-i18n="reward_type_opt_physical">🎁 實體獎品 / 特權 (審核預扣)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_points_label">所需點數：*</label>
+            <input type="number" id="reward-item-points" class="input-control" min="1" max="9999" placeholder="例如：10" data-i18n-placeholder="reward_modal_points_placeholder" required>
+          </div>
+        </div>
+
+        <div id="group-reward-card-series" style="display: none;">
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_card_series_label">圖卡系列名稱 (選填)：</label>
+          <input type="text" id="reward-item-card-series" class="input-control" placeholder="例如：新竹風情、神獸系列、世界名畫" data-i18n-placeholder="reward_modal_card_series_placeholder">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: flex-end;">
+          <div>
+            <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_stock_label">庫存數量：</label>
+            <input type="number" id="reward-item-stock" class="input-control" min="0" placeholder="例如：10" data-i18n-placeholder="reward_modal_stock_placeholder" disabled>
+          </div>
+          <div style="padding-bottom: 10px;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; color: var(--text-main); font-weight: 600;">
+              <input type="checkbox" id="reward-item-unlimited-stock" checked style="width: 17px; height: 17px; accent-color: var(--primary);">
+              <span data-i18n="reward_modal_unlimited_stock">無限量 (無庫存上限)</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;" data-i18n="reward_modal_desc_label">品項簡介 / 特權使用規則：</label>
+          <textarea id="reward-item-desc" class="input-control" rows="2" placeholder="例如：憑此券可在下週任選一節課自主選位；或徽章/圖卡故事說明" data-i18n-placeholder="reward_modal_desc_placeholder"></textarea>
+        </div>
+
+        <!-- 圖片上傳與預覽 (強制自訂圖檔) -->
+        <div>
+          <label style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 5px;">
+            <span data-i18n="reward_modal_img_label">品項圖案 / 照片上傳：</span><span style="color: var(--accent-negative); font-weight: 800;" data-i18n="reward_modal_img_required_badge">* (必填，不可使用預設圖)</span>
+          </label>
+          <div style="display: flex; gap: 14px; align-items: center; background: var(--input-bg); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <div id="reward-img-preview-box" style="width: 76px; height: 76px; border-radius: 12px; overflow: hidden; background: var(--card-bg); border: 1.5px dashed var(--card-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; text-align: center;">
+              <img id="reward-item-preview-img" src="" style="width: 100%; height: 100%; object-fit: contain; display: none;">
+              <span id="reward-img-placeholder" style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.3; padding: 4px;" data-i18n-html="reward_modal_img_placeholder">📷 請選擇<br>圖檔/照片</span>
+            </div>
+            <div style="flex: 1;">
+              <input type="file" id="reward-item-file" accept="image/*" class="input-control" style="font-size: 0.82rem; padding: 5px 8px;">
+              <div id="reward-file-hint" style="font-size: 0.75rem; color: var(--accent-negative); font-weight: 700; margin-top: 4px;" data-i18n="reward_modal_file_hint_add">
+                ⚠️ 新增品項必須上傳自訂圖檔或照片（支援 JPG、PNG、SVG、WebP）。
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 8px; border-top: 1px solid var(--card-border); margin-top: 4px;">
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; color: var(--text-main); font-weight: 600;">
+            <input type="checkbox" id="reward-item-is-active" checked style="width: 17px; height: 17px; accent-color: var(--accent-positive);">
+            <span data-i18n="reward_modal_is_active">立即上架顯示於學生商城</span>
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn btn-secondary close-modal" id="btn-cancel-reward-editor" data-i18n="modal_cancel">取消</button>
+            <button type="submit" class="btn" id="btn-save-reward-item" data-i18n="reward_modal_btn_save">💾 儲存品項</button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1977,17 +2153,18 @@
   <iframe id="student-app-frame" title="學生課程入口" style="display:none; position:fixed; inset:0; width:100%; height:100%; border:none; z-index:200000; background:#f8fafc;"></iframe>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="/static/js/api.js?v=3.0"></script>
-  <script src="/static/js/i18n.js?v=3.0"></script>
+  <script src="/static/js/api.js?v=3.1"></script>
+  <script src="/static/js/i18n.js?v=3.1"></script>
   <script src="/static/js/datepicker.js?v=3.0"></script>
   <script src="/static/js/custom-select.js?v=1.0"></script>
   <script src="/static/js/image-lightbox.js?v=1.0"></script>
   <script src="/static/js/audio-engine.js?v=3.0"></script>
   <script src="/static/js/toolkit.js?v=3.0"></script>
   <script src="/static/js/realtime.js?v=3.0"></script>
-  <script src="/static/js/materials.js?v=1.3"></script>
+  <script src="/static/js/materials.js?v=1.4"></script>
   <script src="/static/js/app.js?v=3.0"></script>
-  <script src="/static/js/point-cards.js?v=1.0"></script>
+  <script src="/static/js/point-cards.js?v=1.1"></script>
+  <script src="/static/js/rewards.js?v=1.3"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>
 </body>
 </html>

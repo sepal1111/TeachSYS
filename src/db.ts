@@ -377,6 +377,55 @@ export async function initSchema(): Promise<void> {
     );
   `);
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS reward_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      description TEXT NULL,
+      reward_type TEXT NOT NULL,
+      points_cost INTEGER NOT NULL,
+      stock INTEGER NOT NULL DEFAULT -1,
+      image_url TEXT NOT NULL,
+      card_series TEXT NULL,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      order_index INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS reward_redemptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      reward_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      points_spent INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      score_log_id INTEGER NULL,
+      request_note TEXT NULL,
+      teacher_note TEXT NULL,
+      created_at TEXT NOT NULL,
+      approved_at TEXT NULL,
+      fulfilled_at TEXT NULL,
+      FOREIGN KEY(reward_id) REFERENCES reward_items(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_reward_items_course ON reward_items(course_id, is_active);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_reward_redemptions_student ON reward_redemptions(student_id, status);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_reward_redemptions_course ON reward_redemptions(course_id, status);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");
   await tryAlter("ALTER TABLE groups ADD COLUMN plan_id INTEGER NULL;");

@@ -1,5 +1,57 @@
 # CHANGELOG
 
+## [2026-09-03 22:50] 課程素材、實體點數卡、獎勵兌換管理三大模組全面雙語化 (i18n) 支援
+
+- **修改模組/檔案**：
+  - 前端：`static/js/i18n.js`、`static/index.html`、`static/js/materials.js`、`static/js/point-cards.js`、`static/js/rewards.js`
+- **修改類別**：國際化 (i18n) / 體驗優化
+- **具體修改內容說明**：
+  1. **詞庫擴充與對稱性保證 (`static/js/i18n.js`)**：
+     - 在 `zh-TW` 與 `en` 字典中新增三大功能完整對應詞彙，雙語詞庫均達到 538 個詞條且 100% 完整對稱無遺漏。
+     - **課程素材 (Course Materials / LMS)**：包含導覽分頁、章節/單元、編輯按鈕、建立章節、章節空狀態、閱讀率、繳交率、教材類別（投影片、影片、連結、附件、作業、測驗）等。
+     - **實體點數卡 (Point Cards Management)**：包含後台子分頁、發行卡片總數、風格系列數、累計兌換加分次數、批次匯入、風格系列管理、統計分析、下載範本、系列篩選、排序、批次移動/刪除、匯入彈窗、系列編輯彈窗、統計排行彈窗等。
+     - **獎勵兌換管理 (Rewards Management)**：包含後台子分頁、統計看板（上架獎勵項目、待審核/待發放申請、累計已完成兌換）、二級標籤（獎勵品項管理、學生實體兌換審核台）、類型篩選（全部、榮譽徽章、特殊圖卡、實體獎品）、審核狀態篩選（全部、待審核、待領取預扣中、已完成發放、已駁回/取消）、新增/編輯彈窗（名稱、種類、點數、圖卡系列、庫存、簡介、圖檔照片上傳標註、上架開關）、三階段審核操作按鈕（核准預扣、交件真實扣點、駁回、取消）及所有動態提示文字。
+  2. **HTML 宣告標註 (`static/index.html`)**：
+     - 在 `#pane-materials`、`#admin-subpane-pointcards`、`#admin-subpane-rewards` 以及所有相關 Modals (`#modal-import-point-cards`, `#modal-manage-series`, `#modal-pointcard-stats`, `#modal-reward-item-editor`) 的標題、文字、標籤、輸入框 placeholder 與按鈕全面加入 `data-i18n`、`data-i18n-html`、`data-i18n-placeholder`、`data-i18n-title`。
+  3. **動態渲染與監聽機制 (`materials.js`, `point-cards.js`, `rewards.js`)**：
+     - 引入安全 `t(key, fallback, params)` 函式，動態卡片、按鈕、徽章、狀態、提示與確認彈窗均改以當前語系呈現。
+     - 在 `i18n.js` 切換語言時自動觸發 `renderCardsList()`、`reload()` 與 `renderCurrent()`，達成全模組無縫即時切換。
+  4. **驗證狀態**：通過 Node 雙語字典對稱性測試，`npm run build` 與 `npx tsc --noEmit` 0 錯誤通過。
+
+## [2026-09-03 22:30] 獎勵品項新增強制要求上傳自訂圖檔與照片（禁用預設圖）
+
+- **修改模組/檔案**：
+  - 前端：`static/index.html`、`static/js/rewards.js`
+  - 後端：`src/routes/rewards.ts`
+- **修改類別**：規則強化 / 驗證防呆
+- **具體修改內容說明**：
+  1. **後端強制校驗**：`POST /api/rewards/:courseId` 嚴格要求請求中必須包含自訂圖檔（`req.file`），移除任何系統預設卡片 fallback；未提供圖檔時直接回傳 HTTP 400 錯誤。
+  2. **前端表單紅字醒目標示**：彈窗中品項圖案/照片標籤明確加上 `* (必填，不可使用預設圖)`，並以未選取提示方塊取代原先預先載入的系統卡圖。
+  3. **表單提交前端攔截防呆**：若教師新增品項未選擇圖檔，提交時彈出警告提示並自動將焦點定位至圖檔選擇按鈕，杜絕誤送未帶圖品項。
+  4. 編輯現有品項時可選擇保留原圖檔或上傳新圖片更換。
+
+## [2026-09-03 22:10] 全面實施點數兌換獎勵制度（榮譽徽章、特殊圖卡、實體審核預扣機制）
+
+- **修改模組/檔案**：
+  - 前端：`static/index.html`、`static/js/rewards.js`、`static/student.html`、`static/js/student.js`、`static/js/app.js`
+  - 後端：`src/routes/rewards.ts`、`src/routes/studentRewards.ts`、`src/routes/studentContent.ts`、`src/index.ts`
+  - 資料庫：`prisma/schema.prisma`、`src/db.ts`（新增 `reward_items` 與 `reward_redemptions` 表）
+- **修改類別**：新增功能 / 系統升級
+- **具體修改內容說明**：
+  1. **虛擬榮譽徽章 (Badges)**：
+     - 教師可自行上傳專屬徽章圖樣，學生以點數兌換後即時生效。
+     - 學生端建立「🏅 我的榮譽徽章館」，以圓形金質流光陳列佩戴，點擊可放大觀賞。
+  2. **虛擬特殊圖卡搜集 (Collectible Cards)**：
+     - 教師可自行上傳精緻特殊圖卡並設定系列名稱（如神獸、名畫等）。
+     - 學生端建立「🎴 特殊圖卡圖鑑冊」，支援圖鑑收集與全螢幕放大檢視。
+  3. **實體獎品/特權三階段安全審核預扣流程**：
+     - 教師可設定實體物品照片、所需點數、庫存數量（或無限量）。
+     - **第 1 階段（提出申請）**：學生於商城送出申請（狀態：`📌 待審核`）。
+     - **第 2 階段（審核預扣）**：教師於後台點擊「核准並預扣點數」，品項庫存 $-1$，點數列入「預扣中（Held Points）」，學生可用點數即時扣減，防止重複挪用；若駁回或取消則自動釋放歸還。
+     - **第 3 階段（交件真實扣點）**：學生拿到實體獎品，教師點擊「確認交件」，正式寫入真實扣點日誌（`ScoreLog`）並結案。
+     - 學生端設有「📦 實體獎品領取進度」，清楚呈現各獎品審核與領取狀態。
+  4. 本次已用 `npm run build` 與 `npx tsc --noEmit` 驗證完全通過。
+
 ## [2026-09-03 21:35] 學生端得分紀錄清單實施「預設折疊、最近五筆分頁、指定日期、顯示全部」與實體卡顯式標示 card_no
 
 - **修改模組/檔案**：

@@ -22,6 +22,13 @@
     return null;
   }
 
+  function t(key, fallback, params) {
+    if (window.I18n && typeof window.I18n.t === 'function') {
+      return window.I18n.t(key, params);
+    }
+    return fallback;
+  }
+
   // 1. 載入點數卡與系列資料
   async function loadPointCardsData() {
     const courseId = getActiveCourseId();
@@ -128,7 +135,7 @@
         const isPositive = card.score >= 0;
         const scoreBadgeClass = isPositive ? 'accent-positive' : 'accent-negative';
         const scorePrefix = isPositive ? '+' : '';
-        const themeLabel = card.series_name || '未分類';
+        const themeLabel = card.series_name || t('ptcard_batch_unclassified', '未分類');
 
         return `
           <div class="ptcard-item-card glass-card ${isChecked ? 'selected' : ''}" data-id="${card.id}" style="margin-bottom:0; padding:16px; border:1.5px solid ${isChecked ? 'var(--primary)' : 'var(--card-border)'}; border-radius:var(--radius-lg); position:relative; transition:all 0.15s ease; background:${isChecked ? 'rgba(91, 124, 214, 0.05)' : 'var(--card-bg)'};">
@@ -139,19 +146,19 @@
               </label>
               <div style="display:flex; align-items:center; gap:6px;">
                 <span class="badge" style="font-size:0.95rem; font-weight:900; padding:3px 10px; border-radius:var(--radius-full); background:${isPositive ? 'rgba(79, 174, 130, 0.15)' : 'rgba(217, 128, 126, 0.15)'}; color:${isPositive ? 'var(--accent-positive)' : 'var(--accent-negative)'};">
-                  ${scorePrefix}${card.score} 分
+                  ${scorePrefix}${card.score} ${t('pts', '分')}
                 </span>
-                <button type="button" class="btn-icon btn-delete-single-card" data-id="${card.id}" title="刪除此卡" style="color:var(--text-subtle); padding:4px; font-size:0.9rem; cursor:pointer; background:none; border:none;">🗑️</button>
+                <button type="button" class="btn-icon btn-delete-single-card" data-id="${card.id}" title="${t('ptcard_btn_delete_single', '刪除此卡')}" style="color:var(--text-subtle); padding:4px; font-size:0.9rem; cursor:pointer; background:none; border:none;">🗑️</button>
               </div>
             </div>
 
             <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text-muted); padding-top:8px; border-top:1px dashed var(--card-border);">
               <div style="display:flex; align-items:center; gap:6px;">
                 <span style="background:rgba(91, 124, 214, 0.1); color:var(--primary); padding:2px 8px; border-radius:12px; font-weight:600;">🏷️ ${escapeHtml(themeLabel)}</span>
-                <span style="font-family:ui-monospace, monospace; color:var(--text-subtle);" title="QR 碼內容">🔑 ${escapeHtml(card.code)}</span>
+                <span style="font-family:ui-monospace, monospace; color:var(--text-subtle);" title="QR">🔑 ${escapeHtml(card.code)}</span>
               </div>
               <div style="font-size:0.8rem;">
-                已刷 <b style="color:var(--primary);">${card.redemption_count || 0}</b> 次
+                ${t('ptcard_scanned_count', `已刷 ${card.redemption_count || 0} 次`, { count: card.redemption_count || 0 })}
               </div>
             </div>
           </div>
@@ -610,11 +617,11 @@
         // 填入系列選單
         const seriesSelect = document.getElementById('ptcard-import-series-select');
         if (seriesSelect) {
-          let opts = '<option value="none">未分類 (不指定系列)</option>';
+          let opts = `<option value="none">${t('ptcard_import_series_none', '未分類 (不指定系列)')}</option>`;
           currentSeries.forEach((s) => {
             opts += `<option value="${s.id}">🏷️ ${escapeHtml(s.name)}</option>`;
           });
-          opts += '<option value="create_new">➕ 直接建立新系列...</option>';
+          opts += `<option value="create_new">${t('ptcard_import_series_new', '➕ 直接建立新系列...')}</option>`;
           seriesSelect.innerHTML = opts;
           seriesSelect.value = 'create_new';
         }
@@ -721,6 +728,7 @@
   // 對外匯出供切換班級時重載
   window.PointCardsManager = {
     reload: loadPointCardsData,
+    renderCardsList,
   };
   window.PointCardsModule = window.PointCardsManager;
 })();

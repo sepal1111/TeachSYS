@@ -4369,6 +4369,9 @@ function initEventListeners() {
       if (targetSubtab === 'pointcards' && window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {
         window.PointCardsManager.reload();
       }
+      if (targetSubtab === 'rewards' && window.RewardsManager && typeof window.RewardsManager.reload === 'function') {
+        window.RewardsManager.reload();
+      }
     });
   });
 

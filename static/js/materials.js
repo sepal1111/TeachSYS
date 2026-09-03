@@ -21,6 +21,13 @@
     return d.innerHTML;
   }
 
+  function t(key, fallback, params) {
+    if (window.I18n && typeof window.I18n.t === 'function') {
+      return window.I18n.t(key, params);
+    }
+    return fallback;
+  }
+
   function findUnitIdForSubUnit(subUnitId) {
     for (const u of unitsData) {
       if (u.subUnits.some((su) => su.id === subUnitId)) return u.id;
@@ -32,7 +39,8 @@
     const titleEl = document.getElementById('materials-course-title');
     if (!titleEl) return;
     const course = ((window.AppState && window.AppState.courses) || []).find((c) => c.id === cid);
-    titleEl.textContent = course ? `📚 ${course.name} 課程與教材` : '📚 課程與教材';
+    const suffix = t('materials_title', '📚 課程與教材').replace('📚 ', '');
+    titleEl.textContent = course ? `📚 ${course.name} ${suffix}` : t('materials_title', '📚 課程與教材');
   }
 
   async function load() {
@@ -75,7 +83,7 @@
     const toggleBtn = document.getElementById('btn-materials-toggle-edit');
     if (toggleBtn) {
       toggleBtn.className = on ? 'btn btn-success' : 'btn';
-      toggleBtn.textContent = on ? '✅ 完成編輯' : '✏️ 編輯課程內容';
+      toggleBtn.textContent = on ? t('materials_btn_finish_edit', '✅ 完成編輯') : t('materials_btn_toggle_edit', '✏️ 編輯課程內容');
       toggleBtn.style.fontSize = '0.85rem';
     }
     const addUnitBtn = document.getElementById('btn-materials-add-unit');
@@ -91,7 +99,7 @@
     const container = document.getElementById('materials-units-list');
     if (!container) return;
     if (!units.length) {
-      container.innerHTML = `<div style="padding: 40px 20px; text-align:center; color: var(--text-muted);">🎓 目前還沒有課程內容，請點選上方「✏️ 編輯課程內容」新增第一個主題。</div>`;
+      container.innerHTML = `<div style="padding: 40px 20px; text-align:center; color: var(--text-muted);">${t('materials_empty_notice', '🎓 目前還沒有課程內容，請點選上方「✏️ 編輯課程內容」新增第一個主題。')}</div>`;
       return;
     }
     container.innerHTML = '';
@@ -1470,5 +1478,11 @@
     bindStaticUi();
   }
 
-  window.LmsMaterials = { load };
+  window.LmsMaterials = {
+    load,
+    renderCurrent: () => {
+      updateCourseTitle(courseId());
+      render(unitsData, currentProgressMap);
+    }
+  };
 })();

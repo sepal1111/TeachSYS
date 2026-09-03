@@ -66,7 +66,22 @@ studentContentRouter.get("/me/scores", async (req, res) => {
   const todayStr = getTodayStrTaipei();
   const todayScore = enriched.filter((l) => l.date === todayStr).reduce((sum, l) => sum + l.score, 0);
 
-  res.json({ total_score: totalScore, positive_score: positiveScore, negative_score: negativeScore, today_score: todayScore, logs: enriched });
+  const heldRedemptions = await prisma.rewardRedemption.findMany({
+    where: { studentId, courseId, status: "approved_held" },
+    select: { pointsSpent: true },
+  });
+  const heldPoints = heldRedemptions.reduce((sum, r) => sum + r.pointsSpent, 0);
+  const availablePoints = totalScore - heldPoints;
+
+  res.json({
+    total_score: totalScore,
+    positive_score: positiveScore,
+    negative_score: negativeScore,
+    today_score: todayScore,
+    held_points: heldPoints,
+    available_points: availablePoints,
+    logs: enriched,
+  });
 });
 // --- 我的小組（學生端）--- 對應課程當前生效的分組方案（教師分組頁籤所見的同一套），
 // 用於學生入口首頁的「我的小組」卡片；沒有生效方案或尚未被編入小組時回傳 group: null。
