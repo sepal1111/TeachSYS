@@ -23,7 +23,22 @@ scoresRouter.get("/:courseId/rules", async (req, res) => {
     where: { courseId: Number(req.params.courseId) },
     orderBy: [{ category: "desc" }, { id: "asc" }],
   });
-  res.json(rules);
+  // Prisma returns camelCase (scoreValue, courseId, isDefault) but the frontend
+  // reads snake_case everywhere (rule.score_value) — without this mapping every
+  // rule button/badge shows "undefined" and awarding points via a rule crashes
+  // (score is silently dropped from the JSON body). Matches the snake_case
+  // convention other endpoints (e.g. courses.ts's student list) already follow.
+  res.json(
+    rules.map((r) => ({
+      id: r.id,
+      course_id: r.courseId,
+      title: r.title,
+      category: r.category,
+      score_value: r.scoreValue,
+      icon: r.icon,
+      is_default: r.isDefault,
+    }))
+  );
 });
 
 scoresRouter.post("/:courseId/rules", async (req, res) => {

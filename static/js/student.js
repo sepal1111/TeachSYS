@@ -667,6 +667,9 @@
       `;
       scoreLogsList.appendChild(item);
     });
+
+    // 同步載入點數卡收集冊
+    await loadMyPointCards().catch((err) => console.warn('Load my cards error:', err));
   }
 
   // --- Tab Bar (含一個尚未開放後端的預覽分頁：即時互動牆) ---
@@ -1003,6 +1006,274 @@
     preview.hidden = false;
   });
   document.getElementById('btnLivewallSubmit')?.addEventListener('click', () => LiveWall.submit());
+
+  // ==========================================================================
+  // 實體點數卡掃描與收集冊模組 (移植自 kyps-scoreboard)
+  // ==========================================================================
+  let html5Scanner = null;
+  let isScannerActive = false;
+  let isSubmittingCard = false;
+
+  // 1. 載入個人點數卡收集冊
+  async function loadMyPointCards() {
+    const albumContainer = document.getElementById('myCardsAlbumContainer');
+    const emptyState = document.getElementById('myCardsEmptyState');
+    const totalBadge = document.getElementById('myCardsTotalBadge');
+    if (!albumContainer) return;
+
+    try {
+      const res = await api('/api/student/point-cards/my-cards');
+      const totalCards = res.total_cards || 0;
+      if (totalBadge) totalBadge.textContent = `共 ${totalCards} 張`;
+
+      if (!res.groups || res.groups.length === 0) {
+        albumContainer.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'block';
+        return;
+      }
+
+      if (emptyState) emptyState.style.display = 'none';
+
+      albumContainer.innerHTML = res.groups
+        .map((group) => {
+          const cardsHtml = group.cards
+            .map((card) => {
+              const scoreColor = card.score >= 0 ? 'var(--accent-positive)' : 'var(--accent-negative)';
+              const scorePrefix = card.score >= 0 ? '+' : '';
+              const timeStr = card.timestamp ? card.timestamp.slice(11, 16) : '';
+
+              return `
+                <div class="my-card-tile" style="background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:var(--radius-lg); padding:10px; text-align:center; box-shadow:var(--shadow-xs); transition:transform 0.15s ease, box-shadow 0.15s ease;">
+                  <div style="width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#f1f5f9; margin-bottom:8px; display:flex; align-items:center; justify-content:center;">
+                    <img src="${card.image}" alt="${escapeHtml(card.label)}" style="width:100%; height:100%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                  </div>
+                  <div style="font-weight:800; font-size:0.85rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px;" title="${escapeHtml(card.label)}">
+                    ${escapeHtml(card.label)}
+                  </div>
+                  <div style="font-weight:900; font-size:0.95rem; color:${scoreColor}; margin-bottom:2px;">
+                    ${scorePrefix}${card.score} 分
+                  </div>
+                  <div style="font-size:0.75rem; color:var(--text-subtle); display:flex; justify-content:space-between; align-items:center;">
+                    <span>${card.card_no ? `#${escapeHtml(card.card_no)}` : ''}</span>
+                    <span>${timeStr}</span>
+                  </div>
+                </div>
+              `;
+            })
+            .join('');
+
+          return `
+            <div class="my-cards-date-group" style="margin-bottom:18px; border:1px solid var(--card-border); border-radius:var(--radius-lg); overflow:hidden;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 14px; background:var(--nav-bg); border-bottom:1px solid var(--card-border);">
+                <span style="font-weight:700; font-size:0.88rem; color:var(--text-main);">📅 ${group.date}</span>
+                <span class="badge" style="font-size:0.8rem; font-weight:800; color:var(--primary); background:rgba(91, 124, 214, 0.12); padding:2px 10px; border-radius:12px;">
+                  當日獲得 +${group.total_score} 分
+                </span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(110px, 1fr)); gap:10px; padding:12px;">
+                ${cardsHtml}
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    } catch (err) {
+      console.error('Failed to load my cards:', err);
+    }
+  }
+
+  // 2. 處理點數卡代碼送出（相機掃描到或手動輸入）
+  async function processPointCardCode(code) {
+    if (!code || !code.trim()) return;
+    if (isSubmittingCard) return;
+
+    isSubmittingCard = true;
+    const cleanCode = code.trim();
+    const statusMsg = document.getElementById('scannerStatusMsg');
+    if (statusMsg) {
+      statusMsg.textContent = '⏳ 正在驗證點數卡...';
+      statusMsg.style.color = 'var(--primary)';
+    }
+
+    try {
+      const res = await api('/api/student/point-cards/scan', {
+        method: 'POST',
+        body: JSON.stringify({ code: cleanCode }),
+      });
+
+      // 成功獲得卡片！
+      closeCardScannerModal();
+      showCardRewardModal(res);
+
+      // 重新載入最新分數與收集冊
+      await loadScores();
+    } catch (err) {
+      if (statusMsg) {
+        statusMsg.textContent = `❌ ${err.message}`;
+        statusMsg.style.color = 'var(--accent-negative)';
+      }
+      showToast(err.message, 'error');
+
+      // 1.5 秒後恢復掃描提示
+      setTimeout(() => {
+        if (isScannerActive && statusMsg) {
+          statusMsg.textContent = '請將卡片上的 QR Code 對準上方鏡頭方框';
+          statusMsg.style.color = 'var(--text-muted)';
+        }
+      }, 2500);
+    } finally {
+      isSubmittingCard = false;
+    }
+  }
+
+  // 3. 開啟相機掃描對話框
+  async function openCardScannerModal() {
+    const modal = document.getElementById('modalStudentScanner');
+    const loadingOverlay = document.getElementById('scannerLoadingOverlay');
+    const statusMsg = document.getElementById('scannerStatusMsg');
+    const cameraSelectWrap = document.getElementById('scannerCameraSelectWrap');
+    const cameraSelect = document.getElementById('scannerCameraSelect');
+    const manualInput = document.getElementById('inputManualCardCode');
+
+    if (!modal) return;
+    modal.style.display = 'flex';
+    if (manualInput) manualInput.value = '';
+    if (loadingOverlay) loadingOverlay.style.display = 'flex';
+    if (statusMsg) {
+      statusMsg.textContent = '正在啟動相機鏡頭...';
+      statusMsg.style.color = 'var(--text-muted)';
+    }
+
+    if (!window.Html5Qrcode) {
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (statusMsg) statusMsg.textContent = '⚠️ 無法載入相機模組，請使用下方手動輸入卡號';
+      return;
+    }
+
+    try {
+      if (!html5Scanner) {
+        html5Scanner = new Html5Qrcode('ptcard-qr-reader');
+      }
+
+      // 取得鏡頭清單
+      const cameras = await Html5Qrcode.getCameras().catch(() => []);
+      if (cameras && cameras.length > 1 && cameraSelect) {
+        cameraSelect.innerHTML = cameras
+          .map((cam, idx) => `<option value="${cam.id}">${cam.label || `相機 ${idx + 1}`}</option>`)
+          .join('');
+        if (cameraSelectWrap) cameraSelectWrap.style.display = 'block';
+      }
+
+      const selectedCamId = cameraSelect && cameraSelect.value ? cameraSelect.value : null;
+      const cameraConfig = selectedCamId ? selectedCamId : { facingMode: 'environment' };
+
+      const config = {
+        fps: 10,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const edge = Math.min(viewfinderWidth, viewfinderHeight) * 0.72;
+          return { width: Math.max(180, edge), height: Math.max(180, edge) };
+        },
+        aspectRatio: 1.0,
+      };
+
+      await html5Scanner.start(
+        cameraConfig,
+        config,
+        async (decodedText) => {
+          if (!isScannerActive || isSubmittingCard) return;
+          // 暫停一下避免連環刷入
+          try {
+            await html5Scanner.pause();
+          } catch (_) {}
+          await processPointCardCode(decodedText);
+          setTimeout(() => {
+            if (isScannerActive && html5Scanner) {
+              try {
+                html5Scanner.resume();
+              } catch (_) {}
+            }
+          }, 1500);
+        },
+        () => {}
+      );
+
+      isScannerActive = true;
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (statusMsg) statusMsg.textContent = '請將卡片上的 QR Code 對準上方鏡頭方框';
+    } catch (camErr) {
+      console.warn('Camera start error:', camErr);
+      if (loadingOverlay) loadingOverlay.style.display = 'none';
+      if (statusMsg) {
+        statusMsg.textContent = '無法取得相機權限或無相機可用，請直接手動輸入卡號';
+        statusMsg.style.color = 'var(--accent-negative)';
+      }
+    }
+  }
+
+  // 4. 關閉相機掃描對話框
+  async function closeCardScannerModal() {
+    const modal = document.getElementById('modalStudentScanner');
+    if (modal) modal.style.display = 'none';
+    isScannerActive = false;
+
+    if (html5Scanner) {
+      try {
+        await html5Scanner.stop();
+      } catch (_) {}
+    }
+  }
+
+  // 5. 獲得卡片獎勵彈窗
+  function showCardRewardModal(cardData) {
+    const modal = document.getElementById('modalCardRewardReveal');
+    const labelEl = document.getElementById('revealCardLabel');
+    const imgEl = document.getElementById('revealCardImg');
+    const badgeEl = document.getElementById('revealScoreBadge');
+
+    if (!modal) return;
+    if (labelEl) labelEl.textContent = cardData.label || '榮譽點數卡';
+    if (imgEl) imgEl.src = cardData.card_image || '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+    if (badgeEl) {
+      const isPos = cardData.card_value >= 0;
+      badgeEl.textContent = `${isPos ? '+' : ''}${cardData.card_value} 分`;
+      badgeEl.style.color = isPos ? 'var(--accent-positive)' : 'var(--accent-negative)';
+      badgeEl.style.background = isPos ? 'rgba(79, 174, 130, 0.15)' : 'rgba(217, 128, 126, 0.15)';
+    }
+
+    modal.style.display = 'flex';
+  }
+
+  function closeCardRewardModal() {
+    const modal = document.getElementById('modalCardRewardReveal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  // 事件綁定
+  document.getElementById('btnOpenCardScanner')?.addEventListener('click', openCardScannerModal);
+  document.getElementById('btnCloseScannerModal')?.addEventListener('click', closeCardScannerModal);
+
+  document.getElementById('formManualCardInput')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const input = document.getElementById('inputManualCardCode');
+    if (input && input.value) {
+      processPointCardCode(input.value);
+    }
+  });
+
+  document.getElementById('btnRevealClose')?.addEventListener('click', closeCardRewardModal);
+  document.getElementById('btnRevealContinueScan')?.addEventListener('click', () => {
+    closeCardRewardModal();
+    openCardScannerModal();
+  });
+
+  document.getElementById('scannerCameraSelect')?.addEventListener('change', async () => {
+    if (isScannerActive && html5Scanner) {
+      try {
+        await html5Scanner.stop();
+      } catch (_) {}
+      openCardScannerModal();
+    }
+  });
 
   (async function init() {
     if (await tryResumeSession()) {

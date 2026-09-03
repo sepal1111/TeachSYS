@@ -23,7 +23,7 @@ systemRouter.get("/info", async (req, res) => {
   const mode = (req.query.mode as string) ?? "mobile";
 
   const localIp = getLocalIp();
-  const baseUrl = `http://${localIp}:${port}`;
+  const baseUrl = `https://${localIp}:${port}`;
   const mobileUrl = courseId ? `${baseUrl}/?mobile=1&course_id=${courseId}` : `${baseUrl}/?mobile=1`;
   // 學生連線 QR Code（登入畫面用）：主登入介面預設只顯示教師登入，學生改用自己的手機/平板
   // 掃這組 QR Code，帶 ?login=student 讓對方裝置上開啟的頁面直接顯示學生登入表單（見

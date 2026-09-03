@@ -2,7 +2,7 @@
 import fs from "fs";
 import net from "net";
 import path from "path";
-import http from "http";
+import https from "https";
 import { exec } from "child_process";
 import express, { NextFunction, Request, Response } from "express";
 import cookieParser from "cookie-parser";
@@ -15,6 +15,7 @@ import { isRequestAuthenticated, requireAuth } from "./middleware/auth";
 import { getBearerToken, verifyStudentToken } from "./middleware/studentAuth";
 import { setupRealtime } from "./realtime";
 import { autoCatch } from "./asyncRoute";
+import { getOrCreateHttpsOptions } from "./tls";
 
 import { systemRouter } from "./routes/system";
 import { coursesRouter } from "./routes/courses";
@@ -29,6 +30,8 @@ import { studentAuthRouter } from "./routes/studentAuth";
 import { studentContentRouter } from "./routes/studentContent";
 import { liveWallRouter } from "./routes/liveWall";
 import { studentLiveWallRouter } from "./routes/studentLiveWall";
+import { pointCardsRouter } from "./routes/pointCards";
+import { studentPointCardsRouter } from "./routes/studentPointCards";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
 const bundleDir = getBundleDir();
@@ -212,11 +215,13 @@ app.use("/api/notes", requireAuth, notesRouter);
 app.use("/api/reports", requireAuth, reportsRouter);
 app.use("/api/units", requireAuth, unitsRouter);
 app.use("/api/live-wall", requireAuth, liveWallRouter);
+app.use("/api/point-cards", requireAuth, pointCardsRouter);
 
 // --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
 app.use("/api/auth/student", studentAuthRouter);
 app.use("/api/student", studentContentRouter);
 app.use("/api/student/live-wall", studentLiveWallRouter);
+app.use("/api/student/point-cards", studentPointCardsRouter);
 
 // --- Global error handler: isolate a single request's failure instead of
 // letting an unhandled rejection crash the whole process (all other teachers'
@@ -268,10 +273,13 @@ async function waitForServerReady(port: number, timeoutMs = 15000): Promise<void
   while (Date.now() - start < timeoutMs) {
     try {
       const ok = await new Promise<boolean>((resolve) => {
-        const req = http.get({ host: "127.0.0.1", port, path: "/", timeout: 500 }, (res) => {
-          resolve(res.statusCode === 200);
-          res.resume();
-        });
+        const req = https.get(
+          { host: "127.0.0.1", port, path: "/", timeout: 500, rejectUnauthorized: false },
+          (res) => {
+            resolve(res.statusCode === 200);
+            res.resume();
+          }
+        );
         req.on("error", () => resolve(false));
         req.on("timeout", () => {
           req.destroy();
@@ -288,8 +296,8 @@ async function waitForServerReady(port: number, timeoutMs = 15000): Promise<void
 
 async function printBanner(port: number) {
   const localIp = getLocalIp();
-  const localUrl = `http://localhost:${port}`;
-  const networkUrl = `http://${localIp}:${port}`;
+  const localUrl = `https://localhost:${port}`;
+  const networkUrl = `https://${localIp}:${port}`;
 
   console.log("=".repeat(60));
   console.log("  [*] 國小課堂即時記錄系統 (TeachSYS - Node.js Edition)");
@@ -298,6 +306,8 @@ async function printBanner(port: number) {
   console.log(` 區網手機/平板 : ${networkUrl}`);
   console.log("-".repeat(60));
   console.log(" 請確保手機/平板與此電腦連線至相同的教室 Wi-Fi 網路！");
+  console.log(" 本系統採自簽憑證的 HTTPS，瀏覽器第一次連線會顯示「不安全連線」警告，");
+  console.log(" 屬正常現象，請點選「進階」→「繼續前往」即可（相機掃描功能需要 HTTPS 才能使用）。");
   console.log(" 掃描下方 QR Code 即可快速連線：\n");
   try {
     console.log(await QRCode.toString(networkUrl, { type: "terminal", small: true }));
@@ -317,12 +327,13 @@ async function main() {
   await initSchema();
 
   const port = await findAvailablePort(8000);
-  const httpServer = http.createServer(app);
+  const httpsOptions = await getOrCreateHttpsOptions();
+  const httpServer = https.createServer(httpsOptions, app);
   setupRealtime(httpServer);
 
   httpServer.listen(port, "0.0.0.0", async () => {
     await printBanner(port);
-    waitForServerReady(port).then(() => openBrowser(`http://localhost:${port}`));
+    waitForServerReady(port).then(() => openBrowser(`https://localhost:${port}`));
   });
 }
 

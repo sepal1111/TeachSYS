@@ -334,6 +334,49 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_live_wall_posts_session ON live_wall_posts(session_id);"
   );
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS point_card_series (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NULL,
+      name TEXT NOT NULL,
+      card_theme TEXT NOT NULL DEFAULT 'score_card_A',
+      allowed_course_ids TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS point_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      series_id INTEGER NULL,
+      card_no TEXT NULL,
+      code TEXT NOT NULL,
+      label TEXT NOT NULL,
+      score INTEGER NOT NULL,
+      image TEXT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(series_id) REFERENCES point_card_series(id) ON DELETE SET NULL,
+      UNIQUE(course_id, code)
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS point_card_redemptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      point_card_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      score_log_id INTEGER NULL,
+      date TEXT NOT NULL,
+      timestamp TEXT NOT NULL,
+      FOREIGN KEY(point_card_id) REFERENCES point_cards(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      UNIQUE(point_card_id, student_id, date)
+    );
+  `);
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");
   await tryAlter("ALTER TABLE groups ADD COLUMN plan_id INTEGER NULL;");
@@ -363,6 +406,9 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE submissions ADD COLUMN answers_json TEXT NULL;");
   await tryAlter("ALTER TABLE submissions ADD COLUMN max_score INTEGER NULL;");
   await tryAlter("ALTER TABLE sub_units ADD COLUMN publish_at TEXT NULL;");
+  await tryAlter("ALTER TABLE point_cards ADD COLUMN series_id INTEGER NULL;");
+  await tryAlter("ALTER TABLE point_cards ADD COLUMN card_no TEXT NULL;");
+  await tryAlter("ALTER TABLE point_cards ADD COLUMN image TEXT NULL;");
 
   // Ensure every course has an active group_plan, and backfill group_members from
   // legacy students.group_id, exactly like the Python auto-migration block.

@@ -92,14 +92,28 @@
 }
 
 body {
-  background: var(--bg-gradient);
-  background-attachment: fixed;
   color: var(--text-main);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   overflow-x: hidden;
   letter-spacing: -0.01em;
+}
+
+/* Gradient lives on its own fixed layer behind everything, instead of
+   `background-attachment: fixed` directly on body — Chrome has a long-standing
+   rendering bug where a fixed body background combined with backdrop-filter
+   (used throughout this app's header/popovers/glass-cards) leaves blank
+   unpainted regions that get worse as the viewport grows (visible on a
+   maximized/large window, fine on a smaller one). A dedicated fixed
+   pseudo-element composites as its own layer and sidesteps the bug entirely
+   while looking identical (gradient stays put regardless of scroll). */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--bg-gradient);
 }
 
 /* Custom Scrollbar matching Scoreboard */
@@ -806,21 +820,23 @@ body {
   max-width: calc(100vw - 24px);
   background: rgba(255, 255, 255, 0.98);
   border: 1.5px solid var(--card-border);
-  backdrop-filter: var(--glass-backdrop);
-  -webkit-backdrop-filter: var(--glass-backdrop);
   border-radius: var(--radius-xl);
   padding: 14px;
   box-shadow: var(--shadow-2xl);
-  transition: opacity 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: opacity 0.15s ease, visibility 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
   opacity: 0;
+  visibility: hidden;
   transform: scale(0.92);
   pointer-events: none;
 }
 
 .cursor-score-popover.visible {
   opacity: 1;
+  visibility: visible;
   transform: scale(1);
   pointer-events: auto;
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
 }
 
 .popover-header {
@@ -1267,20 +1283,22 @@ body {
   position: fixed;
   inset: 0;
   background: rgba(15, 23, 42, 0.5);
-  backdrop-filter: var(--glass-backdrop);
-  -webkit-backdrop-filter: var(--glass-backdrop);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
 }
 
 .modal-overlay.open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
+  backdrop-filter: var(--glass-backdrop);
+  -webkit-backdrop-filter: var(--glass-backdrop);
 }
 
 .modal-content {
@@ -1428,12 +1446,14 @@ body {
   padding: 28px;
   overflow-y: auto;
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
 .projection-overlay.open {
   opacity: 1;
+  visibility: visible;
   pointer-events: auto;
 }
 
@@ -3481,6 +3501,33 @@ body.mobile-scoring-only #quick-group-bar .btn {
   0% { transform: scale(1); }
   100% { transform: scale(1.04); }
 }
+
+/* ==========================================================================
+   Point Cards Management & Student Album Styles (實體點數卡樣式)
+   ========================================================================== */
+
+.ptcard-item-card:hover {
+  border-color: var(--primary-light) !important;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.ptcard-item-card.selected {
+  border-color: var(--primary) !important;
+  background: rgba(91, 124, 214, 0.05) !important;
+}
+
+.my-card-tile:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light) !important;
+}
+
+@keyframes popIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
 
 
 

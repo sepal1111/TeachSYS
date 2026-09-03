@@ -5,6 +5,7 @@
 //   - phone -> server -> other clients: { event: "toolkit_action", action, payload }
 //     (remote-control taps relayed to the projection screen, no persistence)
 import type { Server as HttpServer } from "http";
+import type { Server as HttpsServer } from "https";
 import { Server, Socket } from "socket.io";
 import { validateSessionToken } from "./middleware/auth";
 import { verifyStudentToken } from "./middleware/studentAuth";
@@ -15,7 +16,7 @@ function courseRoom(courseId: number): string {
   return `course:${courseId}`;
 }
 
-export function setupRealtime(httpServer: HttpServer): Server {
+export function setupRealtime(httpServer: HttpServer | HttpsServer): Server {
   io = new Server(httpServer, {
     cors: { origin: true, credentials: true },
   });

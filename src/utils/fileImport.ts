@@ -2,7 +2,7 @@
 import ExcelJS from "exceljs";
 import { ParsedStudent } from "./textImport";
 
-function parseCsvLine(line: string): string[] {
+export function parseCsvLine(line: string): string[] {
   const cells: string[] = [];
   let cur = "";
   let inQuotes = false;

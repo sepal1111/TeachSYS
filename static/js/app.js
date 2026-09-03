@@ -522,6 +522,14 @@ function initTheme() {
 
 // --- Tab Navigation ---
 function switchTab(tabName) {
+  // No-op on a redundant click (already on this tab) — without this guard, every
+  // click fully tears down and rebuilds the current pane (including refetching
+  // data and recreating every student avatar <img>) even when nothing changes,
+  // which turns any rapid repeat-click (e.g. a flaky mouse double-click) into a
+  // visible flicker. Mirrors the equivalent guard in student.js's switchTab().
+  const targetTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
+  if (targetTab && targetTab.classList.contains('active')) return;
+
   // Auto-hide floating score popover & clear selection on tab switch
   const popover = document.getElementById('cursor-score-popover');
   if (popover) {

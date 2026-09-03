@@ -14,3 +14,19 @@ export function getLocalIp(): string {
   }
   return "127.0.0.1";
 }
+
+/** Every non-internal IPv4 address across all network interfaces (not just the
+ *  first one), used by src/tls.ts to build a self-signed cert's SAN list so it
+ *  stays valid regardless of which interface a device ends up routed through. */
+export function getAllLocalIps(): string[] {
+  const nets = os.networkInterfaces();
+  const ips: string[] = [];
+  for (const name of Object.keys(nets)) {
+    for (const net of nets[name] ?? []) {
+      if (net.family === "IPv4" && !net.internal) {
+        ips.push(net.address);
+      }
+    }
+  }
+  return ips;
+}

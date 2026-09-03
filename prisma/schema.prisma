@@ -37,6 +37,8 @@ model Course {
   qualitativeNotes QualitativeNote[]
   units            Unit[]
   liveSessions     LiveSession[]
+  pointCards       PointCard[]
+  pointCardSeries  PointCardSeries[]
 
   @@map("courses")
 }
@@ -116,6 +118,7 @@ model Student {
   submissions      Submission[]
   submissionComments SubmissionComment[]
   liveWallPosts    LiveWallPost[]
+  pointCardRedemptions PointCardRedemption[]
 
   @@map("students")
 }
@@ -408,4 +411,60 @@ model ReadingProgress {
 
   @@unique([subUnitId, studentId])
   @@map("reading_progress")
+}
+
+// ==========================================================================
+// 點數卡（Point Cards）：教師匯入實體卡片的「QR 內容 -> 分數」對照表，學生用
+// 自己裝置的相機掃描卡片後自動為自己加分，同一張卡同一位學生每天限刷一次
+// （PointCardRedemption 的 @@unique 強制）。刷卡會另外建立一筆 ScoreLog（見
+// routes/studentPointCards.ts），讓既有的總分/儀表板/排行榜/歷史紀錄完全
+// 不用跟著改；PointCardRedemption 純粹是防重複刷 + 稽核用的輔助表。
+// ==========================================================================
+
+model PointCardSeries {
+  id               Int         @id @default(autoincrement())
+  courseId         Int?        @map("course_id")
+  name             String
+  cardTheme        String      @default("score_card_A") @map("card_theme")
+  allowedCourseIds String      @default("") @map("allowed_course_ids")
+  createdAt        String      @map("created_at")
+
+  course Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  cards  PointCard[]
+
+  @@map("point_card_series")
+}
+
+model PointCard {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  seriesId  Int?    @map("series_id")
+  cardNo    String? @map("card_no")
+  code      String
+  label     String
+  score     Int
+  image     String?
+  createdAt String  @map("created_at")
+
+  course      Course                @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  series      PointCardSeries?      @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+  redemptions PointCardRedemption[]
+
+  @@unique([courseId, code])
+  @@map("point_cards")
+}
+
+model PointCardRedemption {
+  id          Int     @id @default(autoincrement())
+  pointCardId Int     @map("point_card_id")
+  studentId   Int     @map("student_id")
+  scoreLogId  Int?    @map("score_log_id")
+  date        String
+  timestamp   String
+
+  pointCard PointCard @relation(fields: [pointCardId], references: [id], onDelete: Cascade)
+  student   Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([pointCardId, studentId, date])
+  @@map("point_card_redemptions")
 }

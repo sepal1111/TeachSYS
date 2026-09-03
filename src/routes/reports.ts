@@ -78,7 +78,7 @@ reportsRouter.get("/:courseId/dashboard", async (req, res) => {
   // before summing, so a group-wide award counts once rather than once per member.
   let groupAwardMap = new Map<number, number>();
   if (!rangeIsEmpty) {
-    const rows = await prisma.$queryRaw<{ group_id: number; group_score: number }[]>(
+    const rows = await prisma.$queryRaw<{ group_id: number | bigint; group_score: number | bigint }[]>(
       Prisma.sql`
         SELECT group_id, SUM(event_score) AS group_score FROM (
           SELECT sl.group_id AS group_id, sl.timestamp, sl.rule_title, sl.score AS event_score
@@ -93,7 +93,7 @@ reportsRouter.get("/:courseId/dashboard", async (req, res) => {
         GROUP BY group_id
       `
     );
-    groupAwardMap = new Map(rows.map((r) => [r.group_id, r.group_score]));
+    groupAwardMap = new Map(rows.map((r) => [Number(r.group_id), Number(r.group_score ?? 0)]));
   }
 
   const planGroups = planIdVal
@@ -123,7 +123,7 @@ reportsRouter.get("/:courseId/dashboard", async (req, res) => {
   });
 
   const groupScores = planGroups.map((g) => {
-    const totalPts = groupAwardMap.get(g.id) ?? 0;
+    const totalPts = Number(groupAwardMap.get(g.id) ?? 0);
     return {
       id: g.id,
       group_name: g.groupName,
@@ -261,7 +261,7 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
     const p = plans[planIdx];
     const pGroups = await prisma.group.findMany({ where: { courseId, planId: p.id }, orderBy: [{ orderIndex: "asc" }, { id: "asc" }] });
 
-    const pGroupRows = await prisma.$queryRaw<{ group_id: number; group_score: number }[]>(
+    const pGroupRows = await prisma.$queryRaw<{ group_id: number | bigint; group_score: number | bigint }[]>(
       Prisma.sql`
         SELECT group_id, SUM(event_score) AS group_score FROM (
           SELECT sl.group_id AS group_id, sl.timestamp, sl.rule_title, sl.score AS event_score
@@ -276,7 +276,7 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
         GROUP BY group_id
       `
     );
-    const pGroupScoreMap = new Map(pGroupRows.map((r) => [r.group_id, r.group_score]));
+    const pGroupScoreMap = new Map(pGroupRows.map((r) => [Number(r.group_id), Number(r.group_score ?? 0)]));
 
     for (const g of pGroups) {
       const members = await prisma.groupMember.findMany({

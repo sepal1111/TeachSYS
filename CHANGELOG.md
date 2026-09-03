@@ -1,5 +1,99 @@
 # CHANGELOG
 
+## [2026-09-03 19:00] 將預設點數卡風格系列設定為「竹塹風情」與「台灣之美」
+
+- **修改模組/檔案**：`src/routes/pointCards.ts`、`static/index.html`、`static/js/point-cards.js`
+- **修改類別**：調整
+- **具體修改內容說明**：
+  1. **預設系列常駐**：在 `src/routes/pointCards.ts` 的 `GET /:courseId/series` 中加入自動確保邏輯，任何班級載入時系統自動維護建立「竹塹風情」（風格 A，對應 `score_card_A`）與「台灣之美」（風格 B，對應 `score_card_B`）兩個預設全校共用系列。
+  2. **前端外觀與說明對齊**：
+     - 將批次匯入彈窗與系列管理彈窗中的外觀選項更新為「🏛️ 竹塹風情 (風格 A)」與「🌄 台灣之美 (風格 B)」。
+     - 將系列名稱建議 placeholder 更新為「例如：竹塹風情、台灣之美、段考獎勵卡」。
+     - 在系列管理清單中，將主題標籤動態呈現為「🏛️ 竹塹風情 (風格 A)」與「🌄 台灣之美 (風格 B)」。
+  3. 本次已用 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 18:55] 移植 kyps-scoreboard 實體點數卡機制（風格系列、授權班級、Excel/CSV 匯入、相機 QR 掃描與卡片收集冊）
+
+- **修改模組/檔案**：
+  - 後端：`prisma/schema.prisma`、`src/db.ts`、`src/utils/pointCardImport.ts`、`src/routes/pointCards.ts`、`src/routes/studentPointCards.ts`
+  - 前端與靜態資源：`static/index.html`、`static/js/point-cards.js`、`static/student.html`、`static/js/student.js`、`static/css/style.css`、`static/pic/score_card/`、`static/js/vendor/html5-qrcode.min.js`
+- **修改類別**：新增
+- **具體修改內容說明**：
+  1. **資料模型與相容性**：
+     - 新增 `PointCardSeries` 模型，支援系列名稱、主題風格（`score_card_A` / `score_card_B`）、授權班級（`allowedCourseIds`）。
+     - 擴充 `PointCard` 模型，支援序列號 `cardNo`、所屬系列關聯 `seriesId`、卡面圖片 `image`。
+     - 在 `src/db.ts` 中加入自動建表 SQL 與欄位遷移邏輯，確保升級零破壞且免手動 migration。
+  2. **靜態資源移植**：
+     - 複製 `kyps-scoreboard` 的 `score_card_A` 與 `score_card_B` 完整實體卡面 JPG 圖檔（1~10 分面額）至 `static/pic/score_card/`。
+     - 複製單一封裝 UMD 的 `html5-qrcode.min.js` 至 `static/js/vendor/`，支援無外網局域網環境下的手機與平板相機 QR Code 掃描。
+  3. **後端匯入與管理 API**：
+     - 升級 `src/utils/pointCardImport.ts`，支援 **Excel (.xlsx, .xls) 與 CSV** 雙格式，智能對齊卡號、分數、名稱、序列號等多種欄位名稱。
+     - 升級教師端路由 `src/routes/pointCards.ts`：支援風格系列管理（新增/編輯/授權班級）、批次移動至指定系列、批次刪除、Excel/CSV 範本下載與兌換統計排行。
+     - 升級學生端路由 `src/routes/studentPointCards.ts`：`POST /scan` 整合系列班級授權檢查、每人每日防重複刷機制、圖面動態匹配與 WebSocket 即時廣播；新增 `GET /my-cards` 提供個人卡片收集冊歷史。
+  4. **教師端與學生端介面**：
+     - 教師端：在「⚙️ 系統與後台」新增「🎫 實體點數卡管理」子分頁，提供數據總覽、系列篩選、排序、批次勾選移動/刪除、Excel/CSV 匯入彈窗、風格系列管理彈窗與統計分析彈窗。
+     - 學生端：在「🌟 我的點數」新增「📷 掃描實體點數卡」按鈕，支援相機視訊掃描與手動/條碼槍刷入雙模式，獲得卡片時彈出炫麗翻轉動畫與面額圖檔；並新增「🎴 我的卡片收集冊」依日期群組展示所有收集到的實體卡面。
+  5. 本次已用 `npx tsc --noEmit` 驗證完全通過。
+
+## [2026-09-03 18:35] 修正儀表板與匯出報表讀取時發生 BigInt 序列化及排序型別錯誤 (500) 的問題
+
+- **修改模組/檔案**：`src/routes/reports.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：前端在登入後載入即時評分資料時呼叫 `GET /api/reports/:courseId/dashboard?period=today`，後端拋出 `TypeError: Do not know how to serialize a BigInt` 與 `TypeError: Cannot convert a BigInt value to a number at Array.sort` 的 500 內部伺服器錯誤，導致前端跳出 `Scoring data load error: Error: Cannot convert a BigInt value to a number`。
+  2. **根因**：
+     - 在計算小組事件總分時，使用了 Prisma 原生 SQL 查詢 `prisma.$queryRaw` 並執行 `SUM(event_score)` 聚合。在 SQLite 驅動中，Raw SQL 的 `SUM()` 回傳結果會被封裝為 JavaScript 的 `BigInt` 型別（如 `10n`）。
+     - 當 `groupAwardMap` 儲存了 `BigInt` 物件後，在後續執行 `groupScores.sort((a, b) => b.total_score - a.total_score)` 時，因為 `sort` 的比較回傳值需為 `number`，直接相減造成 `Cannot convert a BigInt value to a number` 錯誤；而在將結果透過 `res.json()` 回傳時，原生 `JSON.stringify()` 無法序列化 `BigInt`，進而引發 `Do not know how to serialize a BigInt` 崩潰。
+  3. **修正內容**：
+     - 在 `reports.ts` 中對 `prisma.$queryRaw` 的結果 `r.group_id` 與 `r.group_score` 一律包裝 `Number(r.group_id)` 與 `Number(r.group_score ?? 0)` 進行明確的數值轉型，消除任何殘留的 `BigInt`。
+     - 同步修正報表匯出（`:courseId/export`）中相同寫法的小組分數查詢，杜絕潛在的 Excel 匯出異常。
+  4. 本次已用 `npx tsc --noEmit` 驗證通過。
+
+## [2026-09-03 18:31] 修正 Chrome 瀏覽器在登入與彈窗介面出現深色色塊破圖/遮擋內容的問題
+
+- **修改模組/檔案**：`static/css/style.css`、`static/index.html`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：使用者測試時回報，在 Chrome 瀏覽器下登入卡片出現顯示不完整的情形（視窗大時卡片下半部被深色區塊切斷；縮小瀏覽器視窗時卡片露出較多，但中間依然被大塊深色矩形遮蓋，且中間可見輸入框的游標）。
+  2. **根因**：
+     - 系統頁面內常駐了 27 個全螢幕（`position: fixed; inset: 0;`）的彈窗遮罩（`.modal-overlay`），且部分彈窗（如重置密碼確認、QR Code 等）的 `z-index` 高達 100000+，高於登入遮罩（`#auth-overlay` 的 99999）。
+     - 原本 `.modal-overlay` 在未開啟狀態時僅使用 `opacity: 0; pointer-events: none;`，**缺少了 `visibility: hidden;`**，且元素本體仍常駐 `backdrop-filter: var(--glass-backdrop);`。
+     - 在 Chrome / Chromium 的 GPU 合成架構（Skia Compositor）中，未加上 `visibility: hidden` 的全螢幕 `backdrop-filter` 元素即便 `opacity: 0`，瀏覽器仍會為其建立 GPU 合成圖層並嘗試進行模糊取樣。當二十幾個全螢幕毛玻璃圖層重疊疊加，加上登入遮罩本身又套用了全螢幕 `backdrop-filter: blur(25px)`，視窗較大或螢幕解析度較高時會使 GPU 紋理緩存超載或引發圖層裁切計算錯誤（Tile Corruption Bug），直接將未開啟彈窗的矩形區域渲染成深色實心色塊（因輸入游標 Caret 屬於獨立圖層，故游標仍會穿透顯示在色塊中央）。當使用者縮小視窗時，GPU 緩存負擔下降，破圖範圍隨之變小，這正是縮小視窗後較正常的根本原因。
+  3. **修正內容**：
+     - `static/css/style.css`：為 `.modal-overlay`、`.projection-overlay`、`.cursor-score-popover` 加上 `visibility: hidden;`，並將 `backdrop-filter` 移至僅在 `.open` / `.visible` 作用中時才啟用；關閉時立即隱藏且不進行任何 GPU 模糊濾鏡採樣與圖層合成。
+     - `static/index.html`：移除 `#auth-overlay` 上昂貴且容易觸發 Chromium 合成錯誤的全螢幕 `backdrop-filter: blur(25px)`，改用高質感且相容性 100% 的放射狀深色漸層背景；並在登入卡片容器加上 `isolation: isolate; overflow: hidden;` 建立獨立堆疊上下文，徹底杜絕圖層溢出與遮擋。
+  4. 本次已用純文字比對確認 CSS 大括號成對（476 對）、`npx tsc --noEmit` 驗證通過。
+
+## [2026-09-03 18:14] 修正瀏覽器視窗放大/最大化時畫面出現大片空白的問題
+
+- **修改模組/檔案**：`static/css/style.css`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：延續稍早排查的「畫面持續閃動」問題，使用者確認這是肉眼在瀏覽器裡就看得到的真實現象（不只是截圖工具的問題），並且抓到關鍵重現條件：縮小瀏覽器視窗時畫面正常，視窗放大/最大化時就會出現大片空白區域。
+  2. **根因**：`body`（`style.css:94` 起）原本用 `background: var(--bg-gradient); background-attachment: fixed;` 讓漸層背景固定不隨捲動移動。Chrome 對「`background-attachment: fixed` 直接用在會捲動的 `body` 上、且頁面同時大量使用 `backdrop-filter` 毛玻璃效果（本專案的 header、評分彈出選單、glass-card 卡片幾乎到處都是）」這個組合有長期存在的算繪錯誤：瀏覽器需要合成的固定背景範圍越大（視窗越大/解析度越高），越容易出現沒有被正確畫上去的空白區塊，且必須靠一次額外的重排（例如縮小視窗）才會強制重畫回正常——完全符合使用者回報的現象。
+  3. **修正內容**：把漸層背景從 `body` 自己的 `background` 屬性，改成掛在一個獨立的 `body::before` 偽元素上（`position: fixed; inset: 0; z-index: -1;`），視覺效果完全相同（背景一樣固定不隨頁面捲動），但因為是獨立的合成層，不會再觸發這個 Chrome 特有的算繪錯誤。已確認全專案沒有任何 JS 程式碼直接操作 `document.body.style.background`，這個改動不影響任何既有邏輯。
+  4. 本次已用純文字比對確認 CSS 大括號成對（476 對）、`npx tsc --noEmit` 驗證通過。這是純前端 CSS 改動，不需要重啟伺服器，重新整理頁面即可生效——**建議實機測試**：重新整理後把瀏覽器視窗放到最大，確認不再出現空白區塊；也請一併確認稍早在排查時發現、同一批修正的評分項目「undefined」分數徽章問題（`scores.ts`）是否也已正常顯示（該修正走的是 `tsx watch`，使用者自己執行中的開發伺服器應該已經自動套用）。
+
+## [2026-09-03 18:03] 修正評分項目按鈕分數徽章顯示「undefined」且點擊會 500 的問題
+
+- **修改模組/檔案**：`src/routes/scores.ts`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：使用者截圖顯示即時評分頁面點選學生後跳出的評分選單，每個評分項目（熱心助人、發言踴躍、專心聽講…）右側的分數徽章都顯示英文字「undefined」而非實際分數，是稍早在排查「畫面持續閃動」問題過程中就已經定位到、但尚未修正的既有 bug。
+  2. **根因**：`GET /api/scores/:courseId/rules`（`scores.ts:21-27`）直接把 Prisma 查詢結果 `res.json(rules)` 回傳——Prisma Client 回傳的欄位是 model 定義的 camelCase 名稱（`scoreValue`、`courseId`、`isDefault`），但前端（`app.js` 的 `renderRulesBar()`、`applyScoreRule()`、後台「評分項目設定」列表與編輯視窗）一律讀 `rule.score_value`（snake_case），對不上的欄位在 JS 裡就是 `undefined`。這不只是顯示問題：`applyScoreRule()` 送出的 `POST /api/scores/:courseId/add` payload 裡 `score: rule.score_value` 也會是 `undefined`，經過 `JSON.stringify` 後這個欄位會直接從請求內容裡消失，導致後端 Prisma 噴出 `Argument \`score\` is missing` 的 500 錯誤——這正是稍早在 log 裡意外捕捉到、影響使用者真實 501 班級的那筆失敗請求的根本原因。
+  3. **修正內容**：把 `GET /:courseId/rules` 的回傳值手動轉成 snake_case（`score_value`、`course_id`、`is_default`），比照專案裡其他端點（例如 `courses.ts` 學生名冊列表）已經在用的既有慣例，讓前端讀到的欄位名稱對得上。
+  4. 本次已用 `npx tsc --noEmit` 驗證通過，未啟動開發伺服器測試（測試伺服器已依使用者要求停止）——**建議實機測試**：重新啟動伺服器後，點選學生跳出評分選單，確認每個評分項目顯示的是實際分數（例如 +1、+2、-1）而非「undefined」；實際點擊套用一個評分項目，確認能成功加分且不會出現伺服器錯誤。
+
+## [2026-09-03 17:58] 修正主畫面點擊分頁時持續閃動的問題
+
+- **修改模組/檔案**：`static/js/app.js`
+- **修改類別**：修正
+- **具體修改內容說明**：
+  1. **背景**：使用者回報用 Chrome 瀏覽時，畫面會持續在「完整」與「被切斷」兩種狀態間反覆閃動，整個系統各個分頁都會發生，且強制重新整理（Cmd+Shift+R）也無法排除。請使用者打開瀏覽器 Console 面板後，看到 `switchTab` 透過 `.nav-tab` 的點擊監聽器（`app.js` 第 581 行）被連續、重複觸發，每次都重新打了 10 位學生的大頭貼圖檔（`/photo/112001.jpg` 等，因為測試資料沒有實際照片檔案而 404，這部分本身是既有、無害的行為，非本次問題根因）。
+  2. **根因**：`switchTab(tabName)`（`app.js:524` 起）完全沒有「已經在這個分頁就不做事」的判斷——不管點的是不是已經作用中的同一個分頁，每次呼叫都會清空選取狀態、把整個學生卡片格重新渲染一次（含重新建立每張大頭貼 `<img>`）、重新切換所有分頁按鈕與內容區塊的 class、並重新打 API 抓一次該分頁資料（`refreshActiveTab`）。相較之下，學生端 `student.js` 的對應函式（第 684 行）本來就有 `if (!target || target.btn.classList.contains('active')) return;` 這道保護，教師端這支卻漏掉了。只要滑鼠/觸控板出現連續觸發點擊事件的情形（例如按鍵接點老化造成的「連點」），就會變成不斷重複整段重繪＋重新抓資料，看起來就是持續閃動；一般網站對「重複點擊同一個已經選取的項目」通常是無害的 no-op，所以只有這個系統會出現這個現象。
+  3. **修正內容**：在 `switchTab()`（`app.js:524`）最前面加上等同的保護——先查目前點的 `tabName` 對應的 `.nav-tab` 按鈕是否已經是 `active`，如果是就直接 `return`，不執行任何清空/重繪/重新抓資料的動作。已確認 `switchTab()` 目前僅有兩處呼叫點（分頁按鈕點擊、手機版下拉選單 change 事件），且 `.nav-tab` 按鈕在手機版版型下只是用 CSS 隱藏、並未從 DOM 移除，因此這個保護在桌面版與手機版下都能正確運作，不會誤判。
+  4. 本次已用 `node --check app.js` 驗證語法，未啟動開發伺服器測試（依使用者要求）——**建議實機測試**：重新整理頁面後，快速連續點擊同一個分頁按鈕數次，確認畫面不再重複閃爍/重繪；也請留意若閃動情形仍未改善，可能要進一步檢查滑鼠/觸控板本身是否有連點（雙擊誤觸發）的硬體問題。
+
 ## [2026-09-02 21:42] 移除學生介面「班級討論區」預設分頁按鈕
 
 - **修改模組/檔案**：`static/student.html`、`static/js/student.js`
