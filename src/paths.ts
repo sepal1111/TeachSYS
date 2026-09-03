@@ -78,10 +78,11 @@ export function getDbPath(): string {
   return path.join(getBinDir(), "classroom_record.db");
 }
 
-/** Bundle root: where the shipped `static/` folder lives (source checkout, or next to the packaged exe). */
+/** Bundle root: where the shipped `static/` folder lives (source checkout, or
+ *  in `system/` next to the packaged exe — see scripts/build-exe.mjs). */
 export function getBundleDir(): string {
   if (isPackaged()) {
-    return getExeDir();
+    return path.join(getExeDir(), "system");
   }
   return path.resolve(__dirname, "..");
 }
@@ -92,9 +93,9 @@ export function getUploadsDir(): string {
   return dir;
 }
 
-/** Path to Prisma's native query engine file shipped in `engine/` next to a
- *  packaged exe (see scripts/build-exe.mjs), or `null` in dev where Prisma
- *  resolves its own engine from node_modules/.prisma/client as usual.
+/** Path to Prisma's native query engine file shipped in `system/engine/` next
+ *  to a packaged exe (see scripts/build-exe.mjs), or `null` in dev where
+ *  Prisma resolves its own engine from node_modules/.prisma/client as usual.
  *
  *  pkg's virtual snapshot filesystem isn't visible to real OS calls like the
  *  dlopen used to load this native .node file, so the engine can't live
@@ -103,7 +104,7 @@ export function getUploadsDir(): string {
  *  it from there instead of its normal snapshot-relative lookup. */
 export function getPackagedPrismaEngineLibraryPath(): string | null {
   if (!isPackaged()) return null;
-  const engineDir = path.join(getExeDir(), "engine");
+  const engineDir = path.join(getExeDir(), "system", "engine");
   if (!fs.existsSync(engineDir)) return null;
   const engineFile = fs.readdirSync(engineDir).find((name) => name.endsWith(".node"));
   return engineFile ? path.join(engineDir, engineFile) : null;
