@@ -10,7 +10,8 @@
 // `datasourceUrl` 動態覆寫為 bin/classroom_record.db 的實際路徑。
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "windows"]
 }
 
 datasource db {

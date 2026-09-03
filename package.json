@@ -9,7 +9,9 @@
     "dev": "tsx watch src/index.ts",
     "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "build:exe:win": "node scripts/build-exe.mjs win",
+    "build:exe:mac": "node scripts/build-exe.mjs mac-smoketest"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
@@ -25,6 +27,7 @@
     "socket.io": "^4.8.1"
   },
   "devDependencies": {
+    "@yao-pkg/pkg": "^6.22.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cookie-parser": "^1.4.8",
     "@types/cors": "^2.8.17",

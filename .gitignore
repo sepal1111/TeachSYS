@@ -9,6 +9,7 @@
 bin/classroom_record.db
 bin/photo/
 bin/uploads/
+bin/certs/
 photo/
 uploads/
 backups/
@@ -18,6 +19,7 @@ backups/
 # 打包與構建輸出
 # ==========================================
 dist/
+release/
 *.tsbuildinfo
 
 # ==========================================

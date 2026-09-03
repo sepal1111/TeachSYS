@@ -91,3 +91,20 @@ export function getUploadsDir(): string {
   fs.mkdirSync(dir, { recursive: true });
   return dir;
 }
+
+/** Path to Prisma's native query engine file shipped in `engine/` next to a
+ *  packaged exe (see scripts/build-exe.mjs), or `null` in dev where Prisma
+ *  resolves its own engine from node_modules/.prisma/client as usual.
+ *
+ *  pkg's virtual snapshot filesystem isn't visible to real OS calls like the
+ *  dlopen used to load this native .node file, so the engine can't live
+ *  inside the packaged snapshot — it must ship as a plain file beside the
+ *  exe, and PRISMA_QUERY_ENGINE_LIBRARY (set from this) tells Prisma to load
+ *  it from there instead of its normal snapshot-relative lookup. */
+export function getPackagedPrismaEngineLibraryPath(): string | null {
+  if (!isPackaged()) return null;
+  const engineDir = path.join(getExeDir(), "engine");
+  if (!fs.existsSync(engineDir)) return null;
+  const engineFile = fs.readdirSync(engineDir).find((name) => name.endsWith(".node"));
+  return engineFile ? path.join(engineDir, engineFile) : null;
+}

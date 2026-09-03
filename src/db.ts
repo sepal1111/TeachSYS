@@ -4,8 +4,13 @@
 // every startup. We deliberately do NOT use `prisma migrate` because the
 // database file's location is only known at runtime (portable USB/bin dir).
 import crypto from "crypto";
+import { getDbPath, getPackagedPrismaEngineLibraryPath } from "./paths";
+
+const packagedEngine = getPackagedPrismaEngineLibraryPath();
+if (packagedEngine) process.env.PRISMA_QUERY_ENGINE_LIBRARY = packagedEngine;
+
+// Imported after the env override above so PrismaClient picks it up when constructed.
 import { PrismaClient } from "@prisma/client";
-import { getDbPath } from "./paths";
 
 const dbPath = getDbPath();
 
