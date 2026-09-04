@@ -134,12 +134,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!AppState.courses || AppState.courses.length === 0) {
       renderActiveTabEmptyNotice();
     }
-    refreshActiveTab(getActiveTabName());
+    refreshActiveTab(getActiveTabName(), true);
   });
 
   window.addEventListener('nameDisplayModeChanged', () => {
     if (window.I18n) window.I18n.updateDOMTranslations();
-    refreshActiveTab(getActiveTabName());
+    refreshActiveTab(getActiveTabName(), true);
   });
 });
 
@@ -603,7 +603,7 @@ function getActiveTabName() {
   return activeTab ? activeTab.dataset.tab : 'scoring';
 }
 
-function refreshActiveTab(tabName) {
+function refreshActiveTab(tabName, force = false) {
   switch (tabName) {
     case 'scoring':
       loadScoringData();
@@ -621,7 +621,10 @@ function refreshActiveTab(tabName) {
       loadNotesData();
       break;
     case 'dashboard':
-      loadDashboardData();
+      // force=true bypasses the fingerprint cache in loadDashboardData: a language
+      // or name-display-mode switch changes nothing in the fetched data itself, so
+      // without forcing, the unchanged fingerprint would skip re-rendering names.
+      loadDashboardData(force);
       break;
     case 'materials':
       if (window.LmsMaterials) window.LmsMaterials.load();
@@ -2454,6 +2457,7 @@ async function saveNote() {
 let projectionTimerId = null;
 let prevStudentScoresMap = {};
 let prevGroupScoresMap = {};
+let lastRosterDisplaySignature = '';
 let lastDashboardFingerprint = null;
 let lastProjectionFingerprint = null;
 
@@ -2645,10 +2649,15 @@ function renderLeaderboards(data) {
     if (students.length === 0) {
       allGrid.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px; grid-column: 1 / -1; font-weight: 600;">${t('dash_no_students')}</div>`;
     } else {
-      // Check if existing cards match current student list
+      // Check if existing cards match current student list, or the language /
+      // name-display-mode changed since the last render — either invalidates the
+      // in-place score-only update path below, since student names must re-render too.
+      const displaySignature = `${isEn ? 'en' : 'zh'}_${window.I18n ? window.I18n.getNameDisplayMode() : ''}`;
       const existingCards = allGrid.querySelectorAll('.student-score-card');
-      const needFullRebuild = existingCards.length !== students.length || 
-                              !document.getElementById(`dash-student-card-${students[0].id}`);
+      const needFullRebuild = existingCards.length !== students.length ||
+                              !document.getElementById(`dash-student-card-${students[0].id}`) ||
+                              displaySignature !== lastRosterDisplaySignature;
+      lastRosterDisplaySignature = displaySignature;
 
       if (needFullRebuild) {
         allGrid.innerHTML = '';

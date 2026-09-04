@@ -6,6 +6,7 @@ let projectionRealtimeHandle = null;
 let coursesList = [];
 let prevStudentScoresMap = {};
 let prevGroupScoresMap = {};
+let lastProjRosterDisplaySignature = '';
 let lastProjectionFingerprint = null;
 
 // Helper to compute data fingerprint for no-flash smooth updates
@@ -250,20 +251,22 @@ async function refreshLiveWallOverlay() {
 }
 
 function renderLiveWallGrid(session, posts) {
+  const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
   const titleEl = document.getElementById('proj-livewall-title');
-  if (titleEl) titleEl.textContent = session.title ? `🎨 ${escapeHtmlProj(session.title)}` : '🎨 即時互動牆';
+  if (titleEl) titleEl.textContent = session.title ? `🎨 ${escapeHtmlProj(session.title)}` : t('livewall_proj_default_title');
 
   const grid = document.getElementById('proj-livewall-grid');
   if (!grid) return;
   if (!posts.length) {
-    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 1.15rem; font-weight: 700;">還沒有人送出貼文，請稍候...</div>`;
+    grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; color: #94a3b8; font-size: 1.15rem; font-weight: 700;">${t('livewall_proj_waiting')}</div>`;
     return;
   }
+  const postAlt = t('livewall_post_alt');
   grid.innerHTML = posts
     .map((p) => {
-      const displayName = session.show_names ? `${p.student_number} 號 ${escapeHtmlProj(p.student_name)}` : '匿名同學';
+      const displayName = session.show_names ? `${t('livewall_seat_number', { num: p.student_number })} ${escapeHtmlProj(p.student_name)}` : t('livewall_proj_anonymous_student');
       if (p.image_url) {
-        return `<div class="livewall-proj-card"><img src="${p.image_url}" alt="貼文"><div class="livewall-proj-name">${displayName}</div></div>`;
+        return `<div class="livewall-proj-card"><img src="${p.image_url}" alt="${postAlt}"><div class="livewall-proj-name">${displayName}</div></div>`;
       }
       return `<div class="livewall-proj-card"><div class="livewall-proj-text-content">${escapeHtmlProj(p.text_content || '')}</div><div class="livewall-proj-name">${displayName}</div></div>`;
     })
@@ -527,11 +530,13 @@ function initEventListeners() {
   window.addEventListener('languageChanged', () => {
     lastProjectionFingerprint = null;
     refreshProjectionData(true);
+    refreshLiveWallOverlay();
   });
 
   window.addEventListener('nameDisplayModeChanged', () => {
     lastProjectionFingerprint = null;
     refreshProjectionData(true);
+    refreshLiveWallOverlay();
   });
 }
 
@@ -707,9 +712,15 @@ function renderProjAllStudentsGrid(students) {
     return;
   }
 
+  // A language / name-display-mode change leaves student count and IDs untouched,
+  // so it wouldn't otherwise trip needFullRebuild — track a display signature to
+  // force the rebuild in that case too, or names would stay stuck in the old language.
+  const displaySignature = `${isEn ? 'en' : 'zh'}_${window.I18n ? window.I18n.getNameDisplayMode() : ''}`;
   const existingCards = container.querySelectorAll('.proj-score-card');
-  const needFullRebuild = existingCards.length !== students.length || 
-                          !document.getElementById(`proj-student-card-${students[0].id}`);
+  const needFullRebuild = existingCards.length !== students.length ||
+                          !document.getElementById(`proj-student-card-${students[0].id}`) ||
+                          displaySignature !== lastProjRosterDisplaySignature;
+  lastProjRosterDisplaySignature = displaySignature;
 
   if (needFullRebuild) {
     container.innerHTML = '';

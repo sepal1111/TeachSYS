@@ -335,7 +335,8 @@
       'toolkit_subtab_bulletin': '📌 課堂公布欄',
       'toolkit_subtab_draw': '🎲 隨機抽籤',
       'toolkit_subtab_timer': '⏱️ 計時器與碼錶',
-      
+      'toolkit_subtab_livewall': '🎨 即時互動牆',
+
       'file_choose_btn': '📁 選擇檔案',
       'file_none_chosen': '未選擇任何檔案',
 
@@ -446,12 +447,47 @@
       'timer_bgm_playing': '播放中：',
       'timer_bgm_paused': '已暫停',
 
+      // 即時互動牆 (Live Wall)
+      'livewall_history_btn': '📜 歷史紀錄',
+      'livewall_start_title': '🎨 開始新的即時互動場次',
+      'livewall_mode_text': '✏️ 文字',
+      'livewall_mode_drawing': '🎨 手繪',
+      'livewall_mode_photo': '📷 拍照',
+      'livewall_title_label': '提示題目（選填）：',
+      'livewall_title_placeholder': '例：畫出你今天的心情',
+      'livewall_show_names_label': '顯示學生姓名（取消勾選則投影／學生視角皆為匿名）',
+      'livewall_btn_start': '🚀 開始場次',
+      'livewall_status_title': '🎨 場次進行中',
+      'livewall_btn_clear': '🗑️ 一鍵清空',
+      'livewall_btn_end': '⏹️ 結束場次',
+      'livewall_posts_empty': '還沒有人送出貼文。',
+      'livewall_status_meta_base': '模式：{mode}｜{visibility}投影｜已收到 {count} 則',
+      'livewall_status_meta_prompt_suffix': '｜提示：{title}',
+      'livewall_named': '具名',
+      'livewall_anonymous': '匿名',
+      'livewall_seat_number': '{num} 號',
+      'livewall_post_alt': '貼文',
+      'livewall_clear_confirm': '確定要清空目前所有貼文嗎？場次會繼續開著，學生可以重新送出。',
+      'livewall_end_confirm': '確定要結束這個場次嗎？學生端會恢復成沒有進行中互動的畫面。',
+      'livewall_toast_started': '已開始新的即時互動場次！',
+      'livewall_toast_cleared': '已清空所有貼文',
+      'livewall_toast_ended': '場次已結束',
+      'livewall_history_modal_title': '📜 即時互動牆歷史紀錄',
+      'livewall_history_modal_desc': '全班所有場次的上傳紀錄，學生無法自行刪除，僅教師可在此管理刪除。',
+      'livewall_history_empty': '目前還沒有任何上傳紀錄。',
+      'livewall_history_count_suffix': '（{count} 則）',
+      'livewall_delete_title': '刪除這筆紀錄',
+      'livewall_delete_confirm': '確定要刪除這筆紀錄嗎？對應的檔案也會一併從伺服器刪除，此動作無法復原！',
+      'livewall_toast_deleted': '紀錄已刪除',
+      'livewall_proj_default_title': '🎨 即時互動牆',
+      'livewall_proj_waiting': '還沒有人送出貼文，請稍候...',
+      'livewall_proj_anonymous_student': '匿名同學',
+
       // 8. 課程素材 (LMS Materials)
       'tab_materials': '📚 課程素材(LMS)',
       'materials_title': '📚 課程與教材',
       'materials_subtitle': '點選課程主題，查看教材或繳交作業',
       'materials_btn_open_folder': '📁 開啟班級雲端資料夾',
-      'materials_btn_export_excel': '📊 匯出課程成績',
       'materials_btn_toggle_edit': '✏️ 編輯課程內容',
       'materials_btn_finish_edit': '✅ 完成編輯',
       'materials_content_label': '課程內容',
@@ -928,7 +964,8 @@
       'toolkit_subtab_bulletin': '📌 Bulletin Board',
       'toolkit_subtab_draw': '🎲 Random Draw',
       'toolkit_subtab_timer': '⏱️ Timer & Stopwatch',
-      
+      'toolkit_subtab_livewall': '🎨 Live Wall',
+
       'file_choose_btn': '📁 Choose File',
       'file_none_chosen': 'No file chosen',
 
@@ -1039,12 +1076,47 @@
       'timer_bgm_playing': 'Playing: ',
       'timer_bgm_paused': 'Paused',
 
+      // Live Wall
+      'livewall_history_btn': '📜 History',
+      'livewall_start_title': '🎨 Start a New Live Wall Session',
+      'livewall_mode_text': '✏️ Text',
+      'livewall_mode_drawing': '🎨 Drawing',
+      'livewall_mode_photo': '📷 Photo',
+      'livewall_title_label': 'Prompt Title (optional):',
+      'livewall_title_placeholder': 'e.g. Draw how you feel today',
+      'livewall_show_names_label': 'Show student names (unchecked = anonymous on projector/student view)',
+      'livewall_btn_start': '🚀 Start Session',
+      'livewall_status_title': '🎨 Session in Progress',
+      'livewall_btn_clear': '🗑️ Clear All',
+      'livewall_btn_end': '⏹️ End Session',
+      'livewall_posts_empty': 'No posts submitted yet.',
+      'livewall_status_meta_base': 'Mode: {mode} | {visibility} projection | {count} received',
+      'livewall_status_meta_prompt_suffix': ' | Prompt: {title}',
+      'livewall_named': 'Named',
+      'livewall_anonymous': 'Anonymous',
+      'livewall_seat_number': 'No. {num}',
+      'livewall_post_alt': 'Post',
+      'livewall_clear_confirm': 'Are you sure you want to clear all current posts? The session will stay open and students can resubmit.',
+      'livewall_end_confirm': 'Are you sure you want to end this session? Students will see no active session.',
+      'livewall_toast_started': 'New Live Wall session started!',
+      'livewall_toast_cleared': 'All posts cleared',
+      'livewall_toast_ended': 'Session ended',
+      'livewall_history_modal_title': '📜 Live Wall History',
+      'livewall_history_modal_desc': 'Upload records from every session for this class. Students cannot delete their own posts — only teachers can manage deletions here.',
+      'livewall_history_empty': 'No upload records yet.',
+      'livewall_history_count_suffix': ' ({count} entries)',
+      'livewall_delete_title': 'Delete this record',
+      'livewall_delete_confirm': 'Are you sure you want to delete this record? The associated file will also be permanently removed from the server — this cannot be undone!',
+      'livewall_toast_deleted': 'Record deleted',
+      'livewall_proj_default_title': '🎨 Live Wall',
+      'livewall_proj_waiting': 'No posts submitted yet, please wait...',
+      'livewall_proj_anonymous_student': 'Anonymous Student',
+
       // 8. Course Materials (LMS)
       'tab_materials': '📚 Course Materials (LMS)',
       'materials_title': '📚 Courses & Materials',
       'materials_subtitle': 'Browse course topics, view materials, or submit assignments',
       'materials_btn_open_folder': '📁 Open Cloud Folder',
-      'materials_btn_export_excel': '📊 Export Grades',
       'materials_btn_toggle_edit': '✏️ Edit Content',
       'materials_btn_finish_edit': '✅ Done Editing',
       'materials_content_label': 'Course Content',
@@ -1569,7 +1641,8 @@
     const toolkitSubtabsMap = {
       'bulletin': 'toolkit_subtab_bulletin',
       'draw': 'toolkit_subtab_draw',
-      'timer': 'toolkit_subtab_timer'
+      'timer': 'toolkit_subtab_timer',
+      'liveWall': 'toolkit_subtab_livewall'
     };
 
     document.querySelectorAll('.toolkit-subtab-btn').forEach(btn => {
@@ -1647,9 +1720,15 @@
       btn.innerHTML = currentLang === 'zh-TW' ? '🌐 繁中 / EN' : '🌐 EN / 繁中';
     });
 
-    // 14. Update Name Mode Button Text
+    // 14. Update Name Mode Button Text — hidden in English UI mode, since
+    // getStudentDisplayName() always shows the English name there regardless
+    // of nameDisplayMode, making the toggle meaningless.
     const nameBtns = document.querySelectorAll('.btn-name-mode-toggle');
     nameBtns.forEach(btn => {
+      // Note: the `.btn` class sets `display: inline-flex`, which beats the UA
+      // `[hidden]` default in specificity — the `hidden` property alone is a no-op
+      // here, so drive visibility through inline style.display instead.
+      btn.style.display = currentLang === 'en' ? 'none' : '';
       const modeText = nameDisplayMode === 'chinese' ? t('name_mode_chinese') : t('name_mode_english');
       btn.innerHTML = `👤 ${t('name_mode_btn')}: ${modeText}`;
     });

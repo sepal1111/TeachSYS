@@ -557,53 +557,77 @@
     return wrap;
   }
 
+  // 同時間只能有一個小單元展開（手風琴），比照下方章節的單開行為：記錄目前展開中的
+  // { head, body } 供下一次展開時收合。跨章節也共用同一個狀態，因為展開新章節時
+  // loadContent() 的章節手風琴邏輯已經會把舊章節（連同其小單元）整個隱藏。
+  let openSubUnit = null;
+
   function renderSubUnit(su) {
     const card = document.createElement('div');
     card.className = 'subunit-card';
 
     const head = document.createElement('div');
     head.className = 'subunit-head';
-    head.innerHTML = `<span class="subunit-title">${escapeHtml(su.title)}</span>`;
+    const headLeft = document.createElement('div');
+    headLeft.style.cssText = 'display:flex; align-items:center; gap:8px; flex-wrap:wrap;';
+    headLeft.innerHTML = `<span class="subunit-title">${escapeHtml(su.title)}</span>`;
+    head.appendChild(headLeft);
+    const toggleIcon = document.createElement('span');
+    toggleIcon.className = 'subunit-toggle-icon';
+    toggleIcon.textContent = '▶';
+    head.appendChild(toggleIcon);
     if (su.viewed) {
       const badge = document.createElement('span');
       badge.className = 'viewed-badge';
       badge.textContent = '✓ 已閱讀';
-      head.appendChild(badge);
+      headLeft.appendChild(badge);
     }
     card.appendChild(head);
+
+    // 預設摺疊：內容（說明/教材/作業測驗面板/提問串）都包在 body 裡，點 head 才展開。
+    const body = document.createElement('div');
+    body.className = 'subunit-body';
+    body.hidden = true;
 
     if (su.description) {
       const desc = document.createElement('p');
       desc.className = 'subunit-desc';
       desc.textContent = su.description;
-      card.appendChild(desc);
+      body.appendChild(desc);
     }
 
     if (su.materials && su.materials.length) {
       const list = document.createElement('div');
       list.className = 'material-list';
       su.materials.forEach((m) => list.appendChild(renderMaterial(m)));
-      card.appendChild(list);
+      body.appendChild(list);
     }
 
     if (su.category === 'assignment') {
-      card.appendChild(renderAssignmentPanel(su));
+      body.appendChild(renderAssignmentPanel(su));
     } else if (su.category === 'quiz') {
-      card.appendChild(renderQuizPanel(su));
+      body.appendChild(renderQuizPanel(su));
     }
 
-    let recorded = false;
-    card.addEventListener('click', () => {
-      if (!recorded) {
-        recorded = true;
+    card.appendChild(body);
+
+    head.addEventListener('click', () => {
+      const opening = body.hidden;
+      if (openSubUnit && openSubUnit.body !== body) {
+        openSubUnit.body.hidden = true;
+        openSubUnit.head.classList.remove('expanded');
+      }
+      body.hidden = !body.hidden;
+      head.classList.toggle('expanded', !body.hidden);
+      openSubUnit = body.hidden ? null : { head, body };
+
+      if (opening && !su.viewed) {
+        su.viewed = true;
         markViewed(su.id);
-        if (!su.viewed) {
-          su.viewed = true;
-          const badge = document.createElement('span');
-          badge.className = 'viewed-badge';
-          badge.textContent = '✓ 已閱讀';
-          head.appendChild(badge);
-        }
+        const badge = document.createElement('span');
+        badge.className = 'viewed-badge';
+        badge.textContent = '✓ 已閱讀';
+        headLeft.appendChild(badge);
       }
     });
 
@@ -615,6 +639,10 @@
     unitsContainer.innerHTML = '';
     const withContent = units.filter((u) => u.sub_units.length > 0);
     emptyState.hidden = withContent.length > 0;
+
+    // 同時間只能有一個章節展開（手風琴）：展開新章節時，把先前展開的章節收合。
+    openSubUnit = null;
+    let openUnit = null;
 
     withContent.forEach((u) => {
       const block = document.createElement('div');
@@ -631,8 +659,13 @@
       u.sub_units.forEach((su) => body.appendChild(renderSubUnit(su)));
 
       title.addEventListener('click', () => {
+        if (openUnit && openUnit.body !== body) {
+          openUnit.body.hidden = true;
+          openUnit.title.classList.remove('expanded');
+        }
         body.hidden = !body.hidden;
         title.classList.toggle('expanded', !body.hidden);
+        openUnit = body.hidden ? null : { title, body };
       });
 
       block.appendChild(title);

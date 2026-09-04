@@ -1751,6 +1751,19 @@
     return d.innerHTML;
   }
 
+  function livewallT(key, params) {
+    return window.I18n ? window.I18n.t(key, params) : key;
+  }
+
+  function livewallModeLabel(mode) {
+    const keyMap = { text: 'livewall_mode_text', drawing: 'livewall_mode_drawing', photo: 'livewall_mode_photo' };
+    return keyMap[mode] ? livewallT(keyMap[mode]) : mode;
+  }
+
+  function livewallSeatLine(studentNumber, studentName) {
+    return `${livewallT('livewall_seat_number', { num: studentNumber })} ${livewallEscapeHtml(studentName)}`;
+  }
+
   const LiveWall = {
     currentSession: null,
 
@@ -1784,13 +1797,15 @@
       if (activeView) activeView.style.display = session ? 'block' : 'none';
       if (!session) return;
 
-      const modeLabels = { text: '✏️ 文字', drawing: '🎨 手繪', photo: '📷 拍照' };
       const statusMeta = document.getElementById('livewall-status-meta');
       if (statusMeta) {
         statusMeta.textContent =
-          `模式：${modeLabels[session.mode] || session.mode}｜` +
-          `${session.show_names ? '具名' : '匿名'}投影｜已收到 ${posts.length} 則` +
-          (session.title ? `｜提示：${session.title}` : '');
+          livewallT('livewall_status_meta_base', {
+            mode: livewallModeLabel(session.mode),
+            visibility: livewallT(session.show_names ? 'livewall_named' : 'livewall_anonymous'),
+            count: posts.length
+          }) +
+          (session.title ? livewallT('livewall_status_meta_prompt_suffix', { title: session.title }) : '');
       }
 
       const grid = document.getElementById('livewall-posts-grid');
@@ -1798,14 +1813,15 @@
       if (!grid) return;
       grid.innerHTML = '';
       if (empty) empty.style.display = posts.length ? 'none' : 'block';
+      const postAlt = livewallT('livewall_post_alt');
       posts.forEach((p) => {
         const card = document.createElement('div');
         card.className = 'glass-card';
         card.style.cssText = 'padding:12px; display:flex; flex-direction:column; gap:8px;';
-        const nameLine = `${p.student_number} 號 ${livewallEscapeHtml(p.student_name)}`;
+        const nameLine = livewallSeatLine(p.student_number, p.student_name);
         if (p.image_url) {
           card.innerHTML = `
-            <img src="${p.image_url}" style="width:100%; border-radius:var(--radius-md); object-fit:cover; max-height:200px; cursor:zoom-in;" alt="貼文">
+            <img src="${p.image_url}" style="width:100%; border-radius:var(--radius-md); object-fit:cover; max-height:200px; cursor:zoom-in;" alt="${postAlt}">
             <div style="font-size:0.82rem; color:var(--text-muted); font-weight:700;">${nameLine}</div>
           `;
           // 改為彈出視窗放大檢視（可縮放/平移），取代原本開新分頁的做法，見 static/js/image-lightbox.js。
@@ -1832,7 +1848,7 @@
       try {
         await API.post(`/api/live-wall/courses/${courseId}/start`, { mode, title, show_names: showNames });
         document.getElementById('livewall-title-input').value = '';
-        window.showToast && window.showToast('已開始新的即時互動場次！', 'success');
+        window.showToast && window.showToast(livewallT('livewall_toast_started'), 'success');
         await this.refresh();
       } catch (err) {
         window.showToast && window.showToast(err.message, 'error');
@@ -1841,10 +1857,10 @@
 
     async clear() {
       if (!this.currentSession) return;
-      if (!confirm('確定要清空目前所有貼文嗎？場次會繼續開著，學生可以重新送出。')) return;
+      if (!confirm(livewallT('livewall_clear_confirm'))) return;
       try {
         await API.post(`/api/live-wall/sessions/${this.currentSession.id}/clear`);
-        window.showToast && window.showToast('已清空所有貼文', 'success');
+        window.showToast && window.showToast(livewallT('livewall_toast_cleared'), 'success');
         await this.refresh();
       } catch (err) {
         window.showToast && window.showToast(err.message, 'error');
@@ -1853,10 +1869,10 @@
 
     async end() {
       if (!this.currentSession) return;
-      if (!confirm('確定要結束這個場次嗎？學生端會恢復成沒有進行中互動的畫面。')) return;
+      if (!confirm(livewallT('livewall_end_confirm'))) return;
       try {
         await API.post(`/api/live-wall/sessions/${this.currentSession.id}/close`);
-        window.showToast && window.showToast('場次已結束', 'success');
+        window.showToast && window.showToast(livewallT('livewall_toast_ended'), 'success');
         await this.refresh();
       } catch (err) {
         window.showToast && window.showToast(err.message, 'error');
@@ -1887,7 +1903,6 @@
     // 依場次分組呈現為「日期－活動名稱（N 則）」的可展開分類，點開才顯示該場次所有學生的
     // 送出內容——避免全部紀錄攤平成一長串列表不好找。groups 為後端回傳的 [{session, posts}]。
     renderHistory(groups) {
-      const modeLabels = { text: '✏️ 文字', drawing: '🎨 手繪', photo: '📷 拍照' };
       const list = document.getElementById('livewall-history-list');
       const empty = document.getElementById('livewall-history-empty');
       if (!list) return;
@@ -1897,7 +1912,8 @@
       groups.forEach((group) => {
         const { session, posts } = group;
         const dateLabel = (session.created_at || '').split(' ')[0];
-        const activityName = session.title || modeLabels[session.mode] || session.mode;
+        const activityName = session.title || livewallModeLabel(session.mode);
+        const countSuffix = livewallT('livewall_history_count_suffix', { count: posts.length });
 
         const wrap = document.createElement('div');
         wrap.style.cssText = 'border:1px solid var(--card-border); border-radius:var(--radius-md); overflow:hidden;';
@@ -1906,7 +1922,7 @@
         header.type = 'button';
         header.style.cssText = 'width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:12px 14px; background:var(--nav-bg); border:none; cursor:pointer; text-align:left; font-weight:700; font-size:0.92rem; color:var(--text-main);';
         header.innerHTML = `
-          <span>📅 ${livewallEscapeHtml(dateLabel)}－${livewallEscapeHtml(activityName)}<span style="font-weight:400; color:var(--text-muted); margin-left:6px;">（${posts.length} 則）</span></span>
+          <span>📅 ${livewallEscapeHtml(dateLabel)}－${livewallEscapeHtml(activityName)}<span style="font-weight:400; color:var(--text-muted); margin-left:6px;">${livewallEscapeHtml(countSuffix)}</span></span>
           <span class="livewall-history-toggle-icon">▶</span>
         `;
 
@@ -1930,13 +1946,14 @@
       const row = document.createElement('div');
       row.className = 'glass-card';
       row.style.cssText = 'padding:10px 12px; display:flex; align-items:center; gap:12px;';
+      const postAlt = livewallT('livewall_post_alt');
       const thumb = p.image_url
-        ? `<img src="${p.image_url}" style="width:56px; height:56px; object-fit:cover; border-radius:var(--radius-sm); cursor:zoom-in; flex-shrink:0;" alt="貼文">`
+        ? `<img src="${p.image_url}" style="width:56px; height:56px; object-fit:cover; border-radius:var(--radius-sm); cursor:zoom-in; flex-shrink:0;" alt="${postAlt}">`
         : `<div style="width:56px; height:56px; border-radius:var(--radius-sm); background:var(--nav-bg); display:flex; align-items:center; justify-content:center; font-size:1.3rem; flex-shrink:0;">✏️</div>`;
       row.innerHTML = `
         ${thumb}
         <div style="flex:1; min-width:0;">
-          <div style="font-weight:700; font-size:0.9rem;">${p.student_number} 號 ${livewallEscapeHtml(p.student_name)}</div>
+          <div style="font-weight:700; font-size:0.9rem;">${livewallSeatLine(p.student_number, p.student_name)}</div>
           <div style="font-size:0.78rem; color:var(--text-muted);">${livewallEscapeHtml(p.created_at || '')}</div>
           ${p.text_content ? `<div style="font-size:0.85rem; margin-top:4px; white-space:pre-wrap;">${livewallEscapeHtml(p.text_content)}</div>` : ''}
         </div>
@@ -1949,7 +1966,7 @@
       const delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'btn-icon';
-      delBtn.title = '刪除這筆紀錄';
+      delBtn.title = livewallT('livewall_delete_title');
       delBtn.style.cssText = 'flex-shrink:0;';
       delBtn.textContent = '🗑️';
       delBtn.addEventListener('click', () => this.deletePost(p.id));
@@ -1960,10 +1977,10 @@
     // 刪除單筆上傳紀錄（教師端專用，從「歷史紀錄」彈窗操作）：後端會連同伺服器上的手繪/拍照
     // 檔案一併刪除，此動作無法復原。若該筆同時也還在進行中場次的看板上，一併重新整理看板。
     async deletePost(postId) {
-      if (!confirm('確定要刪除這筆紀錄嗎？對應的檔案也會一併從伺服器刪除，此動作無法復原！')) return;
+      if (!confirm(livewallT('livewall_delete_confirm'))) return;
       try {
         await API.delete(`/api/live-wall/posts/${postId}`);
-        window.showToast && window.showToast('紀錄已刪除', 'success');
+        window.showToast && window.showToast(livewallT('livewall_toast_deleted'), 'success');
         await Promise.all([this.loadHistory(), this.refresh()]);
       } catch (err) {
         window.showToast && window.showToast(err.message, 'error');
@@ -2008,6 +2025,12 @@
         this.timer.updatePresetButtons();
         this.timer.updateCountdownControls();
         this.timer.updateStopwatchControls();
+        // Re-render Live Wall's dynamically-built text (status meta, post cards) — these
+        // aren't covered by the generic [data-i18n] pass since they're built in JS.
+        this.liveWall.refresh();
+        if (document.getElementById('modal-livewall-history')?.classList.contains('open')) {
+          this.liveWall.loadHistory();
+        }
       });
     },
 

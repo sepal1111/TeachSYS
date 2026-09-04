@@ -265,8 +265,11 @@
     background: var(--card-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md);
     padding: 16px; margin-bottom: 12px; box-shadow: var(--shadow-xs);
   }
-  .subunit-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .subunit-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; cursor: pointer; user-select: none; }
   .subunit-title { font-weight: 700; color: var(--text-main); font-size: 1.02rem; }
+  .subunit-toggle-icon { font-size: 0.85rem; color: var(--text-muted); transition: transform 0.2s; flex-shrink: 0; }
+  .subunit-head.expanded .subunit-toggle-icon { transform: rotate(90deg); }
+  .subunit-body { margin-top: 10px; }
   .viewed-badge {
     font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: var(--radius-full);
     background: var(--accent-positive-bg); color: var(--accent-positive); border: 1px solid var(--accent-positive-border);

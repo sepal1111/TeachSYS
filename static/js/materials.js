@@ -476,12 +476,6 @@
     }
   }
 
-  function exportCourseExcel() {
-    const cid = courseId();
-    if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
-    window.open(`/api/reports/${cid}/export`, '_blank');
-  }
-
   async function toggleUnitHidden(u) {
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
@@ -1440,7 +1434,6 @@
     document.getElementById('btn-materials-add-unit')?.addEventListener('click', toggleNewUnitInlineForm);
     document.getElementById('btn-submit-lms-unit-inline')?.addEventListener('click', submitNewUnitInline);
     document.getElementById('btn-materials-open-folder')?.addEventListener('click', openMaterialsFolder);
-    document.getElementById('btn-materials-export-excel')?.addEventListener('click', exportCourseExcel);
     document.getElementById('btn-submit-lms-add-content')?.addEventListener('click', submitAddContent);
     document.getElementById('select-lms-content-category')?.addEventListener('change', updateSubUnitFormVisibility);
     document.querySelectorAll('input[name="lms-assignment-type"]').forEach((el) => el.addEventListener('change', updateSubUnitFormVisibility));

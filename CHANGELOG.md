@@ -1,5 +1,86 @@
 # CHANGELOG
 
+## [2026-09-04g] 移除 LMS 匯出課程成績按鈕；學生端課程內容章節/小單元改為單開手風琴
+
+- **修改模組/檔案**：
+  - 前端：`static/index.html`、`static/js/materials.js`、`static/js/i18n.js`、`static/js/student.js`、`static/student.html`
+- **修改類別**：功能移除 / 體驗優化
+- **具體修改內容說明**：
+  1. **移除 LMS 介面的「📊 匯出課程成績」按鈕**：教師端「課程素材(LMS)」分頁原本與「儀表板」分頁重複提供成績匯出入口（兩者都打 `GET /api/reports/:courseId/export`），移除 LMS 分頁這顆按鈕與 `index.html` 對應標籤、`materials.js` 的事件綁定與 `exportCourseExcel()` 函式、`i18n.js` 的 `materials_btn_export_excel` 詞條（zh-TW/en 均移除）。儀表板分頁（`app.js` 內另一個匯出入口）不受影響，成績匯出功能本身仍可從那裡使用。
+  2. **學生端課程內容改為單開手風琴（`student.js`）**：
+     - 章節（單元）原本各自獨立展開/收合，可同時多個一起展開；改為新增 `openUnit` 狀態，展開新章節時先收合前一個已展開的章節。
+     - 小單元原本沒有摺疊機制——章節展開後，說明、教材、作業/測驗面板全部一次全展示；現在改成比照章節做法，小單元標題（`head`）預設摺疊其內容（`body`），點擊才展開，並新增 `openSubUnit` 狀態確保同時間全站只有一個小單元展開。標記「已閱讀」的時機也從「第一次點擊卡片任何位置」改為「第一次展開小單元」時才觸發，語意更準確。
+     - `loadContent()` 每次重新載入章節列表時會重置 `openSubUnit`／`openUnit`，避免測驗送出後 `await loadContent()` 重建 DOM，卻讓手風琴狀態殘留指向已被移除節點的參照。
+  3. **樣式（`student.html`）**：新增 `.subunit-toggle-icon`／`.subunit-head.expanded`／`.subunit-body` 樣式，比照既有章節手風琴的箭頭旋轉與摺疊視覺效果；`.subunit-head` 加上 `cursor: pointer`。
+  4. 驗證：`node -c` 對修改的 3 個 JS 檔案語法檢查全數通過。
+
+## [2026-09-04f] 成績匯出 Excel「量化成績總計與評分明細」總計表新增分類加總欄位
+
+- **修改模組/檔案**：
+  - 後端：`src/routes/reports.ts`
+- **修改類別**：功能增強
+- **具體修改內容說明**：
+  1. 依使用者提供的目標格式，「量化成績統計與明細」工作表的總計表由原本 3 欄（座號、姓名、加減分總計）擴充為 7 欄，新增「課堂加分-個人」「小組加分」「實體卡片」「測驗分數」四個分類加總欄位。
+  2. **分類邏輯**：依 `score_logs.rule_title` 前綴與是否帶 `group_id` 判斷來源——`ruleTitle` 以 🎫 開頭（實體點數卡兌換，見 `studentPointCards.ts`）歸入「實體卡片」；以「測驗成績：」開頭（測驗送出評分，見 `studentContent.ts`）歸入「測驗分數」；帶 `group_id`（小組加分、小組作業評分）歸入「小組加分」；其餘（個人加分、個人作業評分、榮譽徽章/特殊圖卡/實體獎品兌換扣點等）都算「課堂加分-個人」。四類加總必定等於「加減分總計」欄位。
+  3. **效能順便優化**：原本每位學生各發一次 `scoreLog.aggregate` 查詢（N 次資料庫往返）才能算出總分；改為重用「評分細項明細」區塊本來就要抓取的同一份 `logs` 清單，在記憶體中依學生 ID 分類加總，總查詢次數不變但省去原本 N 次的加總查詢。
+  4. 下方「--- 評分細項明細 ---」逐筆清單格式不變，仍為日期時間／座號／學生姓名／評分項目／分數／類別／所屬分組模式／所屬小組共 8 欄。
+  5. 驗證：`npx tsc --noEmit` 0 錯誤通過。
+
+## [2026-09-04e] 即時互動牆 (Live Wall) 功能全面補上雙語化 (i18n) 支援
+
+- **修改模組/檔案**：
+  - 前端：`static/js/i18n.js`、`static/index.html`、`static/js/toolkit.js`、`static/js/projection.js`
+- **修改類別**：Bug 修復 / 國際化 (i18n)
+- **具體修改內容說明**：
+  1. **根本原因**：即時互動牆是後補的功能，一開始就沒有納入 [2026-09-03] 課程素材／點數卡／獎勵三大模組的 i18n 補完工程，教師端分頁按鈕、開始場次表單、進行中看板、歷史紀錄彈窗，以及大螢幕投影頁（`projection.html`）的即時互動牆覆蓋層，全部是寫死的繁體中文，切到英文介面完全沒有反應——包含分頁按鈕本身：`i18n.js` 的 `toolkitSubtabsMap` 只登記了 `bulletin`/`draw`/`timer` 三個分頁，漏了 `liveWall`，導致就算全域翻譯流程跑過也不會處理到這顆按鈕。
+  2. **新增詞庫（`i18n.js`）**：新增 `toolkit_subtab_livewall` 及一整組 `livewall_*` 詞條（開始表單、模式選項、狀態列、按鈕、確認對話框、Toast 提示、歷史紀錄彈窗、投影頁專用文字等），zh-TW / en 兩語系對稱新增；並把 `liveWall` 補進 `toolkitSubtabsMap`。
+  3. **HTML 靜態標籤（`index.html`）**：分頁按鈕、開始場次表單各元件、進行中場次狀態列與按鈕、貼文牆空狀態提示、歷史紀錄彈窗標題/說明/空狀態/關閉按鈕，全面加上 `data-i18n` / `data-i18n-placeholder`；文字/手繪/拍照與顯示學生姓名這幾個 `<label><input>…</label>` 組合改成把文字包在內層 `<span data-i18n>`，避免通用翻譯流程的 `el.textContent = t(key)` 把裡面的 `<input>` 一併清掉。
+  4. **JS 動態渲染（`toolkit.js`）**：新增 `livewallT()` / `livewallModeLabel()` / `livewallSeatLine()` 共用小工具，狀態列文字、貼文卡座號行、歷史紀錄分組標題與計數、確認對話框、Toast 訊息、刪除按鈕 title 全部改用 `t()` 查字典；`TeachingToolkit` 的 `languageChanged` 監聽新增呼叫 `this.liveWall.refresh()`（若歷史紀錄彈窗開著則一併 `loadHistory()`），確保切換語言當下正在畫面上的內容也會重繪成新語言（沿用 [2026-09-04b] 已驗證過的「純資料未變但顯示語言變了仍需強制重繪」處理方式）。
+  5. **投影頁覆蓋層（`projection.js`）**：`renderLiveWallGrid()`（大螢幕上的即時互動牆看板）比照同步翻譯標題、等待貼文提示、匿名學生顯示字樣與座號格式；`languageChanged`／`nameDisplayModeChanged` 監聽新增呼叫 `refreshLiveWallOverlay()`，涵蓋場次進行中時大螢幕跟著切換語言的情境。
+  6. 驗證：`node -c` 對 4 個修改的 JS 檔案語法檢查全數通過。 修正大螢幕投影模式（projection.html）Number Roster 切換語言時姓名不更新的問題
+
+- **修改模組/檔案**：
+  - 前端：`static/js/projection.js`
+- **修改類別**：Bug 修復
+- **具體修改內容說明**：
+  1. 與 [2026-09-04b] 主畫面 Dashboard 的根因相同：`renderProjAllStudentsGrid()` 內「Number Roster」座號一覽表卡片有差量更新機制，只要學生數量與 ID 未變就判定 `needFullRebuild=false`，僅原地更新分數數字、完全不重建姓名 DOM；`refreshProjectionData(true)` 雖然在語言/姓名模式切換時已正確略過外層資料指紋快取重新抓取資料，但重繪到這層還是被卡住，導致投影頁面切到英文後，Number Roster 裡的學生姓名仍停留在切換前的語言。
+  2. 新增 `lastProjRosterDisplaySignature` 記錄上次渲染時的語言＋姓名顯示模式，簽章與本次不同時強制整個 Number Roster 區塊 `needFullRebuild`，確保姓名一併重新渲染。個人榜（podium）與小組榜（runner-up list）每次都是整段 `innerHTML` 全量重建，不受此問題影響，故未變動。
+  3. 驗證：`node -c static/js/projection.js` 語法檢查通過。
+
+## [2026-09-04c] 英文介面模式下隱藏「姓名: 中文/English」切換按鈕
+
+- **修改模組/檔案**：
+  - 前端：`static/js/i18n.js`
+- **修改類別**：體驗優化
+- **具體修改內容說明**：
+  1. `getStudentDisplayName()` 邏輯本身在 `currentLang === 'en'` 時一律優先顯示英文姓名（沒有英文姓名才退回中文），與 `nameDisplayMode`（中/英切換設定）無關；因此在英文介面下，主畫面與投影模式（`projection.html`）共用的「👤 姓名: 中文/English」按鈕（class `.btn-name-mode-toggle`）點了也不會有效果，屬於無意義的死按鈕。
+  2. 在 `updateDOMTranslations()` 更新按鈕文字的同時，依 `currentLang === 'en'` 設定 `btn.hidden`：切到英文介面自動隱藏該按鈕，切回繁中介面自動恢復顯示；此邏輯在頁面初次載入與語言切換時都會執行，涵蓋主畫面與投影模式兩顆按鈕。
+  3. **修正（測試回報無效）**：`style.css` 的 `.btn { display: inline-flex; }` 規則（class 選擇器）在 CSS 特異性上高於瀏覽器對 `[hidden]` 屬性的預設樣式（極低優先權），導致設定 `btn.hidden = true` 後按鈕實際上仍維持 `display: inline-flex` 顯示，切換完全無效。改為直接操作 `btn.style.display`（inline style 優先權最高，不受 class 規則影響）：`'none'` 隱藏、`''` 交還 CSS 規則決定顯示，兩顆按鈕（主畫面 `#btn-toggle-name-mode`、投影模式 `#btn-proj-toggle-name-mode`）確認皆可正確隱藏/恢復。
+  4. 驗證：`node -c static/js/i18n.js` 語法檢查通過。
+
+## [2026-09-04b] 修正排行榜（Leaderboard）切換語言／中英姓名顯示模式時姓名不更新的問題
+
+- **修改模組/檔案**：
+  - 前端：`static/js/app.js`
+- **修改類別**：Bug 修復
+- **具體修改內容說明**：
+  1. **根本原因 1（分頁快取略過重繪）**：`languageChanged` / `nameDisplayModeChanged` 事件觸發 `refreshActiveTab()` 時，`dashboard` 分頁呼叫 `loadDashboardData()`（`force=false`）；但 `computeDataFingerprint()` 只依資料內容（分數、缺席、組別等）計算指紋，未納入語言或姓名顯示模式，導致切換語言/姓名模式後資料指紋不變、直接略過 `renderLeaderboards()` 整個重繪，個人榜、小組榜、全班座號一覽表全部維持原語言姓名。
+  2. **根本原因 2（座號一覽表原地更新略過姓名）**：即使觸發了 `renderLeaderboards()`，「全班座號得分一覽表」區塊本身也有差量更新機制：只要學生卡片數量與 ID 未變就視為 `needFullRebuild=false`，僅原地更新分數數字，完全不重新產生姓名 DOM，因此切換語言/姓名模式時此區塊的姓名依然不會更新。
+  3. **修正**：
+     - `refreshActiveTab(tabName, force)` 新增 `force` 參數並轉呼叫 `loadDashboardData(force)`；`languageChanged`／`nameDisplayModeChanged` 監聽器改為傳入 `force=true`，強制略過指紋快取重新取得並重繪。
+     - 新增 `lastRosterDisplaySignature` 記錄上次渲染座號一覽表時的語言＋姓名顯示模式；當簽章與本次不同時，即使學生名單未變也強制整個區塊 `needFullRebuild`，確保姓名跟著重新渲染。
+  4. 驗證：`npx tsc --noEmit` 0 錯誤通過（純前端 JS 變更，不影響型別檢查範圍）。
+
+## [2026-09-04] 修正座位表編排學生座號顯示為 undefined 的問題
+
+- **修改模組/檔案**：
+  - 後端：`src/routes/seating.ts`
+- **修改類別**：Bug 修復
+- **具體修改內容說明**：
+  1. `GET /api/seating/:courseId`（含自動編排、拖曳後回傳）先前直接回傳 Prisma 原始學生物件（欄位為駝峰式 `studentNumber` 等），未轉換成前端 `static/js/app.js` 所預期的蛇形命名 `student_number`，導致座位格與待入座名單皆顯示「undefined號」。
+  2. 新增 `serializeStudent()` 轉換函式，將 grid 內每個座位的 `student` 與 `unassigned` 名單統一序列化為 `{ id, student_number, student_code, name, english_name, gender }`，與其餘學生名單 API（如 `courses.ts`、`groups.ts`）保持一致的回傳格式。
+  3. 驗證：`npx tsc --noEmit` 0 錯誤通過。
+
 ## [2026-09-03 22:50] 課程素材、實體點數卡、獎勵兌換管理三大模組全面雙語化 (i18n) 支援
 
 - **修改模組/檔案**：

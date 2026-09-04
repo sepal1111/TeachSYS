@@ -27,6 +27,15 @@ async function buildSeatingChart(courseId: number) {
     orderBy: { studentNumber: "asc" },
   });
 
+  const serializeStudent = (s: (typeof students)[number]) => ({
+    id: s.id,
+    student_number: s.studentNumber,
+    student_code: s.studentCode,
+    name: s.name,
+    english_name: s.englishName,
+    gender: s.gender,
+  });
+
   const gridMap = new Map<string, (typeof students)[number]>();
   const unassigned: typeof students = [];
   for (const s of students) {
@@ -41,12 +50,13 @@ async function buildSeatingChart(courseId: number) {
   for (let r = 1; r <= rows; r++) {
     const rowCells = [];
     for (let c = 1; c <= cols; c++) {
-      rowCells.push({ row: r, col: c, student: gridMap.get(`${r},${c}`) ?? null });
+      const s = gridMap.get(`${r},${c}`);
+      rowCells.push({ row: r, col: c, student: s ? serializeStudent(s) : null });
     }
     grid.push(rowCells);
   }
 
-  return { seat_rows: rows, seat_cols: cols, blackboard_position: bbPos, grid, unassigned };
+  return { seat_rows: rows, seat_cols: cols, blackboard_position: bbPos, grid, unassigned: unassigned.map(serializeStudent) };
 }
 
 seatingRouter.get("/:courseId", async (req, res) => {

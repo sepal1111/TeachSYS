@@ -345,7 +345,6 @@
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
             <button id="btn-materials-open-folder" class="btn btn-secondary" style="font-size: 0.85rem; color: #b45309; border-color: #fcd34d; background: rgba(252, 211, 77, 0.12);" data-i18n="materials_btn_open_folder">📁 開啟班級雲端資料夾</button>
-            <button id="btn-materials-export-excel" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="materials_btn_export_excel">📊 匯出課程成績</button>
             <button id="btn-materials-toggle-edit" class="btn" style="font-size: 0.85rem;" data-i18n="materials_btn_toggle_edit">✏️ 編輯課程內容</button>
           </div>
         </div>
@@ -376,7 +375,7 @@
             <button type="button" class="btn toolkit-subtab-btn active" data-toolkit-tab="bulletin" data-i18n="toolkit_subtab_bulletin">📌 課堂公布欄</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="draw" data-i18n="toolkit_subtab_draw">🎲 隨機抽籤</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="timer" data-i18n="toolkit_subtab_timer">⏱️ 計時器與碼錶</button>
-            <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="liveWall">🎨 即時互動牆</button>
+            <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="liveWall" data-i18n="toolkit_subtab_livewall">🎨 即時互動牆</button>
           </div>
         </div>
 
@@ -588,41 +587,41 @@
         <div id="toolkit-subpane-liveWall" class="toolkit-subpane" style="display: none;">
           <!-- 歷史紀錄一律可查看，不受目前是否有進行中場次影響 -->
           <div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
-            <button type="button" id="btn-livewall-history" class="btn btn-secondary" style="font-size: 0.85rem;">📜 歷史紀錄</button>
+            <button type="button" id="btn-livewall-history" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="livewall_history_btn">📜 歷史紀錄</button>
           </div>
 
           <!-- A. 沒有進行中場次：開始場次表單 -->
           <div id="livewall-start-form" class="glass-card">
-            <div class="glass-card-title" style="margin-bottom: 14px;">🎨 開始新的即時互動場次</div>
+            <div class="glass-card-title" style="margin-bottom: 14px;" data-i18n="livewall_start_title">🎨 開始新的即時互動場次</div>
             <div style="margin-bottom: 14px; display: flex; gap: 16px; flex-wrap: wrap;">
-              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="text" checked> ✏️ 文字</label>
-              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="drawing"> 🎨 手繪</label>
-              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="photo"> 📷 拍照</label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="text" checked> <span data-i18n="livewall_mode_text">✏️ 文字</span></label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="drawing"> <span data-i18n="livewall_mode_drawing">🎨 手繪</span></label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="radio" name="livewall-mode" value="photo"> <span data-i18n="livewall_mode_photo">📷 拍照</span></label>
             </div>
             <div style="margin-bottom: 14px;">
-              <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;">提示題目（選填）：</label>
-              <input type="text" id="livewall-title-input" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例：畫出你今天的心情" maxlength="60">
+              <label style="display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 6px; color: #93c5fd;" data-i18n="livewall_title_label">提示題目（選填）：</label>
+              <input type="text" id="livewall-title-input" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="例：畫出你今天的心情" data-i18n-placeholder="livewall_title_placeholder" maxlength="60">
             </div>
             <div style="margin-bottom: 18px;">
-              <label style="font-size: 0.9rem; font-weight: 600;"><input type="checkbox" id="livewall-show-names" checked> 顯示學生姓名（取消勾選則投影／學生視角皆為匿名）</label>
+              <label style="font-size: 0.9rem; font-weight: 600;"><input type="checkbox" id="livewall-show-names" checked> <span data-i18n="livewall_show_names_label">顯示學生姓名（取消勾選則投影／學生視角皆為匿名）</span></label>
             </div>
-            <button type="button" id="btn-livewall-start" class="btn">🚀 開始場次</button>
+            <button type="button" id="btn-livewall-start" class="btn" data-i18n="livewall_btn_start">🚀 開始場次</button>
           </div>
 
           <!-- B. 有進行中場次：狀態列 + 即時貼文牆 -->
           <div id="livewall-active-view" style="display: none;">
             <div class="glass-card" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
               <div>
-                <div style="font-weight: 800;" id="livewall-status-title">🎨 場次進行中</div>
+                <div style="font-weight: 800;" id="livewall-status-title" data-i18n="livewall_status_title">🎨 場次進行中</div>
                 <div id="livewall-status-meta" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;"></div>
               </div>
               <div style="display: flex; gap: 8px; margin-left: auto; flex-wrap: wrap;">
-                <button type="button" id="btn-livewall-clear" class="btn btn-secondary" style="font-size: 0.85rem;">🗑️ 一鍵清空</button>
-                <button type="button" id="btn-livewall-end" class="btn btn-secondary" style="font-size: 0.85rem; color: var(--accent-negative); border-color: var(--accent-negative-border);">⏹️ 結束場次</button>
+                <button type="button" id="btn-livewall-clear" class="btn btn-secondary" style="font-size: 0.85rem;" data-i18n="livewall_btn_clear">🗑️ 一鍵清空</button>
+                <button type="button" id="btn-livewall-end" class="btn btn-secondary" style="font-size: 0.85rem; color: var(--accent-negative); border-color: var(--accent-negative-border);" data-i18n="livewall_btn_end">⏹️ 結束場次</button>
               </div>
             </div>
             <div id="livewall-posts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;"></div>
-            <div id="livewall-posts-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);">還沒有人送出貼文。</div>
+            <div id="livewall-posts-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);" data-i18n="livewall_posts_empty">還沒有人送出貼文。</div>
           </div>
         </div>
 
@@ -1880,15 +1879,15 @@
   <div id="modal-livewall-history" class="modal-overlay" style="z-index: 100010;">
     <div class="modal-content glass-card" style="max-width: 640px; padding: 0; border: 1.5px solid rgba(123, 152, 224, 0.4); box-shadow: 0 20px 50px rgba(0,0,0,0.5); max-height: 85vh; overflow: hidden; display: flex; flex-direction: column;">
       <div style="padding: 28px 24px 16px;">
-        <h3 style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;">📜 即時互動牆歷史紀錄</h3>
-        <div style="font-size: 0.85rem; color: var(--text-muted);">全班所有場次的上傳紀錄，學生無法自行刪除，僅教師可在此管理刪除。</div>
+        <h3 style="margin: 0 0 4px 0; font-weight: 800; font-size: 1.2rem; color: #ffffff;" data-i18n="livewall_history_modal_title">📜 即時互動牆歷史紀錄</h3>
+        <div style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="livewall_history_modal_desc">全班所有場次的上傳紀錄，學生無法自行刪除，僅教師可在此管理刪除。</div>
       </div>
       <div style="padding: 0 24px 24px; overflow-y: auto; flex: 1; min-height: 0;">
         <div id="livewall-history-list" style="display: flex; flex-direction: column; gap: 10px;"></div>
-        <div id="livewall-history-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);">目前還沒有任何上傳紀錄。</div>
+        <div id="livewall-history-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);" data-i18n="livewall_history_empty">目前還沒有任何上傳紀錄。</div>
       </div>
       <div style="padding: 14px 24px; border-top: 1px solid var(--card-border); display: flex; justify-content: flex-end;">
-        <button type="button" class="btn btn-secondary close-modal">關閉</button>
+        <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_close">關閉</button>
       </div>
     </div>
   </div>

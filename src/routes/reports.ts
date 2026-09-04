@@ -205,19 +205,7 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
   const wsScore = wb.addWorksheet("量化成績統計與明細");
   wsScore.addRow([`課程：${course.name} - 量化成績總計與評分明細`]);
   wsScore.addRow([]);
-  wsScore.addRow(["座號", "姓名", "加減分總計"]);
-
-  for (const s of students) {
-    const sumWhere: Prisma.ScoreLogWhereInput = { studentId: s.id, isUndone: 0 };
-    if (startDate) sumWhere.date = { ...(sumWhere.date as object), gte: startDate };
-    if (endDate) sumWhere.date = { ...(sumWhere.date as object), lte: endDate };
-    const agg = await prisma.scoreLog.aggregate({ where: sumWhere, _sum: { score: true } });
-    wsScore.addRow([s.studentNumber, s.name, agg._sum.score ?? 0]);
-  }
-
-  wsScore.addRow([]);
-  wsScore.addRow(["--- 評分細項明細 ---"]);
-  wsScore.addRow(["日期時間", "座號", "學生姓名", "評分項目", "分數", "類別", "所屬分組模式", "所屬小組"]);
+  wsScore.addRow(["座號", "姓名", "加減分總計", "課堂加分-個人", "小組加分", "實體卡片", "測驗分數"]);
 
   const logWhere: Prisma.ScoreLogWhereInput = { courseId, isUndone: 0 };
   if (startDate) logWhere.date = { ...(logWhere.date as object), gte: startDate };
@@ -227,6 +215,34 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
     orderBy: { timestamp: "desc" },
     include: { student: true },
   });
+
+  // 依評分來源分四類：實體卡片兌換 (ruleTitle 帶 🎫 前綴)、測驗成績 (ruleTitle 帶「測驗成績：」前綴)、
+  // 小組加分 (該筆記錄有 group_id，含小組加分與小組作業評分)，其餘（含個人加分、個人作業評分、
+  // 榮譽徽章/特殊圖卡/實體獎品兌換扣點等）都算「課堂加分-個人」。四類加總必等於加減分總計。
+  type ScoreCategory = "individual" | "group" | "card" | "quiz";
+  function categorizeLog(log: (typeof logs)[number]): ScoreCategory {
+    if (log.ruleTitle.startsWith("🎫")) return "card";
+    if (log.ruleTitle.startsWith("測驗成績：")) return "quiz";
+    if (log.groupId != null) return "group";
+    return "individual";
+  }
+  const categorySumsByStudent = new Map<number, Record<ScoreCategory, number>>();
+  for (const log of logs) {
+    const sums = categorySumsByStudent.get(log.studentId) ?? { individual: 0, group: 0, card: 0, quiz: 0 };
+    sums[categorizeLog(log)] += log.score;
+    categorySumsByStudent.set(log.studentId, sums);
+  }
+
+  for (const s of students) {
+    const c = categorySumsByStudent.get(s.id) ?? { individual: 0, group: 0, card: 0, quiz: 0 };
+    const total = c.individual + c.group + c.card + c.quiz;
+    wsScore.addRow([s.studentNumber, s.name, total, c.individual, c.group, c.card, c.quiz]);
+  }
+
+  wsScore.addRow([]);
+  wsScore.addRow(["--- 評分細項明細 ---"]);
+  wsScore.addRow(["日期時間", "座號", "學生姓名", "評分項目", "分數", "類別", "所屬分組模式", "所屬小組"]);
+
   const planIds = [...new Set(logs.map((l) => l.planId).filter((v): v is number => v != null))];
   const groupIds = [...new Set(logs.map((l) => l.groupId).filter((v): v is number => v != null))];
   const planMap = new Map((await prisma.groupPlan.findMany({ where: { id: { in: planIds } } })).map((p) => [p.id, p.name]));
