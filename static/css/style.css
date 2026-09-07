@@ -4209,6 +4209,205 @@ body.mobile-scoring-only #quick-group-bar .btn {
   100% { top: 6%; opacity: 0.3; }
 }
 
+/* ==========================================================================
+   紙本測驗成績管理 (Paper Quiz) & 小組長樣式
+   ========================================================================== */
+
+.paper-quiz-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.paper-quiz-stat-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.paper-quiz-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.paper-quiz-stat-val {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--primary);
+  line-height: 1.1;
+}
+
+.paper-quiz-stat-val.positive {
+  color: var(--accent-positive);
+}
+
+.paper-quiz-stat-val.warning {
+  color: var(--accent-warning);
+}
+
+.paper-quiz-stat-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.paper-quiz-table th {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  border-bottom: 2px solid var(--card-border);
+}
+
+.paper-quiz-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--card-border);
+  vertical-align: middle;
+}
+
+.paper-quiz-table tr:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.paper-quiz-table tr.is-absent {
+  opacity: 0.55;
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.score-quick-input {
+  width: 76px;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--input-text);
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-align: right;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.score-quick-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+  outline: none;
+}
+
+.score-quick-input.failed {
+  color: var(--accent-negative);
+}
+
+.score-quick-input.passed {
+  color: var(--accent-positive);
+}
+
+.quiz-photo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.quiz-photo-badge.verified {
+  background: var(--accent-positive-bg, rgba(79, 174, 130, 0.15));
+  color: var(--accent-positive);
+  border-color: var(--accent-positive-border, rgba(79, 174, 130, 0.3));
+}
+
+.quiz-photo-badge.pending {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.3);
+  animation: pulseNotice 2s infinite ease-in-out;
+}
+
+@keyframes pulseNotice {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.65; }
+}
+
+.quiz-source-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.quiz-source-tag.teacher {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+}
+
+.quiz-source-tag.student {
+  background: rgba(14, 165, 233, 0.15);
+  color: #0ea5e9;
+}
+
+.quiz-source-tag.leader {
+  background: rgba(234, 179, 8, 0.15);
+  color: #eab308;
+}
+
+/* 小組長冠冕按鈕與徽章 */
+.btn-group-leader-toggle {
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+  line-height: 1;
+}
+
+.btn-group-leader-toggle:hover {
+  transform: scale(1.25);
+}
+
+.btn-group-leader-toggle.is-leader {
+  filter: drop-shadow(0 0 6px rgba(251, 191, 36, 0.8));
+  opacity: 1;
+}
+
+.btn-group-leader-toggle.not-leader {
+  opacity: 0.25;
+  filter: grayscale(1);
+}
+
+.btn-group-leader-toggle.not-leader:hover {
+  opacity: 0.75;
+  filter: grayscale(0);
+}
+
+.leader-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(234, 179, 8, 0.3));
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 800;
+  box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
+}
+
+
 
 
 

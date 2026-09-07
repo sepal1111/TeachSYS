@@ -43,6 +43,8 @@ model Course {
   pointCardSeries  PointCardSeries[]
   rewardItems      RewardItem[]
   rewardRedemptions RewardRedemption[]
+  paperQuizzes     PaperQuiz[]
+  discussionLogs   GroupDiscussionLog[]
 
   @@map("courses")
 }
@@ -58,6 +60,7 @@ model GroupPlan {
   groups   Group[]
   members  GroupMember[]
   subUnits SubUnit[]
+  discussionLogs GroupDiscussionLog[]
 
   @@map("group_plans")
 }
@@ -76,6 +79,7 @@ model Group {
   directStudents Student[]
   submissions   Submission[]
   submissionComments SubmissionComment[]
+  discussionLogs GroupDiscussionLog[]
 
   @@map("groups")
 }
@@ -85,6 +89,7 @@ model GroupMember {
   planId    Int @map("plan_id")
   groupId   Int @map("group_id")
   studentId Int @map("student_id")
+  isLeader  Int @default(0) @map("is_leader")
 
   plan    GroupPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
   group   Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
@@ -124,6 +129,8 @@ model Student {
   liveWallPosts    LiveWallPost[]
   pointCardRedemptions PointCardRedemption[]
   rewardRedemptions RewardRedemption[]
+  paperQuizRecords PaperQuizRecord[]
+  leaderDiscussionLogs GroupDiscussionLog[]
 
   @@map("students")
 }
@@ -298,6 +305,7 @@ model SubUnit {
   submissions     Submission[]
   submissionComments SubmissionComment[]
   lessonLogs      LessonLog[]
+  paperQuizzes    PaperQuiz[]
 
   @@map("sub_units")
 }
@@ -536,4 +544,70 @@ model RewardRedemption {
   course  Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("reward_redemptions")
+}
+
+// ==========================================================================
+// 紙本測驗成績管理 (Paper Quizzes)
+// ==========================================================================
+
+model PaperQuiz {
+  id               Int      @id @default(autoincrement())
+  courseId         Int      @map("course_id")
+  title            String
+  quizDate         String   @map("quiz_date")
+  maxScore         Float    @default(100) @map("max_score")
+  passingScore     Float    @default(60) @map("passing_score")
+  subUnitId        Int?     @map("sub_unit_id")
+  allowSelfEntry   Int      @default(1) @map("allow_self_entry")
+  allowLeaderEntry Int      @default(1) @map("allow_leader_entry")
+  createdAt        String?  @map("created_at")
+
+  course  Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subUnit SubUnit?          @relation(fields: [subUnitId], references: [id], onDelete: SetNull)
+  records PaperQuizRecord[]
+
+  @@map("paper_quizzes")
+}
+
+model PaperQuizRecord {
+  id            Int     @id @default(autoincrement())
+  quizId        Int     @map("quiz_id")
+  studentId     Int     @map("student_id")
+  score         Float?
+  isAbsent      Int     @default(0) @map("is_absent")
+  photoUrl      String? @map("photo_url")
+  submittedBy   String  @default("teacher") @map("submitted_by") // 'teacher' | 'student' | 'leader'
+  submittedById Int?    @map("submitted_by_id")
+  isVerified    Int     @default(0) @map("is_verified")
+  note          String?
+  updatedAt     String? @map("updated_at")
+
+  quiz    PaperQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, studentId])
+  @@map("paper_quiz_records")
+}
+
+// ==========================================================================
+// 小組長討論與組務紀錄 (Group Discussion Logs)
+// ==========================================================================
+
+model GroupDiscussionLog {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  groupId   Int     @map("group_id")
+  planId    Int?    @map("plan_id")
+  leaderId  Int?    @map("leader_id")
+  title     String
+  content   String
+  date      String
+  createdAt String? @map("created_at")
+
+  course Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  group  Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  plan   GroupPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  leader Student?   @relation(fields: [leaderId], references: [id], onDelete: SetNull)
+
+  @@map("group_discussion_logs")
 }

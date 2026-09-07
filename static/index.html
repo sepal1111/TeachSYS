@@ -89,10 +89,11 @@
 
         <!-- Subtabs for "Learning Logs" (學習歷程) -->
         <div class="context-subtab-group" data-context="logs" id="subtabs-group-logs" style="display: none;">
-          <button class="nav-tab" data-tab="notes">📝 特殊表現紀錄</button>
-          <button class="nav-tab" data-tab="journal">📓 教學日誌</button>
-          <button class="nav-tab" data-tab="dashboard">📊 儀表板與排行榜</button>
-          <button class="nav-tab" data-tab="materials">📚 課程素材(LMS)</button>
+          <button class="nav-tab" data-tab="notes" data-i18n="nav_notes">📝 特殊表現紀錄</button>
+          <button class="nav-tab" data-tab="journal" data-i18n="nav_journal">📓 教學日誌</button>
+          <button class="nav-tab" data-tab="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</button>
+          <button class="nav-tab" data-tab="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</button>
+          <button class="nav-tab" data-tab="materials" data-i18n="nav_materials">📚 課程素材(LMS)</button>
         </div>
 
         <!-- Subtabs for "Classroom Setup" (班級管理) -->
@@ -121,10 +122,11 @@
             <option value="toolkit">🧰 教學小工具</option>
           </optgroup>
           <optgroup label="📖 學習歷程 (Learning Logs)" data-i18n-label="nav_context_logs">
-            <option value="notes">📝 特殊表現紀錄</option>
-            <option value="journal">📓 教學日誌</option>
-            <option value="dashboard">📊 儀表板與排行榜</option>
-            <option value="materials">📚 課程素材(LMS)</option>
+            <option value="notes" data-i18n="nav_notes">📝 特殊表現紀錄</option>
+            <option value="journal" data-i18n="nav_journal">📓 教學日誌</option>
+            <option value="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</option>
+            <option value="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</option>
+            <option value="materials" data-i18n="nav_materials">📚 課程素材(LMS)</option>
           </optgroup>
           <optgroup label="⚙️ 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
             <option value="seating">🪑 座位表編排</option>
@@ -395,6 +397,73 @@
         <div class="glass-card-title" style="margin-bottom: 12px;" data-i18n="journal_history_title">📚 日誌歷程</div>
         <div id="journal-list-container" style="display: flex; flex-direction: column; gap: 10px;">
           <!-- Journal timeline inserted by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 4.6 紙本測驗成績管理 Pane -->
+    <section id="pane-paperQuiz" class="tab-pane">
+      <div class="glass-card">
+        <div class="glass-card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="glass-card-title" data-i18n="paper_quiz_title">📝 紙本測驗成績登記</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" data-i18n="paper_quiz_subtitle">支援鍵盤極速連打登錄、學生拍照佐證查驗與全班統計分析</div>
+          </div>
+          <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-left: auto;">
+            <select id="paper-quiz-select" class="input-control" style="min-width: 200px; font-weight: 600;">
+              <option value="">載入中...</option>
+            </select>
+            <button type="button" id="btn-create-paper-quiz" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="paper_quiz_btn_create">➕ 建立新測驗</button>
+            <button type="button" id="btn-edit-paper-quiz" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" data-i18n="paper_quiz_btn_edit">⚙️ 設定</button>
+            <button type="button" id="btn-delete-paper-quiz" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px; color: var(--accent-negative); border-color: var(--accent-negative-border);" data-i18n="paper_quiz_btn_delete">🗑️ 刪除</button>
+            <button type="button" id="btn-save-paper-quiz-records" class="btn" style="font-size: 0.88rem; padding: 6px 18px; font-weight: 700; background: var(--primary);" data-i18n="paper_quiz_btn_save">💾 儲存成績 (Ctrl+S)</button>
+          </div>
+        </div>
+
+        <!-- 統計儀表板 (Stats Cards) -->
+        <div id="paper-quiz-stats-container" class="paper-quiz-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px;">
+          <!-- Injected by JS: 平均分、最高分、最低分、及格率、已登記人數、待審核考卷照片數 -->
+        </div>
+
+        <!-- 快速鍵操作提示條與過濾 -->
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 8px 14px; background: var(--input-bg); border-radius: var(--radius-md); font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; border: 1px solid var(--card-border);">
+          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <span>⌨️ <b>Enter / ↓</b> 下一位</span>
+            <span>⌨️ <b>Shift+Enter / ↑</b> 上一位</span>
+            <span>⌨️ <b>Tab / →</b> 下一欄位</span>
+            <span>⌨️ 分數欄輸入 <b>A</b> 標記缺考</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="paper-quiz-filter-unrecorded">
+              <span data-i18n="paper_quiz_filter_unrecorded">只看未登記</span>
+            </label>
+            <label style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;">
+              <input type="checkbox" id="paper-quiz-filter-pending-photos">
+              <span data-i18n="paper_quiz_filter_pending_photos">只看待審核考卷</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 成績登錄表格 -->
+        <div class="paper-quiz-table-wrapper" style="overflow-x: auto; max-height: 600px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+          <table class="paper-quiz-table" style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+            <thead>
+              <tr style="background: var(--card-bg-header, rgba(255,255,255,0.05)); position: sticky; top: 0; z-index: 10; border-bottom: 2px solid var(--card-border);">
+                <th style="padding: 10px 12px; width: 60px;">座號</th>
+                <th style="padding: 10px 12px; width: 110px;">姓名</th>
+                <th style="padding: 10px 12px; width: 95px;">小組</th>
+                <th style="padding: 10px 12px; width: 120px;">得分 (滿分 <span id="th-quiz-max-score">100</span>)</th>
+                <th style="padding: 10px 12px; width: 70px; text-align: center;">缺考</th>
+                <th style="padding: 10px 12px; width: 120px; text-align: center;">考卷佐證照片</th>
+                <th style="padding: 10px 12px; width: 95px;">登錄來源</th>
+                <th style="padding: 10px 12px; min-width: 130px;">備註說明</th>
+              </tr>
+            </thead>
+            <tbody id="paper-quiz-matrix-tbody">
+              <!-- Rendered by JS -->
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -2408,6 +2477,78 @@
 
   <!-- Keep hidden legacy elements for full backward compatibility if referenced -->
   <div id="floating-mini-timer-widget" style="display: none;"><span id="floating-timer-digits">03:00</span></div>
+
+  <!-- Modal: 建立/編輯紙本測驗 -->
+  <div id="modal-paper-quiz-editor" class="modal-overlay" style="z-index: 100020;">
+    <div class="modal-content glass-card" style="max-width: 520px; padding: 26px;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div class="modal-title" id="modal-paper-quiz-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="paper_quiz_modal_create_title">📝 建立新紙本測驗</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-paper-quiz-editor">✕</button>
+      </div>
+      <form id="form-paper-quiz" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="quiz-edit-id" value="">
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="paper_quiz_name_label">測驗名稱：*</label>
+          <input type="text" id="quiz-edit-title" class="input-control" placeholder="例：第一單元 平時小考、數學隨堂測驗..." required>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="paper_quiz_date_label">測驗日期：*</label>
+            <input type="date" id="quiz-edit-date" class="input-control" required>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="paper_quiz_max_score_label">測驗滿分：*</label>
+            <input type="number" id="quiz-edit-max-score" class="input-control" value="100" min="1" max="1000" required>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="paper_quiz_pass_score_label">及格分數：*</label>
+            <input type="number" id="quiz-edit-pass-score" class="input-control" value="60" min="0" max="1000" required>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="paper_quiz_sub_unit_label">關聯單元：</label>
+            <select id="quiz-edit-subunit-select" class="input-control">
+              <option value="">無關聯單元</option>
+            </select>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; background: var(--input-bg); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer;">
+            <input type="checkbox" id="quiz-edit-allow-self" checked>
+            <span data-i18n="paper_quiz_allow_self_label">開放學生自我登錄（強制拍照上傳考卷照片佐證）</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; cursor: pointer;">
+            <input type="checkbox" id="quiz-edit-allow-leader" checked>
+            <span data-i18n="paper_quiz_allow_leader_label">開放小組長代登該組組員成績</span>
+          </label>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+          <button type="button" class="btn btn-secondary close-modal" data-i18n="common_cancel">取消</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-paper-quiz" data-i18n="common_confirm">確定儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: 紙本測驗考卷照片查驗與審核 -->
+  <div id="modal-quiz-photo-verify" class="modal-overlay lightbox-overlay" style="z-index: 100030;">
+    <div class="lightbox-content" style="max-width: 900px;">
+      <div class="lightbox-toolbar" style="display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 16px;">
+        <div style="font-weight: 700; color: #fff; font-size: 1rem;" id="quiz-photo-verify-title">
+          📷 考卷佐證查驗
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" id="btn-quiz-verify-approve" class="btn" style="background: var(--accent-positive); color: #fff; font-size: 0.85rem; padding: 6px 14px;">✅ 核准有效</button>
+          <button type="button" id="btn-quiz-verify-reject" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px; color: var(--accent-negative); border-color: var(--accent-negative-border);">❌ 取消核准</button>
+          <button type="button" class="lightbox-btn close-modal" id="btn-close-quiz-photo-verify" title="關閉">✕</button>
+        </div>
+      </div>
+      <div class="lightbox-image-wrap" style="text-align: center; max-height: 75vh; overflow: auto; padding: 12px;">
+        <img id="quiz-photo-verify-img" src="" alt="考卷照片" style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+      </div>
+    </div>
+  </div>
 
   <!-- 學生端入口：與教師端共用同一個網址（http://localhost:8000），不再有獨立的 /student 頁面
        給使用者直接輸入網址進入。學生登入成功後改為載入這個同源 iframe（src 指向內部沿用的

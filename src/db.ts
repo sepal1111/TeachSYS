@@ -453,7 +453,72 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_reward_redemptions_course ON reward_redemptions(course_id, status);"
   );
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS paper_quizzes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      quiz_date TEXT NOT NULL,
+      max_score REAL DEFAULT 100,
+      passing_score REAL DEFAULT 60,
+      sub_unit_id INTEGER NULL,
+      allow_self_entry INTEGER DEFAULT 1,
+      allow_leader_entry INTEGER DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE SET NULL
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS paper_quiz_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      score REAL NULL,
+      is_absent INTEGER DEFAULT 0,
+      photo_url TEXT NULL,
+      submitted_by TEXT DEFAULT 'teacher',
+      submitted_by_id INTEGER NULL,
+      is_verified INTEGER DEFAULT 0,
+      note TEXT NULL,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(quiz_id) REFERENCES paper_quizzes(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      UNIQUE(quiz_id, student_id)
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS group_discussion_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      group_id INTEGER NOT NULL,
+      plan_id INTEGER NULL,
+      leader_id INTEGER NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      date TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(group_id) REFERENCES groups(id) ON DELETE CASCADE,
+      FOREIGN KEY(plan_id) REFERENCES group_plans(id) ON DELETE SET NULL,
+      FOREIGN KEY(leader_id) REFERENCES students(id) ON DELETE SET NULL
+    );
+  `);
+
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_paper_quizzes_course ON paper_quizzes(course_id);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_paper_quiz_records_quiz ON paper_quiz_records(quiz_id, student_id);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_group_discussion_logs_course ON group_discussion_logs(course_id, group_id);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
+  await tryAlter("ALTER TABLE group_members ADD COLUMN is_leader INTEGER DEFAULT 0;");
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");
   await tryAlter("ALTER TABLE groups ADD COLUMN plan_id INTEGER NULL;");
   await tryAlter("ALTER TABLE score_logs ADD COLUMN plan_id INTEGER NULL;");

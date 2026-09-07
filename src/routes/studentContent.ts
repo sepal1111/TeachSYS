@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { Router } from "express";
 import multer from "multer";
+// Prisma Client instance with updated schema (PaperQuizzes & GroupLeadership)
 import { prisma } from "../db";
 import { autoCatch } from "../asyncRoute";
 import { requireStudentAuth } from "../middleware/studentAuth";
@@ -13,6 +14,7 @@ import { getUploadsDir } from "../paths";
 import { recordGradeScoreLog, undoScoreLogIds } from "../utils/submissionGrading";
 import { listSubmissionComments, createSubmissionComment, type CommentThreadScope } from "../utils/submissionComments";
 import { fixUploadFilename } from "../utils/upload";
+import { broadcastToCourse } from "../realtime";
 
 export const studentContentRouter = autoCatch(Router());
 studentContentRouter.use(requireStudentAuth);
@@ -642,3 +644,395 @@ studentContentRouter.post("/subunits/:subUnitId/comments", async (req, res) => {
   await createSubmissionComment(prisma, scope, "student", studentId, message, getNowStrTaipei());
   res.json(await listSubmissionComments(prisma, scope));
 });
+
+// ==========================================================================
+// 紙本小考學生端自登與查看 (Paper Quizzes for Students)
+// ==========================================================================
+
+studentContentRouter.get("/paper-quizzes", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const quizzes = await prisma.paperQuiz.findMany({
+    where: { courseId },
+    include: {
+      subUnit: { select: { id: true, title: true } },
+    },
+    orderBy: [{ quizDate: "desc" }, { id: "desc" }],
+  });
+
+  const quizIds = quizzes.map((q) => q.id);
+  const myRecords = await prisma.paperQuizRecord.findMany({
+    where: { quizId: { in: quizIds }, studentId },
+  });
+  const recordMap = new Map(myRecords.map((r) => [r.quizId, r]));
+
+  const result = quizzes.map((q) => {
+    const rec = recordMap.get(q.id);
+    return {
+      id: q.id,
+      title: q.title,
+      quiz_date: q.quizDate,
+      max_score: q.maxScore,
+      passing_score: q.passingScore,
+      sub_unit_title: q.subUnit?.title ?? null,
+      allow_self_entry: q.allowSelfEntry === 1,
+      allow_leader_entry: q.allowLeaderEntry === 1,
+      my_record: rec
+        ? {
+            id: rec.id,
+            score: rec.score,
+            is_absent: rec.isAbsent === 1,
+            photo_url: rec.photoUrl,
+            submitted_by: rec.submittedBy,
+            is_verified: rec.isVerified === 1,
+            note: rec.note,
+            updated_at: rec.updatedAt,
+          }
+        : null,
+    };
+  });
+
+  res.json({ quizzes: result });
+});
+
+// 學生自我登錄成績（強制要求拍照上傳佐證）
+studentContentRouter.post("/paper-quizzes/:quizId/self-entry", upload.single("photo"), async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const quizId = Number(req.params.quizId);
+
+  const quiz = await prisma.paperQuiz.findFirst({ where: { id: quizId, courseId } });
+  if (!quiz) {
+    res.status(404).json({ detail: "測驗不存在" });
+    return;
+  }
+  if (quiz.allowSelfEntry === 0) {
+    res.status(403).json({ detail: "本場測驗目前未開放學生自我登錄！" });
+    return;
+  }
+
+  const file = req.file;
+  if (!file) {
+    res.status(400).json({ detail: "登記成績必須拍攝並上傳考卷照片作為佐證！" });
+    return;
+  }
+
+  const rawExt = path.extname(file.originalname).toLowerCase();
+  const ext = rawExt || ".jpg";
+  if (![".jpg", ".jpeg", ".png", ".webp", ".heic"].includes(ext)) {
+    res.status(400).json({ detail: "考卷照片格式限 JPG、PNG、WEBP 或 HEIC" });
+    return;
+  }
+
+  const quizzesUploadDir = path.join(getUploadsDir(), "quizzes");
+  fs.mkdirSync(quizzesUploadDir, { recursive: true });
+  const filename = `quiz_${quizId}_stu_${studentId}_${Date.now()}${ext}`;
+  fs.writeFileSync(path.join(quizzesUploadDir, filename), file.buffer);
+  const photoUrl = `/uploads/quizzes/${filename}`;
+
+  const rawScore = req.body?.score;
+  if (rawScore === undefined || rawScore === null || rawScore === "") {
+    res.status(400).json({ detail: "請輸入您的測驗得分" });
+    return;
+  }
+  const scoreNum = Math.min(Math.max(0, Number(rawScore) || 0), quiz.maxScore);
+  const note = req.body?.note ? String(req.body.note).trim() : null;
+  const now = new Date().toISOString();
+
+  const record = await prisma.paperQuizRecord.upsert({
+    where: { quizId_studentId: { quizId, studentId } },
+    update: {
+      score: scoreNum,
+      isAbsent: 0,
+      photoUrl,
+      submittedBy: "student",
+      submittedById: studentId,
+      isVerified: 0,
+      note,
+      updatedAt: now,
+    },
+    create: {
+      quizId,
+      studentId,
+      score: scoreNum,
+      isAbsent: 0,
+      photoUrl,
+      submittedBy: "student",
+      submittedById: studentId,
+      isVerified: 0,
+      note,
+      updatedAt: now,
+    },
+  });
+
+  broadcastToCourse(courseId, "paper_quizzes_updated");
+  res.json({
+    message: "小考成績已成功登錄，考卷佐證照片已上傳，等待教師查驗！",
+    record: {
+      id: record.id,
+      score: record.score,
+      is_absent: false,
+      photo_url: record.photoUrl,
+      submitted_by: record.submittedBy,
+      is_verified: false,
+      note: record.note,
+    },
+  });
+});
+
+// ==========================================================================
+// 小組長專區 (Group Leadership for Students)
+// ==========================================================================
+
+async function getActiveLeaderContext(courseId: number, studentId: number) {
+  const activePlan = await prisma.groupPlan.findFirst({
+    where: { courseId, isActive: 1 },
+  });
+  if (!activePlan) return null;
+
+  const membership = await prisma.groupMember.findFirst({
+    where: { planId: activePlan.id, studentId, isLeader: 1 },
+    include: {
+      group: {
+        include: {
+          members: {
+            include: { student: true },
+          },
+        },
+      },
+    },
+  });
+
+  if (!membership) return null;
+  return {
+    plan: activePlan,
+    group: membership.group,
+    members: membership.group.members
+      .filter((m) => m.student.courseId === courseId && m.student.isActive === 1)
+      .map((m) => ({
+        id: m.student.id,
+        student_number: m.student.studentNumber,
+        name: m.student.name,
+        gender: m.student.gender,
+        is_leader: m.isLeader === 1,
+      }))
+      .sort((a, b) => a.student_number - b.student_number),
+  };
+}
+
+// 查詢小組長身份與本組概況
+studentContentRouter.get("/group-leadership", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const leaderCtx = await getActiveLeaderContext(courseId, studentId);
+  if (!leaderCtx) {
+    res.json({ is_leader: false });
+    return;
+  }
+
+  const recentDiscussions = await prisma.groupDiscussionLog.findMany({
+    where: { courseId, groupId: leaderCtx.group.id },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
+    take: 10,
+  });
+
+  res.json({
+    is_leader: true,
+    group: {
+      id: leaderCtx.group.id,
+      group_name: leaderCtx.group.groupName,
+      icon_url: leaderCtx.group.iconUrl,
+    },
+    members: leaderCtx.members,
+    recent_discussions: recentDiscussions.map((d) => ({
+      id: d.id,
+      title: d.title,
+      content: d.content,
+      date: d.date,
+      created_at: d.createdAt,
+    })),
+  });
+});
+
+// 小組長查詢該場測驗組員登記狀況
+studentContentRouter.get("/leader/group-quizzes/:quizId", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const quizId = Number(req.params.quizId);
+
+  const leaderCtx = await getActiveLeaderContext(courseId, studentId);
+  if (!leaderCtx) {
+    res.status(403).json({ detail: "您目前不是該課程小組的小組長" });
+    return;
+  }
+
+  const quiz = await prisma.paperQuiz.findFirst({ where: { id: quizId, courseId } });
+  if (!quiz) {
+    res.status(404).json({ detail: "測驗不存在" });
+    return;
+  }
+
+  const memberIds = leaderCtx.members.map((m) => m.id);
+  const records = await prisma.paperQuizRecord.findMany({
+    where: { quizId, studentId: { in: memberIds } },
+  });
+  const recordMap = new Map(records.map((r) => [r.studentId, r]));
+
+  const memberRows = leaderCtx.members.map((m) => {
+    const rec = recordMap.get(m.id);
+    return {
+      student_id: m.id,
+      student_number: m.student_number,
+      name: m.name,
+      is_leader: m.is_leader,
+      score: rec?.score ?? null,
+      is_absent: rec?.isAbsent === 1,
+      photo_url: rec?.photoUrl ?? null,
+      submitted_by: rec?.submittedBy ?? null,
+      is_verified: rec?.isVerified === 1,
+      note: rec?.note ?? "",
+    };
+  });
+
+  res.json({
+    quiz: {
+      id: quiz.id,
+      title: quiz.title,
+      quiz_date: quiz.quizDate,
+      max_score: quiz.maxScore,
+      passing_score: quiz.passingScore,
+      allow_leader_entry: quiz.allowLeaderEntry === 1,
+    },
+    group_name: leaderCtx.group.groupName,
+    members: memberRows,
+  });
+});
+
+// 小組長代登組員成績
+studentContentRouter.post("/leader/group-quizzes/:quizId", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const quizId = Number(req.params.quizId);
+
+  const leaderCtx = await getActiveLeaderContext(courseId, studentId);
+  if (!leaderCtx) {
+    res.status(403).json({ detail: "您目前不是該課程小組的小組長" });
+    return;
+  }
+
+  const quiz = await prisma.paperQuiz.findFirst({ where: { id: quizId, courseId } });
+  if (!quiz) {
+    res.status(404).json({ detail: "測驗不存在" });
+    return;
+  }
+  if (quiz.allowLeaderEntry === 0) {
+    res.status(403).json({ detail: "本場測驗未開放小組長代登成績！" });
+    return;
+  }
+
+  const { records } = req.body ?? {};
+  if (!Array.isArray(records)) {
+    res.status(400).json({ detail: "請提供組員成績清單" });
+    return;
+  }
+
+  const allowedMemberIds = new Set(leaderCtx.members.map((m) => m.id));
+  const now = new Date().toISOString();
+  let updatedCount = 0;
+
+  for (const item of records) {
+    const targetStudentId = Number(item.student_id);
+    if (!allowedMemberIds.has(targetStudentId)) continue; // 只能登記自己組員
+
+    const isAbsent = item.is_absent ? 1 : 0;
+    const scoreVal =
+      isAbsent || item.score === null || item.score === undefined || item.score === ""
+        ? null
+        : Math.min(Number(item.score), quiz.maxScore);
+
+    const note = item.note ? String(item.note).trim() : null;
+
+    await prisma.paperQuizRecord.upsert({
+      where: { quizId_studentId: { quizId, studentId: targetStudentId } },
+      update: {
+        score: scoreVal,
+        isAbsent,
+        note,
+        submittedBy: "leader",
+        submittedById: studentId,
+        updatedAt: now,
+      },
+      create: {
+        quizId,
+        studentId: targetStudentId,
+        score: scoreVal,
+        isAbsent,
+        note,
+        submittedBy: "leader",
+        submittedById: studentId,
+        isVerified: 0,
+        updatedAt: now,
+      },
+    });
+    updatedCount++;
+  }
+
+  broadcastToCourse(courseId, "paper_quizzes_updated");
+  res.json({ message: `已成功代登 ${updatedCount} 位組員的成績！`, count: updatedCount });
+});
+
+// 小組長發布討論紀錄
+studentContentRouter.post("/leader/discussions", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const leaderCtx = await getActiveLeaderContext(courseId, studentId);
+  if (!leaderCtx) {
+    res.status(403).json({ detail: "您目前不是該課程小組的小組長" });
+    return;
+  }
+
+  const title = typeof req.body?.title === "string" ? req.body.title.trim() : "";
+  const content = typeof req.body?.content === "string" ? req.body.content.trim() : "";
+  const date = typeof req.body?.date === "string" ? req.body.date.trim() : getTodayStrTaipei();
+
+  if (!title) {
+    res.status(400).json({ detail: "請輸入討論主題" });
+    return;
+  }
+  if (!content) {
+    res.status(400).json({ detail: "請輸入討論內容或摘要" });
+    return;
+  }
+
+  const log = await prisma.groupDiscussionLog.create({
+    data: {
+      courseId,
+      groupId: leaderCtx.group.id,
+      planId: leaderCtx.plan.id,
+      leaderId: studentId,
+      title,
+      content,
+      date,
+      createdAt: new Date().toISOString(),
+    },
+  });
+
+  res.json({ message: "小組討論紀錄已發布！", discussion: log });
+});
+
+// 小組長刪除討論紀錄
+studentContentRouter.delete("/leader/discussions/:logId", async (req, res) => {
+  const { courseId, studentId } = req.studentAuth!;
+  const logId = Number(req.params.logId);
+  const leaderCtx = await getActiveLeaderContext(courseId, studentId);
+  if (!leaderCtx) {
+    res.status(403).json({ detail: "您目前不是該課程小組的小組長" });
+    return;
+  }
+
+  const log = await prisma.groupDiscussionLog.findFirst({
+    where: { id: logId, courseId, groupId: leaderCtx.group.id },
+  });
+  if (!log) {
+    res.status(404).json({ detail: "討論紀錄不存在" });
+    return;
+  }
+
+  await prisma.groupDiscussionLog.delete({ where: { id: logId } });
+  res.json({ message: "討論紀錄已刪除！" });
+});
+

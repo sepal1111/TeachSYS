@@ -682,7 +682,36 @@
       'reward_teacher_note_prefix': '📝 教師備註：',
       'reward_req_time_prefix': '提出時間：',
       'reward_fulfilled_at': '已於 {time} 完成發放',
-      'reward_applied_points': '(-{cost} 點)'
+      'reward_applied_points': '(-{cost} 點)',
+
+      // 紙本測驗與小組長
+      'nav_paper_quiz': '📝 紙本測驗',
+      'paper_quiz_title': '📝 紙本測驗成績登記',
+      'paper_quiz_subtitle': '支援鍵盤極速連打登錄、學生拍照佐證查驗與全班統計分析',
+      'paper_quiz_btn_create': '➕ 建立新測驗',
+      'paper_quiz_btn_edit': '⚙️ 設定',
+      'paper_quiz_btn_delete': '🗑️ 刪除',
+      'paper_quiz_btn_save': '💾 儲存成績 (Ctrl+S)',
+      'paper_quiz_filter_unrecorded': '只看未登記',
+      'paper_quiz_filter_pending_photos': '只看待審核考卷',
+      'paper_quiz_modal_create_title': '📝 建立新紙本測驗',
+      'paper_quiz_modal_edit_title': '⚙️ 編輯紙本測驗設定',
+      'paper_quiz_name_label': '測驗名稱：*',
+      'paper_quiz_date_label': '測驗日期：*',
+      'paper_quiz_max_score_label': '測驗滿分：*',
+      'paper_quiz_pass_score_label': '及格分數：*',
+      'paper_quiz_sub_unit_label': '關聯單元：',
+      'paper_quiz_allow_self_label': '開放學生自我登錄（強制拍照上傳考卷照片佐證）',
+      'paper_quiz_allow_leader_label': '開放小組長代登該組組員成績',
+      'group_leader_badge': '👑 組長',
+      'group_set_leader_title': '點擊指派為小組長',
+      'group_unset_leader_title': '取消小組長',
+      'paper_quiz_stat_avg': '全班平均分',
+      'paper_quiz_stat_pass_rate': '及格率',
+      'paper_quiz_stat_highest': '最高分',
+      'paper_quiz_stat_lowest': '最低分',
+      'paper_quiz_stat_recorded': '已登記人數',
+      'paper_quiz_stat_pending_verify': '待查驗考卷'
     },
 
     'en': {
@@ -1360,7 +1389,36 @@
       'reward_teacher_note_prefix': '📝 Teacher Note: ',
       'reward_req_time_prefix': 'Requested at: ',
       'reward_fulfilled_at': 'Fulfilled at {time}',
-      'reward_applied_points': '(-{cost} pts)'
+      'reward_applied_points': '(-{cost} pts)',
+
+      // Paper Quizzes & Group Leadership
+      'nav_paper_quiz': '📝 Paper Quizzes',
+      'paper_quiz_title': '📝 Paper Quiz Scores',
+      'paper_quiz_subtitle': 'Keyboard-fast score entry, photo evidence verification and class analytics',
+      'paper_quiz_btn_create': '➕ New Quiz',
+      'paper_quiz_btn_edit': '⚙️ Settings',
+      'paper_quiz_btn_delete': '🗑️ Delete',
+      'paper_quiz_btn_save': '💾 Save Scores (Ctrl+S)',
+      'paper_quiz_filter_unrecorded': 'Unrecorded only',
+      'paper_quiz_filter_pending_photos': 'Pending photos only',
+      'paper_quiz_modal_create_title': '📝 Create Paper Quiz',
+      'paper_quiz_modal_edit_title': '⚙️ Edit Paper Quiz',
+      'paper_quiz_name_label': 'Quiz Title:*',
+      'paper_quiz_date_label': 'Quiz Date:*',
+      'paper_quiz_max_score_label': 'Max Score:*',
+      'paper_quiz_pass_score_label': 'Passing Score:*',
+      'paper_quiz_sub_unit_label': 'Related Sub-Unit:',
+      'paper_quiz_allow_self_label': 'Allow student self-entry (mandatory exam photo proof)',
+      'paper_quiz_allow_leader_label': 'Allow group leader to enter members scores',
+      'group_leader_badge': '👑 Leader',
+      'group_set_leader_title': 'Click to assign as Group Leader',
+      'group_unset_leader_title': 'Remove Group Leader',
+      'paper_quiz_stat_avg': 'Class Average',
+      'paper_quiz_stat_pass_rate': 'Pass Rate',
+      'paper_quiz_stat_highest': 'Highest Score',
+      'paper_quiz_stat_lowest': 'Lowest Score',
+      'paper_quiz_stat_recorded': 'Recorded',
+      'paper_quiz_stat_pending_verify': 'Pending Photos'
     }
   };
 

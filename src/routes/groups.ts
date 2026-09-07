@@ -131,6 +131,7 @@ async function buildCourseGroupsPayload(courseId: number, planId?: number | null
           english_name: m.student.englishName,
           gender: m.student.gender,
           group_id: g.id,
+          is_leader: m.isLeader === 1,
         }));
       return serializeGroup(g, students);
     })
@@ -350,6 +351,32 @@ groupsRouter.put("/:courseId/drag", async (req, res) => {
   res.json({ message: "Group updated successfully" });
 });
 
+groupsRouter.post("/:courseId/set-leader", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const { plan_id, group_id, student_id } = req.body ?? {};
+  const currentPlan = await getOrCreateActivePlan(courseId, plan_id ?? undefined);
+  const targetPlanId = currentPlan.id;
+
+  const targetGroupId = Number(group_id);
+  // 先清除該方案中該組目前的組長
+  await prisma.groupMember.updateMany({
+    where: { planId: targetPlanId, groupId: targetGroupId },
+    data: { isLeader: 0 },
+  });
+
+  // 若指定了 student_id，則將其設為組長 (isLeader = 1)
+  if (student_id) {
+    const targetStudentId = Number(student_id);
+    await prisma.groupMember.updateMany({
+      where: { planId: targetPlanId, groupId: targetGroupId, studentId: targetStudentId },
+      data: { isLeader: 1 },
+    });
+  }
+
+  broadcastToCourse(courseId, "groups_updated");
+  res.json({ message: "小組長設定成功！" });
+});
+
 groupsRouter.post("/:courseId", async (req, res) => {
   const courseId = Number(req.params.courseId);
   const { plan_id, group_name, icon_url, order_index } = req.body ?? {};
@@ -457,4 +484,30 @@ groupsRouter.delete("/:courseId/:groupId", async (req, res) => {
 
   broadcastToCourse(courseId, "groups_updated");
   res.json({ message: "小組已刪除，組內成員已移至未分組！" });
+});
+
+groupsRouter.get("/:courseId/discussions", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const discussions = await prisma.groupDiscussionLog.findMany({
+    where: { courseId },
+    include: {
+      group: { select: { id: true, groupName: true, iconUrl: true } },
+      leader: { select: { id: true, studentNumber: true, name: true } },
+    },
+    orderBy: [{ date: "desc" }, { id: "desc" }],
+  });
+  res.json({
+    discussions: discussions.map((d) => ({
+      id: d.id,
+      group_id: d.groupId,
+      group_name: d.group.groupName,
+      icon_url: d.group.iconUrl,
+      leader_name: d.leader?.name ?? "小組長",
+      leader_number: d.leader?.studentNumber ?? null,
+      title: d.title,
+      content: d.content,
+      date: d.date,
+      created_at: d.createdAt,
+    })),
+  });
 });
