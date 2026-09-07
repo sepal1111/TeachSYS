@@ -257,6 +257,118 @@ body::before {
   display: none;
 }
 
+.context-nav-wrapper {
+  padding: 8px 16px 10px 16px;
+}
+
+.context-nav-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Tier 1: Primary Scenario Pills */
+.context-scenario-pills {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(91, 124, 214, 0.08);
+  border: 1px solid rgba(91, 124, 214, 0.16);
+  border-radius: var(--radius-full);
+  width: fit-content;
+}
+
+.scenario-pill {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 6px 20px;
+  border-radius: var(--radius-full);
+  font-size: 0.95rem;
+  font-weight: 800;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  letter-spacing: 0.3px;
+}
+
+.scenario-pill:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.scenario-pill.active {
+  color: #ffffff;
+  background: var(--primary-gradient);
+  box-shadow: 0 4px 14px rgba(91, 124, 214, 0.35);
+}
+
+/* Tier 2: Subtabs Bar */
+.context-subtabs-bar {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
+
+.context-subtab-group {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  animation: subtabFadeIn 0.22s ease-out;
+}
+
+.context-subtab-group.active {
+  display: flex;
+}
+
+@keyframes subtabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Mobile Scenario Quick Pills */
+.mobile-scenario-pills {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.mobile-scenario-btn {
+  flex: 1;
+  padding: 6px 8px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.mobile-scenario-btn.active {
+  background: var(--primary-gradient);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 2px 8px rgba(91, 124, 214, 0.3);
+}
+
 .nav-tabs {
   display: flex;
   gap: 6px;

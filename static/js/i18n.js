@@ -36,6 +36,12 @@
       'tab_journal': '📓 教學日誌',
       'tab_dashboard': '📊 儀表板與排行榜',
       'tab_admin': '⚙️ 系統與後台',
+      'nav_context_live': '⚡ 課堂即時',
+      'nav_context_logs': '📖 學習歷程',
+      'nav_context_manage': '⚙️ 班級管理',
+      'nav_context_live_sub': '課堂即時互動與評分',
+      'nav_context_logs_sub': '學習歷程與教學回顧',
+      'nav_context_manage_sub': '座位分組與系統設定',
       'mobile_nav_label': '🧭 選擇功能：',
 
       // 1. 即時評分
@@ -708,6 +714,12 @@
       'tab_journal': '📓 Lesson Journal',
       'tab_dashboard': '📊 Leaderboard',
       'tab_admin': '⚙️ Admin Settings',
+      'nav_context_live': '⚡ Live Teaching',
+      'nav_context_logs': '📖 Learning Logs',
+      'nav_context_manage': '⚙️ Classroom Setup',
+      'nav_context_live_sub': 'Live Interaction & Scoring',
+      'nav_context_logs_sub': 'Learning Logs & Analytics',
+      'nav_context_manage_sub': 'Seating, Groups & Admin',
       'mobile_nav_label': '🧭 Select Module:',
 
       // 1. Scoring
@@ -1512,6 +1524,13 @@
       const key = el.getAttribute('data-i18n-title');
       if (key) {
         el.title = t(key);
+      }
+    });
+
+    document.querySelectorAll('[data-i18n-label]').forEach(el => {
+      const key = el.getAttribute('data-i18n-label');
+      if (key) {
+        el.label = t(key);
       }
     });
 

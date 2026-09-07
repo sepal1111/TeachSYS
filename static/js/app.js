@@ -523,7 +523,32 @@ function initTheme() {
   document.documentElement.setAttribute('data-theme', 'light');
 }
 
-// --- Tab Navigation ---
+// --- Tab Navigation & Contextual Workflow Architecture ---
+const TAB_TO_CONTEXT_MAP = {
+  scoring: 'live',
+  attendance: 'live',
+  toolkit: 'live',
+  notes: 'logs',
+  journal: 'logs',
+  dashboard: 'logs',
+  materials: 'logs',
+  seating: 'manage',
+  grouping: 'manage',
+  admin: 'manage'
+};
+
+const CONTEXT_DEFAULT_TAB_MAP = {
+  live: 'scoring',
+  logs: 'notes',
+  manage: 'seating'
+};
+
+const lastActiveTabPerContext = {
+  live: 'scoring',
+  logs: 'notes',
+  manage: 'seating'
+};
+
 function switchTab(tabName) {
   // No-op on a redundant click (already on this tab) — without this guard, every
   // click fully tears down and rebuilds the current pane (including refetching
@@ -540,6 +565,30 @@ function switchTab(tabName) {
   }
   AppState.selectedStudentIds.clear();
   renderScoringStudentGrid();
+
+  // Determine parent context (live / logs / manage)
+  const context = TAB_TO_CONTEXT_MAP[tabName] || 'live';
+  lastActiveTabPerContext[context] = tabName;
+  try {
+    localStorage.setItem('teachsys_active_context', context);
+  } catch (e) {}
+
+  // Sync Tier 1 Desktop Scenario Pills
+  document.querySelectorAll('.scenario-pill').forEach(pill => {
+    pill.classList.toggle('active', pill.dataset.context === context);
+  });
+
+  // Sync Tier 2 Desktop Context Subtab Groups
+  document.querySelectorAll('.context-subtab-group').forEach(grp => {
+    const isCurrent = grp.dataset.context === context;
+    grp.classList.toggle('active', isCurrent);
+    grp.style.display = isCurrent ? 'flex' : 'none';
+  });
+
+  // Sync Mobile Scenario Pills
+  document.querySelectorAll('.mobile-scenario-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.context === context);
+  });
 
   const tabs = document.querySelectorAll('.nav-tab');
   tabs.forEach(t => {
@@ -590,6 +639,16 @@ function initNavTabs() {
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       switchTab(tab.dataset.tab);
+    });
+  });
+
+  // Context Scenario Pills (Desktop & Mobile)
+  document.querySelectorAll('.scenario-pill, .mobile-scenario-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const targetContext = e.currentTarget.dataset.context;
+      if (!targetContext) return;
+      const targetTab = lastActiveTabPerContext[targetContext] || CONTEXT_DEFAULT_TAB_MAP[targetContext] || 'scoring';
+      switchTab(targetTab);
     });
   });
 

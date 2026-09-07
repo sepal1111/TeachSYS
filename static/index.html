@@ -61,37 +61,78 @@
     </div>
   </header>
 
-  <!-- Navigation Tabs -->
-  <nav class="nav-tabs-wrapper">
-    <!-- Desktop/Tablet Horizontal Tabs -->
-    <div class="nav-tabs desktop-nav-tabs">
-      <button class="nav-tab active" data-tab="scoring">⭐ 即時評分</button>
-      <button class="nav-tab" data-tab="attendance">📋 出缺席點名</button>
-      <button class="nav-tab" data-tab="seating">🪑 座位表編排</button>
-      <button class="nav-tab" data-tab="grouping">🧩 彈性分組</button>
-      <button class="nav-tab" data-tab="notes">📝 特殊表現紀錄</button>
-      <button class="nav-tab" data-tab="journal">📓 教學日誌</button>
-      <button class="nav-tab" data-tab="dashboard">📊 儀表板與排行榜</button>
-      <button class="nav-tab" data-tab="materials">📚 課程素材(LMS)</button>
-      <button class="nav-tab" data-tab="toolkit">🧰 教學小工具</button>
-      <button class="nav-tab" data-tab="admin">⚙️ 系統與後台</button>
+  <!-- Navigation Tabs: Contextual Workflow Architecture -->
+  <nav class="nav-tabs-wrapper context-nav-wrapper">
+    <!-- Desktop/Tablet Context Scenario Navigation -->
+    <div class="context-nav-container desktop-nav-tabs">
+      <!-- Tier 1: Three Primary Scenario Mode Pills -->
+      <div class="context-scenario-pills" role="tablist" aria-label="教學情境切換">
+        <button type="button" class="scenario-pill active" data-context="live" id="pill-context-live">
+          <span class="scenario-text" data-i18n="nav_context_live">⚡ 課堂即時</span>
+        </button>
+        <button type="button" class="scenario-pill" data-context="logs" id="pill-context-logs">
+          <span class="scenario-text" data-i18n="nav_context_logs">📖 學習歷程</span>
+        </button>
+        <button type="button" class="scenario-pill" data-context="manage" id="pill-context-manage">
+          <span class="scenario-text" data-i18n="nav_context_manage">⚙️ 班級管理</span>
+        </button>
+      </div>
+
+      <!-- Tier 2: Context Subtabs Bar -->
+      <div class="context-subtabs-bar">
+        <!-- Subtabs for "Live Teaching" (課堂即時) -->
+        <div class="context-subtab-group active" data-context="live" id="subtabs-group-live">
+          <button class="nav-tab active" data-tab="scoring">⭐ 即時評分</button>
+          <button class="nav-tab" data-tab="attendance">📋 出缺席點名</button>
+          <button class="nav-tab" data-tab="toolkit">🧰 教學小工具</button>
+        </div>
+
+        <!-- Subtabs for "Learning Logs" (學習歷程) -->
+        <div class="context-subtab-group" data-context="logs" id="subtabs-group-logs" style="display: none;">
+          <button class="nav-tab" data-tab="notes">📝 特殊表現紀錄</button>
+          <button class="nav-tab" data-tab="journal">📓 教學日誌</button>
+          <button class="nav-tab" data-tab="dashboard">📊 儀表板與排行榜</button>
+          <button class="nav-tab" data-tab="materials">📚 課程素材(LMS)</button>
+        </div>
+
+        <!-- Subtabs for "Classroom Setup" (班級管理) -->
+        <div class="context-subtab-group" data-context="manage" id="subtabs-group-manage" style="display: none;">
+          <button class="nav-tab" data-tab="seating">🪑 座位表編排</button>
+          <button class="nav-tab" data-tab="grouping">🧩 彈性分組</button>
+          <button class="nav-tab" data-tab="admin">⚙️ 系統與後台</button>
+        </div>
+      </div>
     </div>
 
-    <!-- Mobile Dropdown Selector (手機專用下拉選單) -->
+    <!-- Mobile Dropdown Selector (手機專用分組下拉選單) -->
     <div class="mobile-nav-wrapper">
-      <label for="mobile-tab-select" class="mobile-nav-label">🧭 選擇功能：</label>
-      <select id="mobile-tab-select" class="mobile-nav-select">
-        <option value="scoring">⭐ 即時評分</option>
-        <option value="attendance">📋 出缺席點名</option>
-        <option value="seating">🪑 座位表編排</option>
-        <option value="grouping">🧩 彈性分組</option>
-        <option value="notes">📝 特殊表現紀錄</option>
-        <option value="journal">📓 教學日誌</option>
-        <option value="dashboard">📊 儀表板與排行榜</option>
-        <option value="materials">📚 課程素材(LMS)</option>
-        <option value="toolkit">🧰 教學小工具</option>
-        <option value="admin">⚙️ 系統與後台</option>
-      </select>
+      <div class="mobile-scenario-pills">
+        <button type="button" class="mobile-scenario-btn active" data-context="live" data-i18n="nav_context_live">⚡ 課堂即時</button>
+        <button type="button" class="mobile-scenario-btn" data-context="logs" data-i18n="nav_context_logs">📖 學習歷程</button>
+        <button type="button" class="mobile-scenario-btn" data-context="manage" data-i18n="nav_context_manage">⚙️ 班級管理</button>
+      </div>
+
+      <div style="display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 6px;">
+        <label for="mobile-tab-select" class="mobile-nav-label" data-i18n="mobile_nav_label">🧭 選擇功能：</label>
+        <select id="mobile-tab-select" class="mobile-nav-select">
+          <optgroup label="⚡ 課堂即時 (Live Teaching)" data-i18n-label="nav_context_live">
+            <option value="scoring">⭐ 即時評分</option>
+            <option value="attendance">📋 出缺席點名</option>
+            <option value="toolkit">🧰 教學小工具</option>
+          </optgroup>
+          <optgroup label="📖 學習歷程 (Learning Logs)" data-i18n-label="nav_context_logs">
+            <option value="notes">📝 特殊表現紀錄</option>
+            <option value="journal">📓 教學日誌</option>
+            <option value="dashboard">📊 儀表板與排行榜</option>
+            <option value="materials">📚 課程素材(LMS)</option>
+          </optgroup>
+          <optgroup label="⚙️ 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
+            <option value="seating">🪑 座位表編排</option>
+            <option value="grouping">🧩 彈性分組</option>
+            <option value="admin">⚙️ 系統與後台</option>
+          </optgroup>
+        </select>
+      </div>
     </div>
   </nav>
 
