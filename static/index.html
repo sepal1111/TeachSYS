@@ -111,15 +111,47 @@
             <div class="glass-card-title">👥 課堂即時評分</div>
             <div id="scoring-mode-hint" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">💡 點擊學生卡片跳出選單評分</div>
           </div>
-          <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <!-- View Mode Switcher: Grid vs Seating -->
+            <div class="segmented-control" id="scoring-view-toggle" role="group" aria-label="評分視圖切換">
+              <button type="button" id="btn-scoring-view-grid" class="segmented-btn active" title="名冊網格檢視" data-i18n="scoring_view_grid">👥 名冊網格</button>
+              <button type="button" id="btn-scoring-view-seating" class="segmented-btn" title="教室座位檢視" data-i18n="scoring_view_seating">🪑 教室座位</button>
+            </div>
+            <button id="btn-jump-seating-config" class="btn btn-secondary" title="前往編排教室座位" style="display: none; font-size: 0.82rem; padding: 6px 12px; border-radius: var(--radius-full);" data-i18n="scoring_btn_config_seating">⚙️ 調整排位</button>
             <button id="btn-toggle-quick-scoring" class="btn btn-secondary" title="切換卡片直接快速加減分模式" style="font-size: 0.88rem; padding: 6px 14px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; border-radius: var(--radius-full);">
               <span id="quick-score-toggle-icon">⚡</span>
               <span id="quick-score-toggle-text">快速加減分：關閉</span>
             </button>
           </div>
         </div>
+        <!-- 1A. Roster Grid View -->
         <div id="scoring-student-grid" class="student-grid">
           <!-- Student Cards inserted by JS -->
+        </div>
+
+        <!-- 1B. Classroom Seating View (Integrated Live Scoring) -->
+        <div id="scoring-seating-container" class="scoring-seating-container" style="display: none; margin-top: 6px;">
+          <div id="scoring-seating-layout-container" style="display: flex; flex-direction: column; align-items: center; gap: 12px; margin-top: 8px;">
+            <div id="scoring-podium-banner-top" class="podium-indicator" style="width: 100%;" data-i18n="seating_podium_banner">🏛️ 黑 板 / 講 台 區</div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%;">
+              <div id="scoring-podium-banner-left" class="podium-indicator" style="display: none; writing-mode: vertical-lr; padding: 20px 8px;" data-i18n="seating_podium_banner">🏛️ 黑 板 / 講 台 區</div>
+              <div class="seating-grid-wrapper" style="flex: 1; width: 100%;">
+                <div id="scoring-seating-grid" class="seating-grid">
+                  <!-- Seated student cells inserted by JS -->
+                </div>
+              </div>
+              <div id="scoring-podium-banner-right" class="podium-indicator" style="display: none; writing-mode: vertical-lr; padding: 20px 8px;" data-i18n="seating_podium_banner">🏛️ 黑 板 / 講 台 區</div>
+            </div>
+            <div id="scoring-podium-banner-bottom" class="podium-indicator" style="display: none; width: 100%;" data-i18n="seating_podium_banner">🏛️ 黑 板 / 講 台 區</div>
+          </div>
+
+          <!-- Unassigned students in seating scoring view -->
+          <div id="scoring-seating-unassigned-section" style="margin-top: 24px; padding-top: 14px; border-top: 1px dashed var(--card-border); display: none;">
+            <div class="glass-card-title" style="font-size: 0.92rem; margin-bottom: 10px; color: var(--text-muted);" data-i18n="scoring_unassigned_section_title">🎒 尚未入座學生 (點擊亦可評分)</div>
+            <div id="scoring-seating-unassigned-grid" class="student-grid">
+              <!-- Unassigned student cards inserted by JS -->
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -1605,6 +1637,16 @@
             <button type="button" id="btn-fs-add-1m" class="btn btn-secondary btn-sm" style="background: rgba(123, 152, 224, 0.25); border-color: rgba(123, 152, 224, 0.4);" data-i18n="timer_quick_add_1m">+1 分鐘</button>
           </div>
 
+          <!-- Fullscreen Manual Custom Input (手動輸入分、秒) -->
+          <div class="timer-custom-row-fs" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 24px; background: rgba(255,255,255,0.06); padding: 8px 24px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 16px rgba(0,0,0,0.3); flex-wrap: wrap;">
+            <span style="color: #93c5fd; font-size: 0.95rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;" data-i18n="timer_custom_title">✏️ 手動輸入：</span>
+            <input type="number" id="fs-timer-custom-minutes" class="input-control fs-timer-input" min="0" max="999" placeholder="0" style="width: 72px; height: 38px; text-align: center; font-size: 1.15rem; font-weight: 800; color: #fff; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: var(--radius-md);">
+            <span style="color: #cbd5e1; font-size: 1rem; font-weight: 700;" data-i18n="timer_unit_min">分</span>
+            <input type="number" id="fs-timer-custom-seconds" class="input-control fs-timer-input" min="0" max="59" placeholder="0" style="width: 72px; height: 38px; text-align: center; font-size: 1.15rem; font-weight: 800; color: #fff; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); border-radius: var(--radius-md);">
+            <span style="color: #cbd5e1; font-size: 1rem; font-weight: 700;" data-i18n="timer_unit_sec">秒</span>
+            <button type="button" id="btn-fs-timer-set-custom" class="btn btn-sm" style="margin-left: 6px; padding: 7px 18px; font-weight: 800; font-size: 0.92rem; border-radius: 999px; background: linear-gradient(135deg, #3b82f6, #1d4ed8); color: #fff; border: none; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4); cursor: pointer;" data-i18n="timer_btn_set_custom">套用時間</button>
+          </div>
+
           <!-- Main Actions Row in FS -->
           <div style="display: flex; gap: 20px; justify-content: center; align-items: center;">
             <button type="button" id="btn-fs-timer-toggle" class="btn btn-lg" style="font-size: 1.4rem; padding: 12px 42px; font-weight: 800; border-radius: 999px; background: linear-gradient(135deg, #4fae82, #059669); border:none; box-shadow: 0 8px 25px rgba(79, 174, 130, 0.4);" data-i18n="timer_btn_start">▶️ 開始計時</button>
@@ -2189,14 +2231,142 @@
     </div>
   </div>
 
-  <!-- Floating Mini Timer Widget (右下角常駐浮動迷你計時器) -->
-  <div id="floating-mini-timer-widget" class="floating-mini-timer-widget" style="display: none;">
-    <div class="floating-timer-drag-handle">
-      <span>⏱️</span>
-      <span id="floating-timer-digits" class="floating-timer-digits">03:00</span>
-      <button type="button" id="btn-close-floating-timer" class="btn-close-mini">✕</button>
+  <!-- Classroom Floating Dock (全域常駐課堂懸浮動態膠囊) -->
+  <div id="classroom-floating-dock" class="classroom-floating-dock" role="toolbar" aria-label="課堂快速工具列">
+    <button type="button" id="btn-dock-collapse" class="dock-btn-collapse" title="收合 / 展開工具列">
+      <span id="dock-collapse-icon" class="dock-collapse-icon">❯</span>
+    </button>
+    <div id="dock-inner" class="dock-inner">
+      <!-- 1. Quick Lucky Draw -->
+      <button type="button" id="btn-dock-draw" class="dock-btn" title="快速抽籤 (連動評分)" data-i18n-title="dock_title_draw">
+        <span class="dock-btn-icon">🎲</span>
+        <span class="dock-btn-label" data-i18n="dock_btn_draw">抽籤</span>
+      </button>
+
+      <div class="dock-divider"></div>
+
+      <!-- 2. Countdown Timer Capsule -->
+      <div id="dock-timer-capsule" class="dock-timer-capsule">
+        <button type="button" id="btn-dock-timer-toggle" class="dock-timer-btn" title="開始 / 暫停倒數" data-i18n-title="dock_title_timer_toggle">
+          <span id="dock-timer-state-icon" class="dock-timer-icon">⏱️</span>
+          <span id="dock-timer-digits" class="dock-timer-digits">03:00</span>
+        </button>
+        <button type="button" id="btn-dock-timer-menu" class="dock-timer-more-btn" title="展開計時器快捷選單" data-i18n-title="dock_title_timer_menu">
+          <span>⚙️</span>
+        </button>
+      </div>
+
+      <div class="dock-divider"></div>
+
+      <!-- 3. Attention Chime -->
+      <button type="button" id="btn-dock-chime" class="dock-btn" title="課堂專注鈴聲" data-i18n-title="dock_title_chime">
+        <span class="dock-btn-icon">🔔</span>
+        <span class="dock-btn-label" data-i18n="dock_btn_chime">專注</span>
+      </button>
     </div>
   </div>
+
+  <!-- Floating Quick Lucky Draw Popover Panel (全域就地抽籤面板) -->
+  <div id="floating-draw-panel" class="floating-dock-popover" style="display: none;">
+    <div class="popover-header">
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.95rem; color: var(--primary-dark);">
+        <span>🎲</span>
+        <span data-i18n="floating_draw_title">課堂快速抽籤</span>
+        <span id="floating-draw-pool-badge" class="badge" style="font-size: 0.72rem; padding: 2px 8px; background: rgba(91, 124, 214, 0.12); color: var(--primary); font-weight: 700;">抽籤池：準備中</span>
+      </div>
+      <button type="button" id="btn-close-floating-draw" class="btn-close-popover" title="關閉">✕</button>
+    </div>
+    
+    <div class="popover-body">
+      <!-- Controls Toolbar -->
+      <div class="floating-draw-toolbar" style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 6px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <select id="floating-draw-mode" class="input-control" style="width: auto; padding: 3px 8px; font-size: 0.82rem;">
+            <option value="student" data-i18n="draw_mode_student">👤 個人抽籤</option>
+            <option value="group" data-i18n="draw_mode_group">👥 小組抽籤</option>
+          </select>
+          <label style="font-size: 0.8rem; display: inline-flex; align-items: center; gap: 4px; color: var(--text-muted); cursor: pointer;">
+            <input type="checkbox" id="floating-draw-exclude-drawn" checked>
+            <span data-i18n="draw_exclude_short">不重複</span>
+          </label>
+        </div>
+        <button type="button" id="btn-floating-draw-reset-pool" class="btn btn-secondary" style="font-size: 0.75rem; padding: 3px 8px;" data-i18n-title="draw_reset_pool_title" title="重置抽籤池" data-i18n="draw_reset_pool">🔄 重置</button>
+      </div>
+
+      <!-- Spotlight Card / Shuffle Area -->
+      <div id="floating-draw-card" class="floating-draw-card">
+        <div id="floating-draw-avatar-container" class="floating-draw-avatar-wrap">
+          <img id="floating-draw-avatar-img" src="/static/avatars/boy.png" alt="準備抽籤">
+        </div>
+        <div id="floating-draw-seat-badge" class="floating-draw-badge">READY</div>
+        <div id="floating-draw-name-label" class="floating-draw-name">點擊開始抽籤</div>
+      </div>
+
+      <!-- Winner Actions: Direct Scoring Buttons (抽中後顯示) -->
+      <div id="floating-draw-winner-actions" class="floating-draw-winner-actions" style="display: none;">
+        <div class="winner-score-prompt" data-i18n="draw_score_winner_prompt">⭐ 抽中直接給分：</div>
+        <div class="winner-score-btn-group">
+          <button type="button" class="btn-winner-score plus1" data-delta="1">➕ +1 分</button>
+          <button type="button" class="btn-winner-score plus2" data-delta="2">➕ +2 分</button>
+          <button type="button" class="btn-winner-score plus3" data-delta="3">➕ +3 分</button>
+          <button type="button" id="btn-winner-custom-score" class="btn btn-secondary" style="font-size: 0.78rem; padding: 5px 10px; border-radius: var(--radius-full);" data-i18n="draw_custom_score">🎯 更多規則</button>
+        </div>
+      </div>
+
+      <!-- Action Button -->
+      <div style="margin-top: 10px; display: flex; gap: 8px;">
+        <button type="button" id="btn-start-floating-draw" class="btn" style="flex: 1; padding: 8px 12px; font-weight: 800; font-size: 0.92rem; background: linear-gradient(135deg, #5b7cd6, #8073c4);" data-i18n="draw_btn_start">🎲 開始抽籤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Quick Timer Popover Panel (全域計時快捷面板) -->
+  <div id="floating-timer-panel" class="floating-dock-popover" style="display: none;">
+    <div class="popover-header">
+      <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 0.95rem; color: var(--primary-dark);">
+        <span>⏱️</span>
+        <span data-i18n="floating_timer_title">課堂計時器</span>
+      </div>
+      <button type="button" id="btn-close-floating-timer" class="btn-close-popover" title="關閉">✕</button>
+    </div>
+    
+    <div class="popover-body">
+      <!-- Quick Presets -->
+      <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; margin-bottom: 6px;" data-i18n="timer_preset_quick">快捷倒數預設：</div>
+      <div class="floating-timer-presets">
+        <button type="button" class="btn-dock-timer-preset" data-seconds="60">1 分鐘</button>
+        <button type="button" class="btn-dock-timer-preset" data-seconds="180">3 分鐘</button>
+        <button type="button" class="btn-dock-timer-preset" data-seconds="300">5 分鐘</button>
+        <button type="button" class="btn-dock-timer-preset" data-seconds="600">10 分鐘</button>
+      </div>
+
+      <!-- Quick Add / Adjust -->
+      <div style="display: flex; gap: 6px; margin-top: 8px;">
+        <button type="button" id="btn-dock-timer-add30s" class="btn btn-secondary" style="flex: 1; font-size: 0.8rem; padding: 5px 8px;">+30 秒</button>
+        <button type="button" id="btn-dock-timer-add1m" class="btn btn-secondary" style="flex: 1; font-size: 0.8rem; padding: 5px 8px;">+1 分鐘</button>
+        <button type="button" id="btn-dock-timer-reset" class="btn btn-secondary" style="flex: 1; font-size: 0.8rem; padding: 5px 8px;" data-i18n="timer_reset">🔄 重設</button>
+      </div>
+
+      <!-- Dock Custom Minutes / Seconds Input -->
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--card-border);">
+        <div style="display: flex; align-items: center; gap: 4px; font-size: 0.8rem;">
+          <input type="number" id="dock-timer-custom-minutes" class="input-control" min="0" max="999" placeholder="0" style="width: 48px; padding: 3px 4px; text-align: center; font-size: 0.82rem; font-weight: 700;">
+          <span style="font-size: 0.78rem; color: var(--text-muted);" data-i18n="timer_unit_min">分</span>
+          <input type="number" id="dock-timer-custom-seconds" class="input-control" min="0" max="59" placeholder="0" style="width: 48px; padding: 3px 4px; text-align: center; font-size: 0.82rem; font-weight: 700;">
+          <span style="font-size: 0.78rem; color: var(--text-muted);" data-i18n="timer_unit_sec">秒</span>
+        </div>
+        <button type="button" id="btn-dock-timer-set-custom" class="btn btn-secondary" style="font-size: 0.78rem; padding: 4px 10px;" data-i18n="timer_btn_set_custom">套用時間</button>
+      </div>
+
+      <!-- Jump to Fullscreen -->
+      <div style="margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--card-border); display: flex; gap: 6px;">
+        <button type="button" id="btn-dock-timer-fullscreen" class="btn" style="flex: 1; font-size: 0.82rem; padding: 6px 10px; background: linear-gradient(135deg, #5b7cd6, #8073c4);" data-i18n="timer_open_fullscreen">🖥️ 全螢幕投影大計時</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keep hidden legacy elements for full backward compatibility if referenced -->
+  <div id="floating-mini-timer-widget" style="display: none;"><span id="floating-timer-digits">03:00</span></div>
 
   <!-- 學生端入口：與教師端共用同一個網址（http://localhost:8000），不再有獨立的 /student 頁面
        給使用者直接輸入網址進入。學生登入成功後改為載入這個同源 iframe（src 指向內部沿用的

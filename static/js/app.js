@@ -17,7 +17,9 @@ const AppState = {
   dashboardPeriod: 'today',
   dashboardViewMode: 'individual',
   projectionViewMode: 'individual',
-  quickScoringMode: localStorage.getItem('quick_scoring_mode') === 'true'
+  quickScoringMode: localStorage.getItem('quick_scoring_mode') === 'true',
+  scoringViewMode: localStorage.getItem('scoring_view_mode') === 'seating' ? 'seating' : 'grid',
+  seatingData: null
 };
 // const at top level isn't a window property; expose explicitly for
 // remote-control.js (loaded after this file) to read the current roster.
@@ -122,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     renderCourseSelectOptions();
     updateQuickScoringToggleUI();
+    updateScoringViewModeUI();
     document.querySelectorAll('.custom-file-wrap').forEach(wrap => {
       const input = wrap.querySelector('input[type="file"]');
       const nameSpan = wrap.querySelector('.custom-file-name');
@@ -596,6 +599,8 @@ function initNavTabs() {
       switchTab(e.target.value);
     });
   }
+
+  initScoringViewToggle();
 }
 
 function getActiveTabName() {
@@ -807,6 +812,7 @@ function renderEmptyStudentRosterNotice(container) {
 
 function renderActiveTabEmptyNotice() {
   renderEmptyCourseNotice(document.getElementById('scoring-student-grid'));
+  renderEmptyCourseNotice(document.getElementById('scoring-seating-grid'));
   renderEmptyCourseNotice(document.getElementById('attendance-student-grid'));
   renderEmptyCourseNotice(document.getElementById('seating-grid'));
   renderEmptyCourseNotice(document.getElementById('group-columns-container'));
@@ -877,18 +883,26 @@ async function loadCourses() {
 async function loadScoringData() {
   if (!AppState.currentCourseId || (AppState.courses && AppState.courses.length === 0)) {
     renderEmptyCourseNotice(document.getElementById('scoring-student-grid'));
+    renderEmptyCourseNotice(document.getElementById('scoring-seating-grid'));
     return;
   }
   try {
-    const [rules, dashData, groupsData] = await Promise.all([
+    const [rules, dashData, groupsData, seatingData] = await Promise.all([
       API.get(`/api/scores/${AppState.currentCourseId}/rules`),
       API.get(`/api/reports/${AppState.currentCourseId}/dashboard?period=today`),
-      API.get(`/api/groups/${AppState.currentCourseId}`)
+      API.get(`/api/groups/${AppState.currentCourseId}`),
+      API.get(`/api/seating/${AppState.currentCourseId}`).catch(err => {
+        console.warn('Seating chart fetch failed:', err);
+        return null;
+      })
     ]);
 
     AppState.rules = rules;
     AppState.students = dashData.students;
     AppState.groups = groupsData.groups;
+    if (seatingData) {
+      AppState.seatingData = seatingData;
+    }
     if (dashData.plan && dashData.plan.id) {
       AppState.activeGroupPlanId = dashData.plan.id;
     } else if (groupsData.current_plan && groupsData.current_plan.id) {
@@ -904,7 +918,10 @@ async function loadScoringData() {
 
     renderRulesBar();
     renderQuickGroupBar();
-    renderScoringStudentGrid();
+    renderScoringView();
+    if (window.TeachingToolkit && window.TeachingToolkit.floatingDock) {
+      window.TeachingToolkit.floatingDock.updatePoolBadge();
+    }
   } catch (err) {
     console.error('Scoring data load error:', err);
   }
@@ -1099,7 +1116,7 @@ function toggleQuickScoringMode() {
   AppState.quickScoringMode = !AppState.quickScoringMode;
   localStorage.setItem('quick_scoring_mode', AppState.quickScoringMode ? 'true' : 'false');
   updateQuickScoringToggleUI();
-  renderScoringStudentGrid();
+  renderScoringView();
 }
 
 function updateQuickScoringToggleUI() {
@@ -1110,17 +1127,18 @@ function updateQuickScoringToggleUI() {
   if (!btn) return;
 
   const t = (key) => window.I18n ? window.I18n.t(key) : key;
+  const isSeating = AppState.scoringViewMode === 'seating';
 
   if (AppState.quickScoringMode) {
     btn.classList.add('active');
     if (icon) icon.textContent = '⚡';
     if (text) text.textContent = t('quick_scoring_on');
-    if (hint) hint.textContent = t('scoring_hint_quick');
+    if (hint) hint.textContent = isSeating ? t('scoring_hint_seating_quick') : t('scoring_hint_quick');
   } else {
     btn.classList.remove('active');
     if (icon) icon.textContent = '⚡';
     if (text) text.textContent = t('quick_scoring_off');
-    if (hint) hint.textContent = t('scoring_hint_normal');
+    if (hint) hint.textContent = isSeating ? t('scoring_hint_seating_normal') : t('scoring_hint_normal');
   }
 }
 
@@ -1200,7 +1218,92 @@ async function executeDirectQuickScore(student, delta, cardElement) {
   }
 }
 
+// --- Scoring View Mode Controller (Grid vs Seating) ---
+function initScoringViewToggle() {
+  const btnGrid = document.getElementById('btn-scoring-view-grid');
+  const btnSeating = document.getElementById('btn-scoring-view-seating');
+  const btnConfig = document.getElementById('btn-jump-seating-config');
+
+  if (btnGrid) {
+    btnGrid.addEventListener('click', () => {
+      setScoringViewMode('grid');
+    });
+  }
+  if (btnSeating) {
+    btnSeating.addEventListener('click', () => {
+      setScoringViewMode('seating');
+    });
+  }
+  if (btnConfig) {
+    btnConfig.addEventListener('click', () => {
+      switchTab('seating');
+    });
+  }
+}
+
+function setScoringViewMode(mode) {
+  AppState.scoringViewMode = mode;
+  localStorage.setItem('scoring_view_mode', mode);
+  updateScoringViewModeUI();
+  if (mode === 'seating' && (!AppState.seatingData || AppState.seatingData.course_id !== AppState.currentCourseId)) {
+    loadScoringSeatingDataAndRender();
+  } else {
+    renderScoringView();
+  }
+}
+
+async function loadScoringSeatingDataAndRender() {
+  if (!AppState.currentCourseId) return;
+  try {
+    const data = await API.get(`/api/seating/${AppState.currentCourseId}`);
+    AppState.seatingData = data;
+    renderScoringView();
+  } catch (err) {
+    console.error('Failed to load seating chart for scoring:', err);
+    renderScoringView();
+  }
+}
+
+function updateScoringViewModeUI() {
+  const isSeating = AppState.scoringViewMode === 'seating';
+  const btnGrid = document.getElementById('btn-scoring-view-grid');
+  const btnSeating = document.getElementById('btn-scoring-view-seating');
+  const btnConfig = document.getElementById('btn-jump-seating-config');
+  const gridEl = document.getElementById('scoring-student-grid');
+  const seatingEl = document.getElementById('scoring-seating-container');
+  const hint = document.getElementById('scoring-mode-hint');
+
+  if (btnGrid) btnGrid.classList.toggle('active', !isSeating);
+  if (btnSeating) btnSeating.classList.toggle('active', isSeating);
+  if (btnConfig) btnConfig.style.display = isSeating ? 'inline-flex' : 'none';
+  if (gridEl) gridEl.style.display = isSeating ? 'none' : 'grid';
+  if (seatingEl) seatingEl.style.display = isSeating ? 'block' : 'none';
+
+  if (hint) {
+    const isQuick = AppState.quickScoringMode;
+    const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
+    if (isSeating) {
+      hint.textContent = isQuick ? t('scoring_hint_seating_quick') : t('scoring_hint_seating_normal');
+    } else {
+      hint.textContent = isQuick ? t('scoring_hint_quick') : t('scoring_hint_normal');
+    }
+  }
+}
+
+function renderScoringView() {
+  updateScoringViewModeUI();
+  if (AppState.scoringViewMode === 'seating') {
+    renderScoringSeatingView();
+  } else {
+    renderScoringStudentGrid();
+  }
+}
+
 function renderScoringStudentGrid() {
+  if (AppState.scoringViewMode === 'seating') {
+    return renderScoringSeatingView();
+  }
+
   const container = document.getElementById('scoring-student-grid');
   container.innerHTML = '';
   updateQuickScoringToggleUI();
@@ -1315,7 +1418,7 @@ function renderScoringStudentGrid() {
       } else {
         AppState.selectedStudentIds.add(student.id);
       }
-      renderScoringStudentGrid();
+      renderScoringView();
     });
 
     container.appendChild(card);
@@ -1323,6 +1426,289 @@ function renderScoringStudentGrid() {
 
   AppState.students.forEach(s => { prevStudentScoresMap[s.id] = s.score; });
   updateFloatingScoringDrawer();
+}
+
+function renderScoringSeatingView() {
+  const container = document.getElementById('scoring-seating-grid');
+  if (!container) return;
+
+  if (!AppState.seatingData) {
+    container.innerHTML = `<div style="text-align: center; padding: 30px; color: var(--text-muted); grid-column: 1/-1;">載入座位表中...</div>`;
+    return;
+  }
+
+  const data = AppState.seatingData;
+  container.style.gridTemplateColumns = `repeat(${data.seat_cols}, minmax(110px, 1fr))`;
+  container.innerHTML = '';
+  updateQuickScoringToggleUI();
+
+  const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+  const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
+  const scoreUnit = t('pts');
+
+  const bbPos = data.blackboard_position || 'top';
+  ['top', 'bottom', 'left', 'right'].forEach(p => {
+    const el = document.getElementById(`scoring-podium-banner-${p}`);
+    if (el) el.style.display = (p === bbPos) ? 'block' : 'none';
+  });
+
+  const attLabels = {
+    present: t('att_present'),
+    sick_leave: t('att_sick_leave'),
+    personal_leave: t('att_personal_leave'),
+    official_leave: t('att_official_leave'),
+    bereavement_leave: t('att_bereavement_leave'),
+    late: t('att_late')
+  };
+
+  const liveStudentMap = new Map();
+  AppState.students.forEach(s => liveStudentMap.set(s.id, s));
+  const seatedStudentIds = new Set();
+
+  (data.grid || []).forEach(rowCells => {
+    rowCells.forEach(cell => {
+      const cellStudent = cell.student;
+      const seatEl = document.createElement('div');
+      seatEl.dataset.row = cell.row;
+      seatEl.dataset.col = cell.col;
+
+      if (cellStudent) {
+        const student = liveStudentMap.get(cellStudent.id) || cellStudent;
+        seatedStudentIds.add(student.id);
+
+        const isSelected = AppState.selectedStudentIds.has(student.id);
+        const isAbsent = student.is_absent;
+        const attStatus = student.today_attendance || 'present';
+
+        const prevScore = prevStudentScoresMap[student.id];
+        let cardFlashClass = '';
+        let scoreAnimClass = '';
+        if (prevScore !== undefined && prevScore !== null && prevScore !== student.score) {
+          cardFlashClass = student.score > prevScore ? 'card-flash-up' : 'card-flash-down';
+          scoreAnimClass = student.score > prevScore ? 'score-animate-up' : 'score-animate-down';
+        }
+
+        seatEl.className = `seat-cell scoring-seat-cell occupied ${isSelected ? 'selected' : ''} ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''} ${cardFlashClass}`;
+        if (isAbsent) {
+          seatEl.setAttribute('data-att-label', attLabels[attStatus] || '未出席');
+        }
+        seatEl.dataset.studentId = student.id;
+
+        const displayName = getStudentDisplayName(student);
+        const numText = isEn ? `No. ${student.student_number}` : `${student.student_number}號`;
+
+        const grpScore = (student.group_id && AppState.groupScoresMap && AppState.groupScoresMap[student.group_id] !== undefined)
+          ? AppState.groupScoresMap[student.group_id]
+          : ((student.group_name && AppState.groupScoresMap && AppState.groupScoresMap[student.group_name] !== undefined)
+              ? AppState.groupScoresMap[student.group_name]
+              : 0);
+
+        const groupTagHtml = student.group_name
+          ? `<div class="student-card-group-tag" style="font-size: 0.65rem; color: #60a5fa; font-weight: 700; background: rgba(123, 152, 224, 0.12); border: 1px solid rgba(123, 152, 224, 0.25); padding: 1px 5px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px; max-width: 95%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px;"><span>🏷️ ${student.group_name}</span></div>`
+          : '';
+
+        if (AppState.quickScoringMode) {
+          seatEl.innerHTML = `
+            <div class="seat-coord-badge">(${cell.row},${cell.col})</div>
+            <div style="margin-top: 2px; display: flex; justify-content: center;">
+              <div class="student-avatar gender-${student.gender}" style="width: 36px; height: 36px; margin-bottom: 2px; overflow: hidden; padding: 0;">
+                ${getStudentAvatarImgHtml(student)}
+              </div>
+            </div>
+            <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 800;">${numText}</div>
+            <div style="font-size: 0.85rem; font-weight: 800; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
+            ${groupTagHtml}
+            <div class="quick-score-action-bar">
+              <button class="btn-quick-score minus" title="${t('btn_minus_score')}" data-student-id="${student.id}">➖</button>
+              <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score || 0} ${scoreUnit}</div>
+              <button class="btn-quick-score plus" title="${t('btn_plus_score')}" data-student-id="${student.id}">➕</button>
+            </div>
+          `;
+
+          const btnMinus = seatEl.querySelector('.btn-quick-score.minus');
+          if (btnMinus) {
+            btnMinus.addEventListener('click', (e) => {
+              e.stopPropagation();
+              executeDirectQuickScore(student, -1, seatEl);
+            });
+          }
+
+          const btnPlus = seatEl.querySelector('.btn-quick-score.plus');
+          if (btnPlus) {
+            btnPlus.addEventListener('click', (e) => {
+              e.stopPropagation();
+              executeDirectQuickScore(student, 1, seatEl);
+            });
+          }
+        } else {
+          seatEl.innerHTML = `
+            <div class="seat-coord-badge">(${cell.row},${cell.col})</div>
+            <div style="margin-top: 2px; display: flex; justify-content: center;">
+              <div class="student-avatar gender-${student.gender}" style="width: 40px; height: 40px; margin-bottom: 2px; overflow: hidden; padding: 0;">
+                ${getStudentAvatarImgHtml(student)}
+              </div>
+            </div>
+            <div style="font-size: 0.78rem; color: var(--text-muted); font-weight: 800;">${numText}</div>
+            <div style="font-size: 0.88rem; font-weight: 800; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
+            ${groupTagHtml}
+            <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}" style="margin-top: 3px;">⭐ ${student.score || 0} ${scoreUnit}</div>
+          `;
+        }
+
+        seatEl.addEventListener('click', async (e) => {
+          lastClickCoords = { x: e.clientX, y: e.clientY };
+          AppState.currentScoringGroupTarget = null;
+          if (isAbsent) {
+            const leaveLabel = attLabels[attStatus] || '缺席/請假';
+            if (!await showConfirmModal({
+              icon: '⚠️',
+              title: '出缺席狀態提醒',
+              desc: `學生【${displayName}】今日登記為【${leaveLabel}】，確定仍要選取評分嗎？`,
+              confirmText: '確定選取',
+              cancelText: '取消'
+            })) {
+              return;
+            }
+          }
+          if (AppState.selectedStudentIds.has(student.id)) {
+            AppState.selectedStudentIds.delete(student.id);
+          } else {
+            AppState.selectedStudentIds.add(student.id);
+          }
+          renderScoringView();
+        });
+
+      } else {
+        // Empty seat
+        seatEl.className = 'seat-cell scoring-seat-empty empty';
+        seatEl.innerHTML = `
+          <div class="seat-coord-badge">(${cell.row},${cell.col})</div>
+          <div style="font-size: 0.78rem; margin-top: 14px; color: var(--text-subtle);">${t('seating_empty_slot')}</div>
+        `;
+      }
+
+      container.appendChild(seatEl);
+    });
+  });
+
+  // Render unassigned students
+  renderScoringUnassignedStudents(seatedStudentIds);
+
+  AppState.students.forEach(s => { prevStudentScoresMap[s.id] = s.score; });
+  updateFloatingScoringDrawer();
+}
+
+function renderScoringUnassignedStudents(seatedStudentIds) {
+  const section = document.getElementById('scoring-seating-unassigned-section');
+  const grid = document.getElementById('scoring-seating-unassigned-grid');
+  if (!section || !grid) return;
+
+  const unassignedStudents = AppState.students.filter(s => !seatedStudentIds.has(s.id));
+
+  if (unassignedStudents.length === 0) {
+    section.style.display = 'none';
+    grid.innerHTML = '';
+    return;
+  }
+
+  section.style.display = 'block';
+  grid.innerHTML = '';
+
+  const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+  const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
+  const scoreUnit = t('pts');
+
+  const attLabels = {
+    present: t('att_present'),
+    sick_leave: t('att_sick_leave'),
+    personal_leave: t('att_personal_leave'),
+    official_leave: t('att_official_leave'),
+    bereavement_leave: t('att_bereavement_leave'),
+    late: t('att_late')
+  };
+
+  unassignedStudents.forEach(student => {
+    const isSelected = AppState.selectedStudentIds.has(student.id);
+    const isAbsent = student.is_absent;
+    const attStatus = student.today_attendance || 'present';
+    const displayName = getStudentDisplayName(student);
+    const numText = isEn ? `No. ${student.student_number}` : `${student.student_number} 號`;
+
+    const prevScore = prevStudentScoresMap[student.id];
+    let cardFlashClass = '';
+    let scoreAnimClass = '';
+    if (prevScore !== undefined && prevScore !== null && prevScore !== student.score) {
+      cardFlashClass = student.score > prevScore ? 'card-flash-up' : 'card-flash-down';
+      scoreAnimClass = student.score > prevScore ? 'score-animate-up' : 'score-animate-down';
+    }
+
+    const card = document.createElement('div');
+    card.className = `student-card ${isSelected ? 'selected' : ''} ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''} ${cardFlashClass}`;
+    if (isAbsent) card.setAttribute('data-att-label', attLabels[attStatus] || '未出席');
+
+    if (AppState.quickScoringMode) {
+      card.innerHTML = `
+        <div class="student-avatar gender-${student.gender}" style="overflow: hidden; padding: 0;">
+          ${getStudentAvatarImgHtml(student)}
+        </div>
+        <div class="student-number">${numText}</div>
+        <div class="student-name" title="${displayName}">${displayName}</div>
+        <div class="quick-score-action-bar">
+          <button class="btn-quick-score minus" title="${t('btn_minus_score')}" data-student-id="${student.id}">➖</button>
+          <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score || 0} ${scoreUnit}</div>
+          <button class="btn-quick-score plus" title="${t('btn_plus_score')}" data-student-id="${student.id}">➕</button>
+        </div>
+      `;
+      const btnMinus = card.querySelector('.btn-quick-score.minus');
+      if (btnMinus) {
+        btnMinus.addEventListener('click', (e) => {
+          e.stopPropagation();
+          executeDirectQuickScore(student, -1, card);
+        });
+      }
+      const btnPlus = card.querySelector('.btn-quick-score.plus');
+      if (btnPlus) {
+        btnPlus.addEventListener('click', (e) => {
+          e.stopPropagation();
+          executeDirectQuickScore(student, 1, card);
+        });
+      }
+    } else {
+      card.innerHTML = `
+        <div class="student-avatar gender-${student.gender}" style="overflow: hidden; padding: 0;">
+          ${getStudentAvatarImgHtml(student)}
+        </div>
+        <div class="student-number">${numText}</div>
+        <div class="student-name" title="${displayName}">${displayName}</div>
+        <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score || 0} ${scoreUnit}</div>
+      `;
+    }
+
+    card.addEventListener('click', async (e) => {
+      lastClickCoords = { x: e.clientX, y: e.clientY };
+      AppState.currentScoringGroupTarget = null;
+      if (isAbsent) {
+        const leaveLabel = attLabels[attStatus] || '缺席/請假';
+        if (!await showConfirmModal({
+          icon: '⚠️',
+          title: '出缺席狀態提醒',
+          desc: `學生【${displayName}】今日登記為【${leaveLabel}】，確定仍要選取評分嗎？`,
+          confirmText: '確定選取',
+          cancelText: '取消'
+        })) {
+          return;
+        }
+      }
+      if (AppState.selectedStudentIds.has(student.id)) {
+        AppState.selectedStudentIds.delete(student.id);
+      } else {
+        AppState.selectedStudentIds.add(student.id);
+      }
+      renderScoringView();
+    });
+
+    grid.appendChild(card);
+  });
 }
 
 function updateFloatingScoringDrawer() {
@@ -2141,6 +2527,7 @@ async function loadSeatingData() {
       if (el) el.style.display = (p === bbPos) ? 'block' : 'none';
     });
 
+    AppState.seatingData = data;
     renderSeatingGrid(data);
   } catch (err) {
     console.error('Seating load error:', err);

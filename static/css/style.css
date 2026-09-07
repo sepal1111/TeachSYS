@@ -997,6 +997,141 @@ body::before {
 }
 
 /* ==========================================================================
+   Scoring Seating View & Segmented Control
+   ========================================================================== */
+
+.segmented-control {
+  display: inline-flex;
+  background: rgba(233, 230, 224, 0.55);
+  border: 1.5px solid var(--card-border);
+  border-radius: var(--radius-full);
+  padding: 3px;
+  gap: 3px;
+  box-shadow: var(--shadow-xs);
+  backdrop-filter: blur(8px);
+}
+
+.segmented-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+  font-weight: 700;
+  padding: 5px 13px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.segmented-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.segmented-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(91, 124, 214, 0.35);
+}
+
+/* Interactive Scoring Seat Cell */
+.seat-cell.scoring-seat-cell.occupied {
+  cursor: pointer;
+  min-height: 124px;
+  padding: 8px 6px;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.18s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.18s ease, background 0.18s ease;
+}
+
+.seat-cell.scoring-seat-cell.occupied:hover {
+  transform: translateY(-3px);
+  border-color: var(--primary);
+  box-shadow: var(--shadow-lg);
+}
+
+.seat-cell.scoring-seat-cell.occupied:active {
+  transform: scale(0.97);
+}
+
+.seat-cell.scoring-seat-cell.selected {
+  border-color: var(--primary) !important;
+  background: #eff6ff !important;
+  box-shadow: 0 0 0 3px rgba(91, 124, 214, 0.28), var(--shadow-md) !important;
+}
+
+.seat-cell.scoring-seat-cell.absent {
+  opacity: 0.52;
+  filter: grayscale(0.75);
+  border-color: rgba(217, 128, 126, 0.35) !important;
+  background: var(--accent-negative-bg) !important;
+}
+
+.seat-cell.scoring-seat-cell.absent::after {
+  content: attr(data-att-label);
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: var(--accent-negative);
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: var(--radius-xs);
+  box-shadow: var(--shadow-xs);
+  pointer-events: none;
+}
+
+.seat-cell.scoring-seat-cell.att-official_leave::after { background: #5f9fcf; }
+.seat-cell.scoring-seat-cell.att-sick_leave::after { background: #9a86c4; }
+.seat-cell.scoring-seat-cell.att-personal_leave::after { background: #ec4899; }
+.seat-cell.scoring-seat-cell.att-bereavement_leave::after { background: #475569; }
+.seat-cell.scoring-seat-cell.att-late::after { background: #d3a24c; }
+
+.scoring-seat-cell .quick-score-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  margin-top: 4px;
+  width: 100%;
+}
+
+.scoring-seat-cell .student-score-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--primary-dark);
+  background: rgba(123, 152, 224, 0.15);
+  border-radius: var(--radius-full);
+  padding: 2px 7px;
+  white-space: nowrap;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty Seat in Scoring View */
+.seat-cell.scoring-seat-empty {
+  opacity: 0.65;
+  background: rgba(248, 250, 252, 0.6);
+  border: 1.5px dashed var(--card-border);
+  min-height: 124px;
+}
+
+.seat-cell.scoring-seat-empty:hover {
+  border-color: var(--card-border);
+  transform: none;
+  box-shadow: none;
+}
+
+/* ==========================================================================
    Leaderboard & Statistics
    ========================================================================== */
 
@@ -3385,47 +3520,381 @@ body.mobile-scoring-only #quick-group-bar .btn {
   font-size: 0.9rem;
 }
 
-.floating-mini-timer-widget {
+/* ==========================================================================
+   Classroom Floating Dock & Quick Tool Popovers
+   ========================================================================== */
+
+.classroom-floating-dock {
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 9999;
-  background: rgba(15, 23, 42, 0.92);
-  border: 1.5px solid rgba(123, 152, 224, 0.5);
-  border-radius: var(--radius-xl);
-  padding: 8px 16px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(16px);
+  z-index: 9998;
   display: flex;
   align-items: center;
-  animation: fadeIn 0.2s ease-in;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1.5px solid var(--primary-light);
+  border-radius: var(--radius-full);
+  padding: 6px 10px 6px 6px;
+  box-shadow: 0 10px 30px rgba(60, 50, 40, 0.16), 0 2px 8px rgba(91, 124, 214, 0.2);
+  backdrop-filter: blur(16px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
-.floating-timer-drag-handle {
+.classroom-floating-dock.collapsed {
+  padding: 4px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-md);
+}
+
+.classroom-floating-dock.collapsed .dock-inner {
+  display: none;
+}
+
+.classroom-floating-dock.collapsed .dock-collapse-icon {
+  transform: rotate(180deg);
+}
+
+.dock-btn-collapse {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: rgba(91, 124, 214, 0.12);
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.dock-btn-collapse:hover {
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.dock-collapse-icon {
+  display: inline-block;
+  transition: transform 0.25s ease;
+}
+
+.dock-inner {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.floating-timer-digits {
-  font-size: 1.25rem;
-  font-weight: 900;
-  color: #60a5fa;
-  font-family: ui-monospace, monospace;
+.dock-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--card-border);
 }
 
-.btn-close-mini {
-  background: transparent;
+.dock-btn {
   border: none;
+  background: transparent;
+  padding: 5px 10px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-main);
+  transition: all 0.18s ease;
+}
+
+.dock-btn:hover {
+  background: rgba(91, 124, 214, 0.1);
+  color: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.dock-btn:active {
+  transform: scale(0.95);
+}
+
+.dock-btn-icon {
+  font-size: 1.05rem;
+}
+
+/* Timer Capsule Inside Dock */
+.dock-timer-capsule {
+  display: inline-flex;
+  align-items: center;
+  background: rgba(91, 124, 214, 0.1);
+  border: 1px solid rgba(91, 124, 214, 0.25);
+  border-radius: var(--radius-full);
+  padding: 2px 4px 2px 8px;
+  gap: 4px;
+}
+
+.dock-timer-btn {
+  border: none;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: var(--radius-full);
+}
+
+.dock-timer-digits {
+  font-family: ui-monospace, monospace;
+  font-size: 0.98rem;
+  font-weight: 900;
+  color: var(--primary-dark);
+}
+
+.dock-timer-more-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 3px 5px;
+  border-radius: var(--radius-full);
+  transition: all 0.15s ease;
+}
+
+.dock-timer-more-btn:hover {
+  background: rgba(91, 124, 214, 0.2);
+  color: var(--primary-dark);
+}
+
+/* Floating Dock Popover (Lucky Draw & Timer Panels) */
+.floating-dock-popover {
+  position: fixed;
+  bottom: 80px;
+  right: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  z-index: 9999;
+  background: var(--card-bg);
+  border: 1.5px solid var(--primary-light);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 16px 40px rgba(60, 50, 40, 0.22);
+  backdrop-filter: blur(20px);
+  overflow: hidden;
+  animation: popoverFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popoverFadeIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.popover-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(248, 250, 252, 0.8);
+}
+
+.popover-body {
+  padding: 14px;
+}
+
+.btn-close-popover {
+  border: none;
+  background: transparent;
   color: var(--text-muted);
   cursor: pointer;
   font-size: 0.9rem;
   padding: 2px 6px;
   border-radius: 4px;
+  transition: all 0.15s ease;
 }
 
-.btn-close-mini:hover {
-  color: #d9807e;
+.btn-close-popover:hover {
+  color: var(--accent-negative);
+  background: rgba(217, 128, 126, 0.12);
+}
+
+/* Floating Draw Card & Shuffle Styling */
+.floating-draw-card {
+  background: linear-gradient(135deg, rgba(91, 124, 214, 0.08), rgba(128, 115, 196, 0.1));
+  border: 1.5px dashed var(--primary-light);
+  border-radius: var(--radius-lg);
+  padding: 18px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease;
+  min-height: 160px;
+}
+
+.floating-draw-card.rolling {
+  border-style: solid;
+  border-color: #d3a24c;
+  background: rgba(211, 162, 76, 0.08);
+  box-shadow: 0 0 15px rgba(211, 162, 76, 0.3);
+}
+
+.floating-draw-card.winner {
+  border-style: solid;
+  border-color: var(--accent-positive);
+  background: linear-gradient(135deg, rgba(79, 174, 130, 0.12), rgba(91, 124, 214, 0.12));
+  box-shadow: 0 0 20px rgba(79, 174, 130, 0.35);
+  animation: winnerGlow 0.6s ease;
+}
+
+@keyframes winnerGlow {
+  0% { transform: scale(0.96); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+.floating-draw-avatar-wrap {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  border: 2px solid #ffffff;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 6px;
+  background: #cbd5e1;
+}
+
+.floating-draw-avatar-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.floating-draw-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+.floating-draw-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--text-main);
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Floating Draw Winner Actions (Instant Scoring) */
+.floating-draw-winner-actions {
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(79, 174, 130, 0.08);
+  border: 1px solid rgba(79, 174, 130, 0.25);
+  border-radius: var(--radius-md);
+  animation: tabFadeIn 0.2s ease;
+}
+
+.winner-score-prompt {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--accent-positive);
+  margin-bottom: 6px;
+}
+
+.winner-score-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-winner-score {
+  border: none;
+  background: linear-gradient(135deg, #4fae82, #059669);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(79, 174, 130, 0.3);
+  transition: all 0.15s ease;
+  flex: 1;
+  white-space: nowrap;
+}
+
+.btn-winner-score:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(79, 174, 130, 0.5);
+}
+
+.btn-winner-score:active {
+  transform: scale(0.95);
+}
+
+.btn-winner-score.plus2 {
+  background: linear-gradient(135deg, #5b7cd6, #4a67ba);
+  box-shadow: 0 2px 6px rgba(91, 124, 214, 0.3);
+}
+
+.btn-winner-score.plus2:hover {
+  box-shadow: 0 4px 10px rgba(91, 124, 214, 0.5);
+}
+
+.btn-winner-score.plus3 {
+  background: linear-gradient(135deg, #d3a24c, #b8860b);
+  box-shadow: 0 2px 6px rgba(211, 162, 76, 0.3);
+}
+
+.btn-winner-score.plus3:hover {
+  box-shadow: 0 4px 10px rgba(211, 162, 76, 0.5);
+}
+
+/* Floating Timer Presets */
+.floating-timer-presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.btn-dock-timer-preset {
+  border: 1px solid var(--card-border);
+  background: rgba(91, 124, 214, 0.08);
+  color: var(--primary-dark);
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 6px 4px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.btn-dock-timer-preset:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+/* Mobile responsive dock */
+@media (max-width: 640px) {
+  .classroom-floating-dock {
+    bottom: 12px;
+    right: 12px;
+    padding: 4px 8px 4px 4px;
+  }
+  .floating-dock-popover {
+    bottom: 64px;
+    right: 8px;
+    width: calc(100vw - 16px);
+  }
 }
 
 /* 4. Attention Bells (提示鈴聲) Styles */
@@ -3500,6 +3969,23 @@ body.mobile-scoring-only #quick-group-bar .btn {
 @keyframes fsUrgentPulse {
   0% { transform: scale(1); }
   100% { transform: scale(1.04); }
+}
+
+.timer-custom-row-fs {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.fs-timer-input:focus {
+  outline: none;
+  border-color: #60a5fa !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.35) !important;
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.fs-timer-input::-webkit-inner-spin-button,
+.fs-timer-input::-webkit-outer-spin-button {
+  opacity: 0.6;
 }
 
 /* ==========================================================================
