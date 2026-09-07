@@ -37,6 +37,7 @@ model Course {
   scoreLogs        ScoreLog[]
   qualitativeNotes QualitativeNote[]
   units            Unit[]
+  lessonLogs       LessonLog[]
   liveSessions     LiveSession[]
   pointCards       PointCard[]
   pointCardSeries  PointCardSeries[]
@@ -192,6 +193,27 @@ model QualitativeNote {
   @@map("qualitative_notes")
 }
 
+// 教學日誌（Lesson Log）：以課程為單位的教學進度／課堂記事，跟 QualitativeNote（針對個別學生）
+// 是不同維度的紀錄。subUnitId 選填，讓老師可以選擇性關聯到已建立的單元結構標示「教到哪」，
+// 沒有建立單元結構的老師仍可純文字記錄。tag=todo 時 isDone 才有意義（待辦事項追蹤）。
+model LessonLog {
+  id        Int     @id @default(autoincrement())
+  courseId  Int     @map("course_id")
+  subUnitId Int?    @map("sub_unit_id")
+  content   String
+  tag       String  @default("general")
+  isDone    Int     @default(0) @map("is_done")
+  mediaUrl  String? @map("media_url")
+  mediaType String? @map("media_type")
+  date      String
+  timestamp String
+
+  course  Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  subUnit SubUnit? @relation(fields: [subUnitId], references: [id], onDelete: SetNull)
+
+  @@map("lesson_logs")
+}
+
 model UndoLog {
   id          Int     @id @default(autoincrement())
   actionType  String  @map("action_type")
@@ -275,6 +297,7 @@ model SubUnit {
   readingProgress ReadingProgress[]
   submissions     Submission[]
   submissionComments SubmissionComment[]
+  lessonLogs      LessonLog[]
 
   @@map("sub_units")
 }

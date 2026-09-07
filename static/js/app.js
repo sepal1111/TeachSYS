@@ -620,6 +620,9 @@ function refreshActiveTab(tabName, force = false) {
     case 'notes':
       loadNotesData();
       break;
+    case 'journal':
+      if (window.LessonJournal) window.LessonJournal.load();
+      break;
     case 'dashboard':
       // force=true bypasses the fingerprint cache in loadDashboardData: a language
       // or name-display-mode switch changes nothing in the fetched data itself, so

@@ -70,6 +70,7 @@
       <button class="nav-tab" data-tab="seating">🪑 座位表編排</button>
       <button class="nav-tab" data-tab="grouping">🧩 彈性分組</button>
       <button class="nav-tab" data-tab="notes">📝 特殊表現紀錄</button>
+      <button class="nav-tab" data-tab="journal">📓 教學日誌</button>
       <button class="nav-tab" data-tab="dashboard">📊 儀表板與排行榜</button>
       <button class="nav-tab" data-tab="materials">📚 課程素材(LMS)</button>
       <button class="nav-tab" data-tab="toolkit">🧰 教學小工具</button>
@@ -85,6 +86,7 @@
         <option value="seating">🪑 座位表編排</option>
         <option value="grouping">🧩 彈性分組</option>
         <option value="notes">📝 特殊表現紀錄</option>
+        <option value="journal">📓 教學日誌</option>
         <option value="dashboard">📊 儀表板與排行榜</option>
         <option value="materials">📚 課程素材(LMS)</option>
         <option value="toolkit">🧰 教學小工具</option>
@@ -268,6 +270,58 @@
         <div class="glass-card-title" style="margin-bottom: 12px;" data-i18n="notes_history_title">📚 歷史紀錄歷程</div>
         <div id="notes-list-container" style="display: flex; flex-direction: column; gap: 10px;">
           <!-- Notes timeline inserted by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- 4.5 教學日誌 Pane -->
+    <section id="pane-journal" class="tab-pane">
+      <div class="glass-card">
+        <div class="glass-card-header">
+          <div class="glass-card-title" data-i18n="journal_card_title">📓 教學進度與課堂記事</div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 20px;">
+          <textarea id="journal-content-input" class="input-control" rows="3" placeholder="記錄今天教到哪、班級狀況、下次要補充的事項..." data-i18n-placeholder="journal_placeholder"></textarea>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <select id="journal-tag-select" class="input-control" style="width: auto;">
+              <option value="general" data-i18n="journal_tag_general">🗒️ 一般</option>
+              <option value="progress" data-i18n="journal_tag_progress">📈 進度說明</option>
+              <option value="classroom" data-i18n="journal_tag_classroom">🏫 班級經營</option>
+              <option value="material" data-i18n="journal_tag_material">📦 教材問題</option>
+              <option value="todo" data-i18n="journal_tag_todo">✅ 待辦事項</option>
+            </select>
+            <select id="journal-subunit-select" class="input-control" style="flex: 1; min-width: 160px;">
+              <option value="" data-i18n="journal_select_subunit">關聯單元（選填）...</option>
+            </select>
+            <label for="journal-date" style="font-size: 0.88rem; color: var(--text-muted); font-weight: 600;" data-i18n="journal_date_label">日期：</label>
+            <input type="date" id="journal-date" class="input-control" style="width: auto;">
+          </div>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <label style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="journal_media_label">📷 附加照片：</label>
+            <div class="custom-file-wrap" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <label class="btn btn-secondary custom-file-btn" style="font-size: 0.85rem; padding: 6px 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                <span data-i18n="file_choose_btn">📁 選擇檔案</span>
+                <input type="file" id="journal-media-file" accept="image/*,video/*" style="display: none;">
+              </label>
+              <span class="custom-file-name" data-i18n="file_none_chosen" style="font-size: 0.85rem; color: var(--text-muted);">未選擇任何檔案</span>
+            </div>
+            <button id="btn-save-journal" class="btn" data-i18n="journal_btn_save">📓 儲存日誌</button>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 14px;">
+          <div id="journal-tag-filter-bar" style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <!-- Tag filter chips inserted by JS -->
+          </div>
+          <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--text-muted); margin-left: auto;">
+            <input type="checkbox" id="journal-only-open-todo">
+            <span data-i18n="journal_filter_open_todo">只看未完成待辦</span>
+          </label>
+        </div>
+
+        <div class="glass-card-title" style="margin-bottom: 12px;" data-i18n="journal_history_title">📚 日誌歷程</div>
+        <div id="journal-list-container" style="display: flex; flex-direction: column; gap: 10px;">
+          <!-- Journal timeline inserted by JS -->
         </div>
       </div>
     </section>
@@ -2161,6 +2215,7 @@
   <script src="/static/js/toolkit.js?v=3.0"></script>
   <script src="/static/js/realtime.js?v=3.0"></script>
   <script src="/static/js/materials.js?v=1.4"></script>
+  <script src="/static/js/journal.js?v=1.0"></script>
   <script src="/static/js/app.js?v=3.0"></script>
   <script src="/static/js/point-cards.js?v=1.1"></script>
   <script src="/static/js/rewards.js?v=1.3"></script>

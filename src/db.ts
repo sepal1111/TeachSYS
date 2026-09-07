@@ -250,6 +250,28 @@ export async function initSchema(): Promise<void> {
     );
   `);
 
+  // 教學日誌（Lesson Log）：以課程為單位的教學進度／課堂記事，跟 qualitative_notes（針對個別學生）
+  // 是不同維度的紀錄，sub_unit_id 選填讓老師可以選擇性關聯到已建立的單元結構標示「教到哪」。
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS lesson_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      sub_unit_id INTEGER NULL,
+      content TEXT NOT NULL,
+      tag TEXT NOT NULL DEFAULT 'general',
+      is_done INTEGER DEFAULT 0,
+      media_url TEXT NULL,
+      media_type TEXT NULL,
+      date TEXT NOT NULL,
+      timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(sub_unit_id) REFERENCES sub_units(id) ON DELETE SET NULL
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_lesson_logs_course ON lesson_logs(course_id, date);"
+  );
+
   // --- Phase 3: 作業與小組共同作業模組 (submissions) ---
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS submissions (
