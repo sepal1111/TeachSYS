@@ -4407,9 +4407,137 @@ body.mobile-scoring-only #quick-group-bar .btn {
   box-shadow: 0 0 10px rgba(251, 191, 36, 0.2);
 }
 
+/* ==========================================================================
+   紙本測驗學生成績總覽 (Paper Quiz Overview Modal & Table)
+   ========================================================================== */
 
+.quiz-overview-modal-content {
+  width: min(95vw, 1200px) !important;
+  max-width: 1200px !important;
+  height: min(88vh, 850px) !important;
+  max-height: 88vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 24px !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  border-radius: var(--radius-2xl) !important;
+  box-shadow: var(--shadow-2xl) !important;
+  color: var(--text-main) !important;
+  overflow: hidden !important;
+}
 
+.quiz-overview-filter-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
 
+.quiz-overview-stat-badge {
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(91, 124, 214, 0.12);
+  color: var(--primary);
+  border: 1px solid rgba(91, 124, 214, 0.25);
+  white-space: nowrap;
+}
 
+.quiz-overview-table-wrap {
+  flex: 1;
+  min-height: 220px;
+  overflow: auto;
+  border-radius: var(--radius-lg);
+  border: 1.5px solid var(--card-border);
+  background: var(--card-bg);
+  position: relative;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.02);
+}
 
+.quiz-overview-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-main);
+}
 
+/* Sticky Header */
+.quiz-overview-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: #f8fafc;
+  color: var(--text-main);
+  border-bottom: 2px solid var(--card-border);
+  border-right: 1px solid var(--card-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Sticky Left Columns (座號 & 姓名) */
+.quiz-overview-table .sticky-col-no {
+  position: sticky;
+  left: 0;
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  z-index: 20;
+  background: #ffffff;
+  border-right: 1px solid var(--card-border);
+  text-align: center;
+}
+
+.quiz-overview-table .sticky-col-name {
+  position: sticky;
+  left: 60px;
+  width: 110px;
+  min-width: 110px;
+  max-width: 110px;
+  z-index: 20;
+  background: #ffffff;
+  border-right: 2px solid var(--primary-light, #93c5fd);
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+/* Header Left Frozen Intersection */
+.quiz-overview-table thead .sticky-col-no,
+.quiz-overview-table thead .sticky-col-name {
+  z-index: 40 !important;
+  background: #edf2f7 !important;
+}
+
+/* Body Rows & Cells */
+.quiz-overview-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.quiz-overview-table tbody tr:nth-child(even) td {
+  background: rgba(248, 250, 252, 0.6);
+}
+
+.quiz-overview-table tbody tr:nth-child(even) .sticky-col-no,
+.quiz-overview-table tbody tr:nth-child(even) .sticky-col-name {
+  background: #f8fafc !important;
+}
+
+.quiz-overview-table tbody tr:hover td {
+  background: rgba(91, 124, 214, 0.08) !important;
+}
+
+.quiz-overview-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--card-border);
+  border-right: 1px solid var(--card-border);
+  vertical-align: middle;
+}

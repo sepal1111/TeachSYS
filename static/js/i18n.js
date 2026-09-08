@@ -692,6 +692,7 @@
       'paper_quiz_btn_edit': '⚙️ 設定',
       'paper_quiz_btn_delete': '🗑️ 刪除',
       'paper_quiz_btn_save': '💾 儲存成績 (Ctrl+S)',
+      'paper_quiz_autosave_ready': '自動儲存已啟用',
       'paper_quiz_filter_unrecorded': '只看未登記',
       'paper_quiz_filter_pending_photos': '只看待審核考卷',
       'paper_quiz_filter_absent': '只看缺考/請假',
@@ -722,6 +723,8 @@
       'paper_quiz_stat_recorded': '已登記人數',
       'paper_quiz_stat_pending_verify': '待查驗考卷',
       'paper_quiz_stat_makeup': '補考進行中',
+      'paper_quiz_btn_overview': '📊 學生成績總覽',
+      'paper_quiz_overview_title': '📊 學生成績總覽 (即時預覽)',
       'paper_quiz_count_badge_text': '顯示 {filtered} / {total} 個測驗',
       'paper_quiz_no_match': '查無符合科目或關鍵字的測驗'
     },
@@ -1411,6 +1414,7 @@
       'paper_quiz_btn_edit': '⚙️ Settings',
       'paper_quiz_btn_delete': '🗑️ Delete',
       'paper_quiz_btn_save': '💾 Save Scores (Ctrl+S)',
+      'paper_quiz_autosave_ready': 'Auto-save Enabled',
       'paper_quiz_filter_unrecorded': 'Unrecorded only',
       'paper_quiz_filter_pending_photos': 'Pending photos only',
       'paper_quiz_filter_absent': 'Absent/Leave only',
@@ -1440,7 +1444,8 @@
       'paper_quiz_stat_lowest': 'Lowest Score',
       'paper_quiz_stat_recorded': 'Recorded',
       'paper_quiz_stat_pending_verify': 'Pending Photos',
-      'paper_quiz_stat_makeup': 'Makeup in Progress',
+      'paper_quiz_btn_overview': '📊 Student Scores Overview',
+      'paper_quiz_overview_title': '📊 Student Scores Overview (Live)',
       'paper_quiz_count_badge_text': '{filtered} of {total} quizzes',
       'paper_quiz_no_match': 'No matching quizzes found'
     }

@@ -559,14 +559,19 @@
     activePopup = newPopup;
   }
 
+  let lastOpenTime = 0;
+
   function openDatePickerForInput(input) {
+    const now = Date.now();
     if (activeInput === input && activePopup) {
+      if (now - lastOpenTime < 250) return;
       closePopup();
       return;
     }
 
     closePopup();
     activeInput = input;
+    lastOpenTime = now;
 
     const currentVal = input.value || '';
     const parsed = parseDate(currentVal);
@@ -744,12 +749,15 @@
   }
 
   function openDateTimePickerForInput(input) {
+    const nowTs = Date.now();
     if (activeInput === input && activePopup) {
+      if (nowTs - lastOpenTime < 250) return;
       closePopup();
       return;
     }
     closePopup();
     activeInput = input;
+    lastOpenTime = nowTs;
 
     const now = new Date();
     const parsed = parseDateTime(input.value || '');
@@ -890,10 +898,6 @@
 
     input.addEventListener('click', (e) => {
       e.stopPropagation();
-      openPicker();
-    });
-
-    input.addEventListener('focus', (e) => {
       openPicker();
     });
 

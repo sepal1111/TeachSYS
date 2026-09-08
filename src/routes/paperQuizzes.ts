@@ -22,6 +22,8 @@ paperQuizzesRouter.get("/:courseId", async (req, res) => {
           photoUrl: true,
           isVerified: true,
           submittedBy: true,
+          allowMakeup: true,
+          isMakeup: true,
         },
       },
     },
@@ -34,17 +36,30 @@ paperQuizzesRouter.get("/:courseId", async (req, res) => {
 
   const serialized = quizzes.map((q) => {
     const records = q.records;
-    const scoredRecords = records.filter((r) => !r.isAbsent && r.score !== null);
-    const absentCount = records.filter((r) => r.isAbsent === 1).length;
+    const scoredRecords = records.filter(
+      (r) => (!r.isAbsent || (r.allowMakeup === 1 && r.score !== null)) && r.score !== null
+    );
+    const absentCount = records.filter(
+      (r) => r.isAbsent === 1 && (r.allowMakeup !== 1 || r.score === null)
+    ).length;
+    const makeupCount = records.filter((r) => r.allowMakeup === 1).length;
     const passCount = scoredRecords.filter((r) => (r.score ?? 0) >= q.passingScore).length;
     const failCount = scoredRecords.filter((r) => (r.score ?? 0) < q.passingScore).length;
     const pendingVerifyCount = records.filter((r) => r.photoUrl && r.isVerified === 0).length;
 
     let avgScore: number | null = null;
+    let maxScoreActual: number | null = null;
+    let minScoreActual: number | null = null;
+
     if (scoredRecords.length > 0) {
       const sum = scoredRecords.reduce((acc, r) => acc + (r.score ?? 0), 0);
       avgScore = Math.round((sum / scoredRecords.length) * 10) / 10;
+      const scores = scoredRecords.map((r) => r.score ?? 0);
+      maxScoreActual = Math.max(...scores);
+      minScoreActual = Math.min(...scores);
     }
+
+    const passRate = scoredRecords.length > 0 ? Math.round((passCount / scoredRecords.length) * 1000) / 10 : 0;
 
     return {
       id: q.id,
@@ -61,18 +76,218 @@ paperQuizzesRouter.get("/:courseId", async (req, res) => {
       created_at: q.createdAt,
       stats: {
         total_students: totalActiveStudents,
-        recorded_count: records.length,
+        recorded_count: scoredRecords.length + absentCount,
         scored_count: scoredRecords.length,
         absent_count: absentCount,
+        makeup_count: makeupCount,
         pass_count: passCount,
         fail_count: failCount,
+        pass_rate: passRate,
         average_score: avgScore,
+        max_score_actual: maxScoreActual,
+        min_score_actual: minScoreActual,
         pending_verify_count: pendingVerifyCount,
       },
     };
   });
 
   res.json({ quizzes: serialized });
+});
+
+// 取得紙本測驗成績總覽（支援科目與日期區間篩選，僅列出學生成績、平均與及格率，供教師快速即時觀看）
+paperQuizzesRouter.get("/:courseId/overview", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const { subject, start_date, end_date } = req.query;
+
+  const quizWhere: Record<string, unknown> = { courseId };
+  if (subject && String(subject).trim() !== "") {
+    quizWhere.subject = String(subject).trim();
+  }
+  if (start_date || end_date) {
+    const dateFilter: Record<string, string> = {};
+    if (start_date) dateFilter.gte = String(start_date);
+    if (end_date) dateFilter.lte = String(end_date);
+    quizWhere.quizDate = dateFilter;
+  }
+
+  // 1. 取得符合條件的紙本測驗（依日期正序排列，便於橫向觀看歷程）
+  const paperQuizzes = await prisma.paperQuiz.findMany({
+    where: quizWhere,
+    include: {
+      subUnit: { select: { title: true } },
+      records: {
+        select: {
+          studentId: true,
+          score: true,
+          isAbsent: true,
+          leaveType: true,
+          allowMakeup: true,
+          isMakeup: true,
+        },
+      },
+    },
+    orderBy: [{ quizDate: "asc" }, { id: "asc" }],
+  });
+
+  // 2. 取得班級所有作用中的學生
+  const students = await prisma.student.findMany({
+    where: { courseId, isActive: 1 },
+    orderBy: { studentNumber: "asc" },
+  });
+
+  // 3. 勾稽學生在各測驗日期的出席狀況 (Attendance)
+  const quizDates = Array.from(new Set(paperQuizzes.map((q) => q.quizDate)));
+  const attendances = await prisma.attendance.findMany({
+    where: { courseId, date: { in: quizDates } },
+  });
+  const attMap = new Map<string, string>();
+  for (const a of attendances) {
+    attMap.set(`${a.date}_${a.studentId}`, a.status);
+  }
+
+  // 4. 測驗欄位定義與各測驗統計
+  const quizzesMeta = paperQuizzes.map((q) => {
+    const scoredList: number[] = [];
+    let absentCnt = 0;
+    let passCnt = 0;
+
+    for (const s of students) {
+      const rec = q.records.find((r) => r.studentId === s.id);
+      const attStatus = attMap.get(`${q.quizDate}_${s.id}`);
+      const isUnattendedDay = Boolean(attStatus && attStatus !== "present" && attStatus !== "late");
+
+      const allowMakeup = rec ? rec.allowMakeup === 1 : false;
+      let isAbsent = rec ? rec.isAbsent === 1 : (isUnattendedDay ? true : false);
+      const hasScore = rec?.score !== null && rec?.score !== undefined;
+
+      if (allowMakeup && hasScore) {
+        isAbsent = false;
+      }
+
+      if (isAbsent) {
+        absentCnt++;
+      } else if (hasScore) {
+        const sc = Number(rec!.score);
+        scoredList.push(sc);
+        if (sc >= q.passingScore) passCnt++;
+      }
+    }
+
+    const avg = scoredList.length > 0
+      ? Math.round((scoredList.reduce((a, b) => a + b, 0) / scoredList.length) * 10) / 10
+      : null;
+    const passRate = scoredList.length > 0
+      ? Math.round((passCnt / scoredList.length) * 1000) / 10
+      : null;
+
+    return {
+      id: q.id,
+      title: q.title,
+      subject: q.subject || "",
+      quiz_date: q.quizDate,
+      max_score: q.maxScore,
+      passing_score: q.passingScore,
+      sub_unit_title: q.subUnit?.title || null,
+      stats: {
+        scored_count: scoredList.length,
+        absent_count: absentCnt,
+        pass_count: passCnt,
+        average_score: avg,
+        pass_rate: passRate,
+        max_score_actual: scoredList.length > 0 ? Math.max(...scoredList) : null,
+        min_score_actual: scoredList.length > 0 ? Math.min(...scoredList) : null,
+      },
+    };
+  });
+
+  // 5. 逐位學生建構橫向成績列
+  const studentRows = students.map((s) => {
+    let sumScore = 0;
+    let scoredCount = 0;
+    let absentCount = 0;
+    let passCount = 0;
+
+    const scoresMap: Record<number, {
+      score: number | null;
+      is_absent: boolean;
+      status_text: string;
+      is_makeup: boolean;
+      is_pass: boolean;
+    }> = {};
+
+    paperQuizzes.forEach((q) => {
+      const rec = q.records.find((r) => r.studentId === s.id);
+      const attStatus = attMap.get(`${q.quizDate}_${s.id}`);
+      const isUnattendedDay = Boolean(attStatus && attStatus !== "present" && attStatus !== "late");
+
+      const allowMakeup = rec ? rec.allowMakeup === 1 : false;
+      const isMakeup = rec ? rec.isMakeup === 1 : false;
+      let isAbsent = rec ? rec.isAbsent === 1 : (isUnattendedDay ? true : false);
+      const hasScore = rec?.score !== null && rec?.score !== undefined;
+
+      if (allowMakeup && hasScore) {
+        isAbsent = false;
+      }
+
+      if (isAbsent) {
+        absentCount++;
+        scoresMap[q.id] = {
+          score: null,
+          is_absent: true,
+          status_text: "缺考",
+          is_makeup: false,
+          is_pass: false,
+        };
+      } else if (hasScore) {
+        const sc = Number(rec!.score);
+        sumScore += sc;
+        scoredCount++;
+        const isPass = sc >= q.passingScore;
+        if (isPass) passCount++;
+
+        scoresMap[q.id] = {
+          score: sc,
+          is_absent: false,
+          status_text: String(sc),
+          is_makeup: isMakeup,
+          is_pass: isPass,
+        };
+      } else {
+        scoresMap[q.id] = {
+          score: null,
+          is_absent: false,
+          status_text: "-",
+          is_makeup: false,
+          is_pass: false,
+        };
+      }
+    });
+
+    const personalAvg = scoredCount > 0 ? Math.round((sumScore / scoredCount) * 10) / 10 : null;
+    const personalPassRate = scoredCount > 0 ? Math.round((passCount / scoredCount) * 1000) / 10 : null;
+
+    return {
+      student_id: s.id,
+      student_number: s.studentNumber,
+      name: s.name,
+      gender: s.gender,
+      scores: scoresMap,
+      summary: {
+        scored_count: scoredCount,
+        absent_count: absentCount,
+        pass_count: passCount,
+        average_score: personalAvg,
+        pass_rate: personalPassRate,
+      },
+    };
+  });
+
+  res.json({
+    quizzes: quizzesMeta,
+    students: studentRows,
+    total_quizzes: paperQuizzes.length,
+    total_students: students.length,
+  });
 });
 
 export function getLeaveLabelZh(status: string): string {
@@ -458,17 +673,21 @@ paperQuizzesRouter.post("/:quizId/batch-save", async (req, res) => {
     const studentId = Number(item.student_id);
     if (!studentId) continue;
 
-    const isAbsent = item.is_absent ? 1 : 0;
+    let isAbsent = item.is_absent ? 1 : 0;
+    const allowMakeup = item.allow_makeup !== undefined ? (item.allow_makeup ? 1 : 0) : undefined;
+    const hasScore = item.score !== null && item.score !== undefined && item.score !== "";
+    if (allowMakeup && hasScore) {
+      isAbsent = 0;
+    }
     const scoreVal =
-      isAbsent || item.score === null || item.score === undefined || item.score === ""
+      isAbsent || !hasScore
         ? null
         : Math.min(Number(item.score), quiz.maxScore);
 
     const note = item.note !== undefined ? String(item.note) : undefined;
     const isVerified = item.is_verified !== undefined ? (item.is_verified ? 1 : 0) : undefined;
-    const allowMakeup = item.allow_makeup !== undefined ? (item.allow_makeup ? 1 : 0) : undefined;
     const leaveType = item.leave_type !== undefined ? String(item.leave_type) : undefined;
-    const isMakeup = item.is_makeup !== undefined ? (item.is_makeup ? 1 : 0) : (scoreVal !== null && item.allow_makeup ? 1 : undefined);
+    const isMakeup = item.is_makeup !== undefined ? (item.is_makeup ? 1 : 0) : (scoreVal !== null && allowMakeup ? 1 : undefined);
 
     await prisma.paperQuizRecord.upsert({
       where: { quizId_studentId: { quizId, studentId } },

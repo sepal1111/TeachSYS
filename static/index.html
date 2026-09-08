@@ -411,11 +411,14 @@
               <div class="glass-card-title" data-i18n="paper_quiz_title">📝 紙本測驗成績登記</div>
               <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" data-i18n="paper_quiz_subtitle">支援鍵盤極速連打登錄、學生拍照佐證查驗與全班統計分析</div>
             </div>
-            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btn-open-paper-quiz-overview" class="btn" style="font-size: 0.85rem; padding: 6px 14px; background: linear-gradient(135deg, #3b82f6, #6366f1); font-weight: 700;" data-i18n="paper_quiz_btn_overview">📊 學生成績總覽</button>
               <button type="button" id="btn-create-paper-quiz" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="paper_quiz_btn_create">➕ 建立新測驗</button>
               <button type="button" id="btn-edit-paper-quiz" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;" data-i18n="paper_quiz_btn_edit">⚙️ 設定</button>
               <button type="button" id="btn-delete-paper-quiz" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px; color: var(--accent-negative); border-color: var(--accent-negative-border);" data-i18n="paper_quiz_btn_delete">🗑️ 刪除</button>
-              <button type="button" id="btn-save-paper-quiz-records" class="btn" style="font-size: 0.88rem; padding: 6px 18px; font-weight: 700; background: var(--primary);" data-i18n="paper_quiz_btn_save">💾 儲存成績 (Ctrl+S)</button>
+              <div id="paper-quiz-autosave-indicator" style="font-size: 0.82rem; font-weight: 600; color: #10b981; display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 6px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.25);" title="系統將於每次輸入或修改後自動儲存">
+                <span id="paper-quiz-autosave-icon">⚡</span>
+                <span id="paper-quiz-autosave-text" data-i18n="paper_quiz_autosave_ready">自動儲存已啟用</span>
+              </div>
             </div>
           </div>
 
@@ -952,10 +955,10 @@
             <input type="date" id="export-start-date" class="input-control" style="width: auto;">
             <span>~</span>
             <input type="date" id="export-end-date" class="input-control" style="width: auto;">
-            <button id="btn-export-excel" class="btn" data-i18n="admin_btn_export_excel">📥 下載 Excel 完整報表</button>
+            <button id="btn-export-excel" class="btn" data-i18n="admin_btn_export_excel" disabled title="請先選擇開始日期與結束日期">📥 下載 Excel 完整報表</button>
           </div>
           <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px;" data-i18n="admin_export_hint">
-            💡 匯出的 Excel 檔案包含兩大工作表：「出缺席統計表」與「量化成績統計與明細表」，完整記錄每位學生的加減分次數與日常表現。
+            💡 匯出的 Excel 檔案包含六大工作表，含出缺席、量化成績明細、紙本測驗成績一覽與詳細明細，請先選擇起訖日期以啟動下載。
           </div>
         </div>
       </div>
@@ -2518,6 +2521,73 @@
 
   <!-- Keep hidden legacy elements for full backward compatibility if referenced -->
   <div id="floating-mini-timer-widget" style="display: none;"><span id="floating-timer-digits">03:00</span></div>
+
+  <!-- Modal: 紙本測驗學生成績總覽 (即時在線查看，支援科目與日期篩選，僅列出成績與統計) -->
+  <div id="modal-paper-quiz-overview" class="modal-overlay" style="z-index: 100020;">
+    <div class="modal-content quiz-overview-modal-content">
+      <!-- Modal 頂部標題與關閉按鈕 -->
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div class="modal-title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main);" data-i18n="paper_quiz_overview_title">📊 學生成績總覽 (即時預覽)</div>
+          <span id="paper-quiz-overview-count-badge" class="quiz-overview-stat-badge">
+            共 0 次測驗
+          </span>
+        </div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-paper-quiz-overview" title="關閉">✕</button>
+      </div>
+
+      <!-- 篩選工具列：科目分類 + 日期區間 -->
+      <div class="quiz-overview-filter-bar">
+        <!-- 科目篩選 -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label for="paper-quiz-overview-subject" style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); white-space: nowrap;" data-i18n="paper_quiz_filter_subject_label">📚 科目：</label>
+          <select id="paper-quiz-overview-subject" class="input-control" style="min-width: 140px; font-size: 0.88rem; padding: 5px 10px; font-weight: 600;">
+            <option value="" data-i18n="paper_quiz_filter_all_subjects">全部科目</option>
+          </select>
+        </div>
+
+        <!-- 開始日期 -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label for="paper-quiz-overview-start-date" style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); white-space: nowrap;">📅 開始日期：</label>
+          <input type="date" id="paper-quiz-overview-start-date" class="input-control" style="font-size: 0.88rem; padding: 5px 8px;">
+        </div>
+
+        <!-- 結束日期 -->
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <label for="paper-quiz-overview-end-date" style="font-size: 0.88rem; font-weight: 700; color: var(--text-main); white-space: nowrap;">📅 結束日期：</label>
+          <input type="date" id="paper-quiz-overview-end-date" class="input-control" style="font-size: 0.88rem; padding: 5px 8px;">
+        </div>
+
+        <!-- 查詢按鈕與重設 -->
+        <div style="display: flex; gap: 8px; margin-left: auto; align-items: center;">
+          <button type="button" id="btn-paper-quiz-overview-query" class="btn" style="font-size: 0.88rem; padding: 6px 16px; font-weight: 700; background: linear-gradient(135deg, #5b7cd6, #8073c4);">🔍 篩選查詢</button>
+          <button type="button" id="btn-paper-quiz-overview-reset" class="btn btn-secondary" style="font-size: 0.88rem; padding: 6px 12px; font-weight: 600;">🔄 重設</button>
+        </div>
+      </div>
+
+      <!-- 全班即時指標摘要 (Stats Grid) -->
+      <div id="paper-quiz-overview-summary-bar" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; flex-shrink: 0;">
+        <!-- Injected by JS: 測驗次數、全體平均分、全體及格率、總缺考人次 -->
+      </div>
+
+      <!-- 成績總覽表格 (純成績與統計，支援水平垂直雙向捲動，凍結左側學生姓名與頂部標題) -->
+      <div class="quiz-overview-table-wrap">
+        <table id="paper-quiz-overview-table" class="quiz-overview-table">
+          <thead id="paper-quiz-overview-thead">
+            <!-- Injected by JS -->
+          </thead>
+          <tbody id="paper-quiz-overview-tbody">
+            <!-- Injected by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 底部關閉按鈕 -->
+      <div style="display: flex; justify-content: flex-end; margin-top: 14px; flex-shrink: 0;">
+        <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_close" style="padding: 7px 20px; font-weight: 700;">關閉</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: 建立/編輯紙本測驗 -->
   <div id="modal-paper-quiz-editor" class="modal-overlay" style="z-index: 100020;">

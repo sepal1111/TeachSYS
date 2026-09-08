@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
 import { getTodayStrTaipei, getTodayTaipei } from "../timezone";
 import { autoCatch } from "../asyncRoute";
+import { getLeaveLabelZh } from "./paperQuizzes";
 
 export const reportsRouter = autoCatch(Router());
 
@@ -155,6 +156,16 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
   const courseId = Number(req.params.courseId);
   const startDate = req.query.start_date as string | undefined;
   const endDate = req.query.end_date as string | undefined;
+
+  if (!startDate || !endDate) {
+    res.status(400).json({ detail: "請先指定匯出報表的開始日期與結束日期！" });
+    return;
+  }
+
+  if (startDate > endDate) {
+    res.status(400).json({ detail: "開始日期不能大於結束日期！" });
+    return;
+  }
 
   const course = await prisma.course.findUnique({ where: { id: courseId } });
   if (!course) {
@@ -353,14 +364,278 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
     wsNotes.addRow([n.timestamp, n.student.studentNumber, n.student.name, n.noteText]);
   }
 
+  // --- Sheet 5: 紙本測驗成績一覽 ---
+  const quizWhere: Prisma.PaperQuizWhereInput = { courseId };
+  if (startDate) quizWhere.quizDate = { ...(quizWhere.quizDate as object), gte: startDate };
+  if (endDate) quizWhere.quizDate = { ...(quizWhere.quizDate as object), lte: endDate };
+
+  const paperQuizzes = await prisma.paperQuiz.findMany({
+    where: quizWhere,
+    include: {
+      subUnit: { select: { title: true } },
+      records: {
+        include: {
+          student: true,
+        },
+      },
+    },
+    orderBy: [{ quizDate: "asc" }, { id: "asc" }],
+  });
+
+  const quizDates = [...new Set(paperQuizzes.map((q) => q.quizDate))];
+  const attendances = await prisma.attendance.findMany({
+    where: { courseId, date: { in: quizDates } },
+  });
+  const attMap = new Map<string, string>();
+  for (const a of attendances) {
+    attMap.set(`${a.date}_${a.studentId}`, a.status);
+  }
+
+  const wsPaperMatrix = wb.addWorksheet("紙本測驗成績一覽");
+  wsPaperMatrix.addRow([`課程：${course.name} - 紙本測驗成績總覽與全班統計`, `區間：${startDate || "不限"} ~ ${endDate || "不限"}`]);
+  wsPaperMatrix.addRow([]);
+
+  const quizCols = paperQuizzes.map((q) => {
+    const subjStr = q.subject ? `[${q.subject}] ` : "";
+    return `${q.quizDate}\n${subjStr}${q.title}\n(滿分:${q.maxScore}/及格:${q.passingScore})`;
+  });
+
+  wsPaperMatrix.addRow([
+    "座號",
+    "姓名",
+    "性別",
+    ...quizCols,
+    "應試次數",
+    "缺考次數",
+    "補考次數",
+    "個人平均分",
+    "及格率",
+  ]);
+
+  const quizStats = paperQuizzes.map(() => ({
+    scores: [] as number[],
+    absentCount: 0,
+    makeupCount: 0,
+    passCount: 0,
+  }));
+
+  for (const s of students) {
+    let studentScoredSum = 0;
+    let studentScoredCount = 0;
+    let studentAbsentCount = 0;
+    let studentMakeupCount = 0;
+    let studentPassCount = 0;
+
+    const rowQuizValues: (number | string)[] = [];
+
+    paperQuizzes.forEach((q, qIdx) => {
+      const rec = q.records.find((r) => r.studentId === s.id);
+      const attStatus = attMap.get(`${q.quizDate}_${s.id}`);
+      const isUnattendedDay = Boolean(attStatus && attStatus !== "present" && attStatus !== "late");
+
+      const allowMakeup = rec ? rec.allowMakeup === 1 : false;
+      const isMakeup = rec ? rec.isMakeup === 1 : false;
+      let isAbsent = rec ? rec.isAbsent === 1 : (isUnattendedDay ? true : false);
+      const hasScore = rec?.score !== null && rec?.score !== undefined;
+
+      if (allowMakeup && hasScore) {
+        isAbsent = false;
+      }
+
+      if (isAbsent) {
+        studentAbsentCount++;
+        quizStats[qIdx].absentCount++;
+        const leaveLabel = rec?.leaveType ? getLeaveLabelZh(rec.leaveType) : (isUnattendedDay ? getLeaveLabelZh(attStatus!) : "");
+        rowQuizValues.push(leaveLabel ? `缺考(${leaveLabel})` : "缺考");
+      } else if (hasScore) {
+        const numScore = Number(rec!.score);
+        studentScoredCount++;
+        studentScoredSum += numScore;
+        quizStats[qIdx].scores.push(numScore);
+
+        if (numScore >= q.passingScore) {
+          studentPassCount++;
+          quizStats[qIdx].passCount++;
+        }
+        if (isMakeup) {
+          studentMakeupCount++;
+          quizStats[qIdx].makeupCount++;
+          rowQuizValues.push(`${numScore} (補考)`);
+        } else {
+          rowQuizValues.push(numScore);
+        }
+      } else {
+        rowQuizValues.push("-");
+      }
+    });
+
+    const avgScore = studentScoredCount > 0 ? Math.round((studentScoredSum / studentScoredCount) * 10) / 10 : "-";
+    const passRate = studentScoredCount > 0 ? `${Math.round((studentPassCount / studentScoredCount) * 1000) / 10}%` : "-";
+
+    wsPaperMatrix.addRow([
+      s.studentNumber,
+      s.name,
+      s.gender === "M" ? "男" : "女",
+      ...rowQuizValues,
+      studentScoredCount,
+      studentAbsentCount,
+      studentMakeupCount,
+      avgScore,
+      passRate,
+    ]);
+  }
+
+  // 底部統計匯總列
+  if (paperQuizzes.length > 0) {
+    wsPaperMatrix.addRow([]);
+
+    // 全班平均分
+    const avgRowVals: (number | string)[] = ["-", "【全班平均分】", "-"];
+    let totalAllScore = 0;
+    let totalAllCount = 0;
+    quizStats.forEach((qs) => {
+      if (qs.scores.length > 0) {
+        const sum = qs.scores.reduce((a, b) => a + b, 0);
+        totalAllScore += sum;
+        totalAllCount += qs.scores.length;
+        avgRowVals.push(Math.round((sum / qs.scores.length) * 10) / 10);
+      } else {
+        avgRowVals.push("-");
+      }
+    });
+    const overallAvg = totalAllCount > 0 ? Math.round((totalAllScore / totalAllCount) * 10) / 10 : "-";
+    avgRowVals.push("-", "-", "-", overallAvg, "-");
+    wsPaperMatrix.addRow(avgRowVals);
+
+    // 全班及格率
+    const passRateVals: (number | string)[] = ["-", "【全班及格率】", "-"];
+    quizStats.forEach((qs) => {
+      if (qs.scores.length > 0) {
+        const rate = Math.round((qs.passCount / qs.scores.length) * 1000) / 10;
+        passRateVals.push(`${rate}% (${qs.passCount}/${qs.scores.length})`);
+      } else {
+        passRateVals.push("-");
+      }
+    });
+    passRateVals.push("-", "-", "-", "-", "-");
+    wsPaperMatrix.addRow(passRateVals);
+
+    // 最高分 / 最低分
+    const highLowVals: (number | string)[] = ["-", "【最高/最低分】", "-"];
+    quizStats.forEach((qs) => {
+      if (qs.scores.length > 0) {
+        highLowVals.push(`${Math.max(...qs.scores)} / ${Math.min(...qs.scores)}`);
+      } else {
+        highLowVals.push("-");
+      }
+    });
+    highLowVals.push("-", "-", "-", "-", "-");
+    wsPaperMatrix.addRow(highLowVals);
+
+    // 缺考人數
+    const absentVals: (number | string)[] = ["-", "【缺考總人數】", "-"];
+    quizStats.forEach((qs) => {
+      absentVals.push(qs.absentCount > 0 ? `${qs.absentCount} 人` : "0");
+    });
+    absentVals.push("-", "-", "-", "-", "-");
+    wsPaperMatrix.addRow(absentVals);
+  }
+
+  // --- Sheet 6: 紙本測驗詳細明細 ---
+  const wsPaperDetail = wb.addWorksheet("紙本測驗詳細明細");
+  wsPaperDetail.addRow([`課程：${course.name} - 紙本測驗逐次登記與查驗明細`, `區間：${startDate || "不限"} ~ ${endDate || "不限"}`]);
+  wsPaperDetail.addRow([]);
+  wsPaperDetail.addRow([
+    "測驗日期",
+    "科目",
+    "測驗名稱",
+    "關聯單元",
+    "滿分",
+    "及格分",
+    "座號",
+    "學生姓名",
+    "得分",
+    "應試狀態",
+    "假別",
+    "登記來源",
+    "考卷佐證查驗",
+    "備註說明",
+    "最後更新時間",
+  ]);
+
+  for (const q of paperQuizzes) {
+    for (const s of students) {
+      const rec = q.records.find((r) => r.studentId === s.id);
+      const attStatus = attMap.get(`${q.quizDate}_${s.id}`);
+      const isUnattendedDay = Boolean(attStatus && attStatus !== "present" && attStatus !== "late");
+
+      const allowMakeup = rec ? rec.allowMakeup === 1 : false;
+      const isMakeup = rec ? rec.isMakeup === 1 : false;
+      let isAbsent = rec ? rec.isAbsent === 1 : (isUnattendedDay ? true : false);
+      const hasScore = rec?.score !== null && rec?.score !== undefined;
+
+      if (allowMakeup && hasScore) {
+        isAbsent = false;
+      }
+
+      let statusStr = "未登記";
+      let scoreStr: string | number = "-";
+      let leaveTypeStr = "-";
+      let submittedByStr = "-";
+      let verifyStr = "-";
+
+      if (isAbsent) {
+        statusStr = allowMakeup ? "缺考 (開放補考中)" : "缺考";
+        scoreStr = "缺考";
+        const leaveLabel = rec?.leaveType ? getLeaveLabelZh(rec.leaveType) : (isUnattendedDay ? getLeaveLabelZh(attStatus!) : "");
+        leaveTypeStr = leaveLabel || "曠課/未出席";
+      } else if (hasScore) {
+        scoreStr = Number(rec!.score);
+        statusStr = isMakeup ? "補考完成" : (Number(rec!.score) >= q.passingScore ? "及格" : "不及格");
+        leaveTypeStr = rec?.leaveType ? getLeaveLabelZh(rec.leaveType) : "-";
+      }
+
+      if (rec) {
+        if (rec.submittedBy === "student") submittedByStr = "學生自登";
+        else if (rec.submittedBy === "leader") submittedByStr = "組長代登";
+        else if (rec.submittedBy === "teacher") submittedByStr = "教師登記";
+        else if (rec.submittedBy === "system") submittedByStr = "系統自動標記";
+
+        if (rec.photoUrl) {
+          verifyStr = rec.isVerified === 1 ? "📷 已核准" : "📷 待審核";
+        } else {
+          verifyStr = "無照片佐證";
+        }
+      }
+
+      wsPaperDetail.addRow([
+        q.quizDate,
+        q.subject || "一般",
+        q.title,
+        q.subUnit?.title || "-",
+        q.maxScore,
+        q.passingScore,
+        s.studentNumber,
+        s.name,
+        scoreStr,
+        statusStr,
+        leaveTypeStr,
+        submittedByStr,
+        verifyStr,
+        rec?.note || "",
+        rec?.updatedAt || "-",
+      ]);
+    }
+  }
+
   // Shared styling: title row 1, header row 3, thin borders below row 3 (except the groups sheet, styled above).
-  for (const ws of [wsAtt, wsScore, wsNotes]) {
+  for (const ws of [wsAtt, wsScore, wsNotes, wsPaperMatrix, wsPaperDetail]) {
     ws.getRow(1).font = titleFont;
     const headerRow = ws.getRow(3);
     headerRow.eachCell((cell) => {
       cell.fill = headerFill;
       cell.font = headerFont;
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.alignment = { horizontal: "center", vertical: "middle", wrapText: true };
     });
     for (let r = 4; r <= ws.rowCount; r++) {
       ws.getRow(r).eachCell((cell) => {
@@ -371,10 +646,16 @@ reportsRouter.get("/:courseId/export", async (req, res) => {
   wsGroups.getRow(1).font = titleFont;
 
   const buffer = await wb.xlsx.writeBuffer();
-  const filename = `classroom_report_${courseId}_${getTodayStrTaipei()}.xlsx`;
-  res.set({
-    "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "Content-Disposition": `attachment; filename="${filename}"`,
-  });
+  const todayStr = getTodayStrTaipei();
+  const safeCourseName = (course.name || `course_${courseId}`).replace(/[/\\?%*:|"<> ]/g, "_");
+  const filenameAscii = `classroom_report_${courseId}_${todayStr}.xlsx`;
+  const filenameUtf8 = encodeURIComponent(`${safeCourseName}_全班成績與課堂記錄_${todayStr}.xlsx`);
+
+  res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+  res.setHeader(
+    "Content-Disposition",
+    `attachment; filename="${filenameAscii}"; filename*=UTF-8''${filenameUtf8}`
+  );
+  res.setHeader("Access-Control-Expose-Headers", "Content-Disposition");
   res.send(Buffer.from(buffer));
 });

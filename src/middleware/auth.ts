@@ -57,6 +57,10 @@ export function getCurrentSessionToken(req: Request): string | undefined {
   if (cookieToken) {
     return String(cookieToken).trim();
   }
+  const queryToken = req.query?.token;
+  if (typeof queryToken === "string" && queryToken) {
+    return queryToken.trim();
+  }
   return undefined;
 }
 
