@@ -2208,14 +2208,31 @@
         const myRec = q.my_record;
         const hasSubmitted = !!myRec;
 
+        function getLeaveName(type) {
+          switch (type) {
+            case 'sick_leave': case 'absent': return '🤒 病假';
+            case 'personal_leave': return '🏠 事假';
+            case 'official_leave': return '🏛️ 公假';
+            case 'bereavement_leave': return '🖤 喪假';
+            default: return '未出席';
+          }
+        }
+
         let statusBadgeHtml = '';
         if (hasSubmitted) {
           if (myRec.is_absent) {
-            statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:var(--accent-negative); background:rgba(239,68,68,0.1); padding:3px 8px; border-radius:12px;">❌ 缺考</span>`;
+            const leaveText = myRec.leave_type ? ` (${getLeaveName(myRec.leave_type)})` : '';
+            if (myRec.allow_makeup) {
+              statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:#10b981; background:rgba(16,185,129,0.15); padding:3px 8px; border-radius:12px; border:1px solid rgba(16,185,129,0.3);">🔄 允許補考${leaveText}</span>`;
+            } else {
+              statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:var(--accent-negative); background:rgba(239,68,68,0.1); padding:3px 8px; border-radius:12px; border:1px solid rgba(239,68,68,0.25);">❌ 缺考${leaveText}</span>`;
+            }
           } else if (myRec.is_verified) {
-            statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:var(--accent-positive); background:rgba(79,174,130,0.15); padding:3px 8px; border-radius:12px; border:1px solid rgba(79,174,130,0.3);">✅ 教師已核准</span>`;
+            const makeupTag = myRec.is_makeup ? ' [補考]' : '';
+            statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:var(--accent-positive); background:rgba(79,174,130,0.15); padding:3px 8px; border-radius:12px; border:1px solid rgba(79,174,130,0.3);">✅ 教師已核准${makeupTag}</span>`;
           } else {
-            statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:#f59e0b; background:rgba(245,158,11,0.15); padding:3px 8px; border-radius:12px; border:1px solid rgba(245,158,11,0.3);">⏳ 待教師查驗</span>`;
+            const makeupTag = myRec.is_makeup ? ' [補考]' : '';
+            statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:#f59e0b; background:rgba(245,158,11,0.15); padding:3px 8px; border-radius:12px; border:1px solid rgba(245,158,11,0.3);">⏳ 待教師查驗${makeupTag}</span>`;
           }
         } else {
           statusBadgeHtml = `<span style="font-size:0.8rem; font-weight:700; color:var(--text-muted); background:rgba(255,255,255,0.05); padding:3px 8px; border-radius:12px;">⚪ 尚未登記</span>`;
@@ -2228,6 +2245,7 @@
             <div style="display: flex; align-items: baseline; gap: 6px;">
               <span style="font-size: 1.8rem; font-weight: 900; color: ${isPass ? 'var(--accent-positive)' : 'var(--accent-negative)'};">${myRec.score}</span>
               <span style="font-size: 0.9rem; color: var(--text-muted);">/ ${q.max_score} 分</span>
+              ${myRec.is_makeup ? '<span style="font-size: 0.8rem; font-weight: 700; color: #10b981; background: rgba(16,185,129,0.12); padding: 2px 6px; border-radius: 4px; margin-left: 6px;">補考成績</span>' : ''}
             </div>
           `;
         }
@@ -2246,53 +2264,70 @@
 
         let entryFormHtml = '';
         if (q.allow_self_entry) {
-          entryFormHtml = `
-            <div style="margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--card-border);">
-              <details ${!hasSubmitted ? 'open' : ''} style="cursor: pointer;">
-                <summary style="font-size: 0.92rem; font-weight: 700; color: var(--student-primary-dark); outline: none;">
-                  ${hasSubmitted ? '✏️ 重新拍照登記／修改成績' : '📸 立即拍照登記小考成績'}
-                </summary>
-                <form class="quiz-self-entry-form" data-quiz-id="${q.id}" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px; cursor: default;">
-                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div>
-                      <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 4px;">測驗得分：*</label>
-                      <input type="number" step="any" min="0" max="${q.max_score}" class="input-control score-input" placeholder="0 ~ ${q.max_score}" value="${myRec && myRec.score !== null ? myRec.score : ''}" required style="font-size: 1rem; font-weight: 800;">
-                    </div>
-                    <div>
-                      <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 4px;">備註說明：</label>
-                      <input type="text" class="input-control note-input" placeholder="選填..." value="${myRec && myRec.note ? escapeHtml(myRec.note) : ''}" style="font-size: 0.9rem;">
-                    </div>
-                  </div>
+          if (myRec && myRec.is_absent && !myRec.allow_makeup) {
+            const leaveDesc = myRec.leave_type ? `（假別：${getLeaveName(myRec.leave_type)}）` : '';
+            entryFormHtml = `
+              <div style="margin-top: 8px; padding: 10px 14px; background: rgba(239, 68, 68, 0.05); border: 1px dashed rgba(239, 68, 68, 0.25); border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+                ⚠️ <b>本場測驗您登記為缺考${leaveDesc}</b>，目前未開放自登。若需補考請洽詢任課教師開啟補考權限。
+              </div>
+            `;
+          } else {
+            const isMakeupSelf = myRec && myRec.is_absent && myRec.allow_makeup;
+            const summaryTitle = isMakeupSelf
+              ? '📸 立即拍照登記補考成績與佐證'
+              : (hasSubmitted ? '✏️ 重新拍照登記／修改成績' : '📸 立即拍照登記小考成績');
 
-                  <!-- 拍照佐證檔案上傳區塊（強制要求） -->
-                  <div style="padding: 12px; background: rgba(2, 132, 199, 0.04); border: 1.5px dashed var(--student-primary-border); border-radius: var(--radius-md);">
-                    <label style="font-size: 0.88rem; font-weight: 800; color: var(--student-primary-dark); display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                      <span>📷 拍攝上傳考卷照片佐證：* (必填)</span>
-                    </label>
-                    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
-                      ⚠️ 請拍攝清楚顯示您的姓名、座號與批改分數之考卷，以供老師查驗核准。
+            entryFormHtml = `
+              <div style="margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--card-border);">
+                <details ${(!hasSubmitted || isMakeupSelf) ? 'open' : ''} style="cursor: pointer;">
+                  <summary style="font-size: 0.92rem; font-weight: 700; color: var(--student-primary-dark); outline: none;">
+                    ${summaryTitle}
+                  </summary>
+                  <form class="quiz-self-entry-form" data-quiz-id="${q.id}" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px; cursor: default;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                      <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 4px;">測驗得分：*</label>
+                        <input type="number" step="any" min="0" max="${q.max_score}" class="input-control score-input" placeholder="0 ~ ${q.max_score}" value="${myRec && myRec.score !== null ? myRec.score : ''}" required style="font-size: 1rem; font-weight: 800;">
+                      </div>
+                      <div>
+                        <label style="font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 4px;">備註說明：</label>
+                        <input type="text" class="input-control note-input" placeholder="選填..." value="${myRec && myRec.note ? escapeHtml(myRec.note) : ''}" style="font-size: 0.9rem;">
+                      </div>
                     </div>
-                    <input type="file" accept="image/*" capture="environment" class="quiz-photo-file" required style="font-size: 0.88rem; width: 100%;">
-                    <div class="photo-preview-box" style="display: none; margin-top: 10px; text-align: center;">
-                      <img class="preview-img" src="" alt="預覽" style="max-height: 140px; border-radius: 8px; border: 1px solid var(--card-border); box-shadow: var(--shadow-sm);">
-                    </div>
-                  </div>
 
-                  <div style="display: flex; justify-content: flex-end;">
-                    <button type="submit" class="btn btn-primary btn-submit-quiz-entry" style="font-weight: 800; padding: 10px 22px;">
-                      📤 送出小考成績與考卷佐證
-                    </button>
-                  </div>
-                </form>
-              </details>
-            </div>
-          `;
+                    <!-- 拍照佐證檔案上傳區塊（強制要求） -->
+                    <div style="padding: 12px; background: rgba(2, 132, 199, 0.04); border: 1.5px dashed var(--student-primary-border); border-radius: var(--radius-md);">
+                      <label style="font-size: 0.88rem; font-weight: 800; color: var(--student-primary-dark); display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+                        <span>📷 拍攝上傳考卷照片佐證：* (必填)</span>
+                      </label>
+                      <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px;">
+                        ⚠️ 請拍攝清楚顯示您的姓名、座號與批改分數之考卷，以供老師查驗核准。
+                      </div>
+                      <input type="file" accept="image/*" capture="environment" class="quiz-photo-file" required style="font-size: 0.88rem; width: 100%;">
+                      <div class="photo-preview-box" style="display: none; margin-top: 10px; text-align: center;">
+                        <img class="preview-img" src="" alt="預覽" style="max-height: 140px; border-radius: 8px; border: 1px solid var(--card-border); box-shadow: var(--shadow-sm);">
+                      </div>
+                    </div>
+
+                    <div style="display: flex; justify-content: flex-end;">
+                      <button type="submit" class="btn btn-primary btn-submit-quiz-entry" style="font-weight: 800; padding: 10px 22px;">
+                        📤 送出小考成績與考卷佐證
+                      </button>
+                    </div>
+                  </form>
+                </details>
+              </div>
+            `;
+          }
         }
 
         card.innerHTML = `
           <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
             <div>
-              <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">${escapeHtml(q.title)}</div>
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 1.15rem; font-weight: 800; color: var(--text-main);">${escapeHtml(q.title)}</span>
+                ${q.subject ? `<span style="font-size: 0.78rem; font-weight: 700; color: var(--student-primary-dark); background: rgba(2, 132, 199, 0.12); padding: 2px 8px; border-radius: 999px; border: 1px solid rgba(2, 132, 199, 0.25);">📚 ${escapeHtml(q.subject)}</span>` : ''}
+              </div>
               <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 2px;">
                 📅 測驗日期：${q.quiz_date} | 及格：${q.passing_score} 分 | 滿分：${q.max_score} 分
               </div>
@@ -2409,7 +2444,8 @@
           gLeaderQuizzes.forEach(q => {
             const opt = document.createElement('option');
             opt.value = q.id;
-            opt.textContent = `${q.quiz_date} ${q.title}`;
+            const subj = q.subject ? `[${q.subject}] ` : '';
+            opt.textContent = `${subj}${q.quiz_date} ${q.title}`;
             quizSelect.appendChild(opt);
           });
           quizSelect.onchange = () => loadLeaderQuizMembers(Number(quizSelect.value));

@@ -50,6 +50,7 @@ paperQuizzesRouter.get("/:courseId", async (req, res) => {
       id: q.id,
       course_id: q.courseId,
       title: q.title,
+      subject: q.subject || "",
       quiz_date: q.quizDate,
       max_score: q.maxScore,
       passing_score: q.passingScore,
@@ -74,11 +75,28 @@ paperQuizzesRouter.get("/:courseId", async (req, res) => {
   res.json({ quizzes: serialized });
 });
 
+export function getLeaveLabelZh(status: string): string {
+  switch (status) {
+    case "sick_leave":
+    case "absent":
+      return "病假";
+    case "personal_leave":
+      return "事假";
+    case "official_leave":
+      return "公假";
+    case "bereavement_leave":
+      return "喪假";
+    default:
+      return "未出席";
+  }
+}
+
 // 建立新紙本測驗
 paperQuizzesRouter.post("/:courseId", async (req, res) => {
   const courseId = Number(req.params.courseId);
   const {
     title,
+    subject = "",
     quiz_date,
     max_score = 100,
     passing_score = 60,
@@ -100,6 +118,7 @@ paperQuizzesRouter.post("/:courseId", async (req, res) => {
     data: {
       courseId,
       title: String(title).trim(),
+      subject: subject ? String(subject).trim() : "",
       quizDate: String(quiz_date),
       maxScore: Number(max_score) || 100,
       passingScore: Number(passing_score) || 60,
@@ -110,8 +129,39 @@ paperQuizzesRouter.post("/:courseId", async (req, res) => {
     },
   });
 
+  // 勾稽學生當天出席狀況：若當天未出席（請假/缺席），自動列為缺考並標示假別
+  const attendances = await prisma.attendance.findMany({
+    where: {
+      courseId,
+      date: String(quiz_date),
+    },
+  });
+
+  const nowIso = new Date().toISOString();
+  for (const att of attendances) {
+    if (att.status !== "present" && att.status !== "late") {
+      const leaveLabel = getLeaveLabelZh(att.status);
+      await prisma.paperQuizRecord
+        .create({
+          data: {
+            quizId: quiz.id,
+            studentId: att.studentId,
+            score: null,
+            isAbsent: 1,
+            leaveType: att.status,
+            allowMakeup: 0,
+            isMakeup: 0,
+            submittedBy: "system",
+            note: `當日${leaveLabel}未出席`,
+            updatedAt: nowIso,
+          },
+        })
+        .catch(() => {});
+    }
+  }
+
   broadcastToCourse(courseId, "paper_quizzes_updated");
-  res.json({ message: "紙本測驗建立成功！", quiz });
+  res.json({ message: "紙本測驗建立成功，已自動勾稽當日出席狀況！", quiz });
 });
 
 // 修改紙本測驗設定
@@ -125,6 +175,7 @@ paperQuizzesRouter.put("/:quizId", async (req, res) => {
 
   const {
     title,
+    subject,
     quiz_date,
     max_score,
     passing_score,
@@ -135,6 +186,7 @@ paperQuizzesRouter.put("/:quizId", async (req, res) => {
 
   const data: Record<string, unknown> = {};
   if (title !== undefined) data.title = String(title).trim();
+  if (subject !== undefined) data.subject = String(subject).trim();
   if (quiz_date !== undefined) data.quizDate = String(quiz_date);
   if (max_score !== undefined) data.maxScore = Number(max_score);
   if (passing_score !== undefined) data.passingScore = Number(passing_score);
@@ -217,10 +269,29 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
     recordMap.set(r.studentId, r);
   }
 
+  // 取得該測驗當天的出席紀錄 (Attendance)
+  const attendances = await prisma.attendance.findMany({
+    where: { courseId, date: quiz.quizDate },
+  });
+  const attendanceMap = new Map<number, string>();
+  for (const a of attendances) {
+    attendanceMap.set(a.studentId, a.status);
+  }
+
   // 整合學生名冊與成績
   const studentRows = students.map((s) => {
     const groupInfo = studentGroupMap.get(s.id);
     const rec = recordMap.get(s.id);
+
+    const attStatus = attendanceMap.get(s.id);
+    const isUnattendedDay = !!(attStatus && attStatus !== "present" && attStatus !== "late");
+
+    const isAbsent = rec ? rec.isAbsent === 1 : (isUnattendedDay ? true : false);
+    const leaveType = rec?.leaveType || (isUnattendedDay ? (attStatus || "") : "");
+    const leaveLabel = leaveType ? getLeaveLabelZh(leaveType) : "";
+    const allowMakeup = rec ? rec.allowMakeup === 1 : false;
+    const isMakeup = rec ? rec.isMakeup === 1 : false;
+    const noteText = rec?.note ?? (isUnattendedDay && !rec ? `當日${leaveLabel}未出席` : "");
 
     return {
       student_id: s.id,
@@ -233,12 +304,17 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
       group_name: groupInfo?.groupName ?? "未分組",
       is_leader: groupInfo?.isLeader ?? false,
       score: rec?.score ?? null,
-      is_absent: rec?.isAbsent === 1,
+      is_absent: isAbsent,
+      leave_type: leaveType,
+      leave_label: leaveLabel,
+      allow_makeup: allowMakeup,
+      is_makeup: isMakeup,
+      makeup_score: rec?.makeupScore ?? null,
       photo_url: rec?.photoUrl ?? null,
-      submitted_by: rec?.submittedBy ?? null,
+      submitted_by: rec?.submittedBy ?? (isUnattendedDay && !rec ? "system" : null),
       submitted_by_id: rec?.submittedById ?? null,
       is_verified: rec?.isVerified === 1,
-      note: rec?.note ?? "",
+      note: noteText,
       updated_at: rec?.updatedAt ?? null,
     };
   });
@@ -250,6 +326,7 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
     .sort((a, b) => a - b);
 
   const absentCount = studentRows.filter((r) => r.is_absent).length;
+  const makeupCount = studentRows.filter((r) => r.allow_makeup).length;
   const passCount = scoredList.filter((s) => s >= quiz.passingScore).length;
   const failCount = scoredList.filter((s) => s < quiz.passingScore).length;
   const pendingVerifyCount = studentRows.filter((r) => r.photo_url && !r.is_verified).length;
@@ -260,7 +337,7 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
   let minScoreActual: number | null = null;
 
   if (scoredList.length > 0) {
-    const sum = scoredList.reduce((a, b) => a + b, 0);
+    const sum = scoredList.reduce((acc, v) => acc + v, 0);
     averageScore = Math.round((sum / scoredList.length) * 10) / 10;
     maxScoreActual = scoredList[scoredList.length - 1];
     minScoreActual = scoredList[0];
@@ -289,6 +366,7 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
     submitted_count: records.length,
     scored_count: scoredList.length,
     absent_count: absentCount,
+    makeup_count: makeupCount,
     pass_count: passCount,
     fail_count: failCount,
     pass_rate: passRate,
@@ -305,6 +383,7 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
       id: quiz.id,
       course_id: quiz.courseId,
       title: quiz.title,
+      subject: quiz.subject || "",
       quiz_date: quiz.quizDate,
       max_score: quiz.maxScore,
       passing_score: quiz.passingScore,
@@ -315,6 +394,46 @@ paperQuizzesRouter.get("/:quizId/matrix", async (req, res) => {
     },
     stats,
     students: studentRows,
+  });
+});
+
+// 教師開關學生補考權限
+paperQuizzesRouter.post("/:quizId/makeup/:studentId", async (req, res) => {
+  const quizId = Number(req.params.quizId);
+  const studentId = Number(req.params.studentId);
+  const { allow_makeup } = req.body ?? {};
+
+  const quiz = await prisma.paperQuiz.findUnique({ where: { id: quizId } });
+  if (!quiz) {
+    res.status(404).json({ detail: "測驗不存在" });
+    return;
+  }
+
+  const allowVal = allow_makeup ? 1 : 0;
+  const now = new Date().toISOString();
+
+  const record = await prisma.paperQuizRecord.upsert({
+    where: { quizId_studentId: { quizId, studentId } },
+    update: {
+      allowMakeup: allowVal,
+      updatedAt: now,
+    },
+    create: {
+      quizId,
+      studentId,
+      score: null,
+      isAbsent: 1,
+      allowMakeup: allowVal,
+      isMakeup: 0,
+      submittedBy: "teacher",
+      updatedAt: now,
+    },
+  });
+
+  broadcastToCourse(quiz.courseId, "paper_quizzes_updated");
+  res.json({
+    message: allowVal ? "已為該生開啟補考！" : "已關閉該生補考！",
+    record,
   });
 });
 
@@ -347,12 +466,18 @@ paperQuizzesRouter.post("/:quizId/batch-save", async (req, res) => {
 
     const note = item.note !== undefined ? String(item.note) : undefined;
     const isVerified = item.is_verified !== undefined ? (item.is_verified ? 1 : 0) : undefined;
+    const allowMakeup = item.allow_makeup !== undefined ? (item.allow_makeup ? 1 : 0) : undefined;
+    const leaveType = item.leave_type !== undefined ? String(item.leave_type) : undefined;
+    const isMakeup = item.is_makeup !== undefined ? (item.is_makeup ? 1 : 0) : (scoreVal !== null && item.allow_makeup ? 1 : undefined);
 
     await prisma.paperQuizRecord.upsert({
       where: { quizId_studentId: { quizId, studentId } },
       update: {
         score: scoreVal,
         isAbsent,
+        ...(leaveType !== undefined ? { leaveType } : {}),
+        ...(allowMakeup !== undefined ? { allowMakeup } : {}),
+        ...(isMakeup !== undefined ? { isMakeup } : {}),
         ...(note !== undefined ? { note } : {}),
         ...(isVerified !== undefined ? { isVerified } : {}),
         submittedBy: item.submitted_by || "teacher",
@@ -363,6 +488,9 @@ paperQuizzesRouter.post("/:quizId/batch-save", async (req, res) => {
         studentId,
         score: scoreVal,
         isAbsent,
+        leaveType: leaveType ?? "",
+        allowMakeup: allowMakeup ?? 0,
+        isMakeup: isMakeup ?? 0,
         note: note ?? null,
         isVerified: isVerified ?? 1, // 教師手動登入預設視為已驗證
         submittedBy: "teacher",

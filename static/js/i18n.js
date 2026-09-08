@@ -694,9 +694,18 @@
       'paper_quiz_btn_save': '💾 儲存成績 (Ctrl+S)',
       'paper_quiz_filter_unrecorded': '只看未登記',
       'paper_quiz_filter_pending_photos': '只看待審核考卷',
+      'paper_quiz_filter_absent': '只看缺考/請假',
+      'paper_quiz_filter_makeup': '只看開放補考',
+      'paper_quiz_filter_subject_label': '📚 科目：',
+      'paper_quiz_filter_all_subjects': '全部科目',
+      'paper_quiz_search_label': '🔍 搜尋：',
+      'paper_quiz_search_placeholder': '搜尋測驗名稱 / 單元...',
+      'paper_quiz_select_label': '📝 測驗：',
       'paper_quiz_modal_create_title': '📝 建立新紙本測驗',
       'paper_quiz_modal_edit_title': '⚙️ 編輯紙本測驗設定',
       'paper_quiz_name_label': '測驗名稱：*',
+      'paper_quiz_subject_label': '科目分類：',
+      'paper_quiz_subject_placeholder': '例：國語、英語、數學...',
       'paper_quiz_date_label': '測驗日期：*',
       'paper_quiz_max_score_label': '測驗滿分：*',
       'paper_quiz_pass_score_label': '及格分數：*',
@@ -711,7 +720,10 @@
       'paper_quiz_stat_highest': '最高分',
       'paper_quiz_stat_lowest': '最低分',
       'paper_quiz_stat_recorded': '已登記人數',
-      'paper_quiz_stat_pending_verify': '待查驗考卷'
+      'paper_quiz_stat_pending_verify': '待查驗考卷',
+      'paper_quiz_stat_makeup': '補考進行中',
+      'paper_quiz_count_badge_text': '顯示 {filtered} / {total} 個測驗',
+      'paper_quiz_no_match': '查無符合科目或關鍵字的測驗'
     },
 
     'en': {
@@ -1401,9 +1413,18 @@
       'paper_quiz_btn_save': '💾 Save Scores (Ctrl+S)',
       'paper_quiz_filter_unrecorded': 'Unrecorded only',
       'paper_quiz_filter_pending_photos': 'Pending photos only',
+      'paper_quiz_filter_absent': 'Absent/Leave only',
+      'paper_quiz_filter_makeup': 'Makeup open only',
+      'paper_quiz_filter_subject_label': '📚 Subject:',
+      'paper_quiz_filter_all_subjects': 'All Subjects',
+      'paper_quiz_search_label': '🔍 Search:',
+      'paper_quiz_search_placeholder': 'Search quiz / unit...',
+      'paper_quiz_select_label': '📝 Quiz:',
       'paper_quiz_modal_create_title': '📝 Create Paper Quiz',
       'paper_quiz_modal_edit_title': '⚙️ Edit Paper Quiz',
       'paper_quiz_name_label': 'Quiz Title:*',
+      'paper_quiz_subject_label': 'Subject Category:',
+      'paper_quiz_subject_placeholder': 'e.g. Math, English, Science...',
       'paper_quiz_date_label': 'Quiz Date:*',
       'paper_quiz_max_score_label': 'Max Score:*',
       'paper_quiz_pass_score_label': 'Passing Score:*',
@@ -1418,7 +1439,10 @@
       'paper_quiz_stat_highest': 'Highest Score',
       'paper_quiz_stat_lowest': 'Lowest Score',
       'paper_quiz_stat_recorded': 'Recorded',
-      'paper_quiz_stat_pending_verify': 'Pending Photos'
+      'paper_quiz_stat_pending_verify': 'Pending Photos',
+      'paper_quiz_stat_makeup': 'Makeup in Progress',
+      'paper_quiz_count_badge_text': '{filtered} of {total} quizzes',
+      'paper_quiz_no_match': 'No matching quizzes found'
     }
   };
 

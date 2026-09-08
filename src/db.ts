@@ -458,6 +458,7 @@ export async function initSchema(): Promise<void> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       course_id INTEGER NOT NULL,
       title TEXT NOT NULL,
+      subject TEXT DEFAULT '',
       quiz_date TEXT NOT NULL,
       max_score REAL DEFAULT 100,
       passing_score REAL DEFAULT 60,
@@ -477,6 +478,10 @@ export async function initSchema(): Promise<void> {
       student_id INTEGER NOT NULL,
       score REAL NULL,
       is_absent INTEGER DEFAULT 0,
+      leave_type TEXT DEFAULT '',
+      allow_makeup INTEGER DEFAULT 0,
+      is_makeup INTEGER DEFAULT 0,
+      makeup_score REAL NULL,
       photo_url TEXT NULL,
       submitted_by TEXT DEFAULT 'teacher',
       submitted_by_id INTEGER NULL,
@@ -550,6 +555,11 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE point_cards ADD COLUMN series_id INTEGER NULL;");
   await tryAlter("ALTER TABLE point_cards ADD COLUMN card_no TEXT NULL;");
   await tryAlter("ALTER TABLE point_cards ADD COLUMN image TEXT NULL;");
+  await tryAlter("ALTER TABLE paper_quizzes ADD COLUMN subject TEXT DEFAULT '';");
+  await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN leave_type TEXT DEFAULT '';");
+  await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN allow_makeup INTEGER DEFAULT 0;");
+  await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN is_makeup INTEGER DEFAULT 0;");
+  await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN makeup_score REAL NULL;");
 
   // Ensure every course has an active group_plan, and backfill group_members from
   // legacy students.group_id, exactly like the Python auto-migration block.

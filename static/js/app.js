@@ -4394,7 +4394,107 @@ AppState.paperQuizzes = [];
 AppState.currentPaperQuizId = null;
 AppState.currentPaperQuizData = null;
 
-async function loadPaperQuizData(force = false) {
+// 動態更新科目篩選下拉選項
+function updatePaperQuizSubjectFilter() {
+  const subjectSelect = document.getElementById('paper-quiz-filter-subject');
+  if (!subjectSelect) return;
+  const currentVal = subjectSelect.value;
+  const subjects = Array.from(new Set(AppState.paperQuizzes.map(q => q.subject).filter(Boolean))).sort();
+  
+  const allSubjectsText = (window.I18n && window.I18n.t('paper_quiz_filter_all_subjects')) || '全部科目';
+  subjectSelect.innerHTML = `<option value="">${allSubjectsText}</option>`;
+  subjects.forEach(subj => {
+    const opt = document.createElement('option');
+    opt.value = subj;
+    opt.textContent = `📚 ${subj}`;
+    subjectSelect.appendChild(opt);
+  });
+
+  if (subjects.includes(currentVal)) {
+    subjectSelect.value = currentVal;
+  } else {
+    subjectSelect.value = '';
+  }
+}
+
+// 根據科目與關鍵字篩選並渲染測驗下拉選單
+async function filterAndRenderPaperQuizSelect(preferredQuizId = null) {
+  const select = document.getElementById('paper-quiz-select');
+  const countBadge = document.getElementById('paper-quiz-count-badge');
+  const subjectSelect = document.getElementById('paper-quiz-filter-subject');
+  const searchInput = document.getElementById('paper-quiz-search-keyword');
+  const clearBtn = document.getElementById('btn-clear-quiz-search');
+
+  if (!select) return;
+
+  const selectedSubject = subjectSelect ? subjectSelect.value.trim() : '';
+  const keyword = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+  if (clearBtn) {
+    clearBtn.style.display = keyword ? 'block' : 'none';
+  }
+
+  const filtered = AppState.paperQuizzes.filter((q) => {
+    if (selectedSubject && (q.subject || '') !== selectedSubject) return false;
+    if (keyword) {
+      const matchTitle = (q.title || '').toLowerCase().includes(keyword);
+      const matchSubject = (q.subject || '').toLowerCase().includes(keyword);
+      const matchUnit = (q.sub_unit_title || '').toLowerCase().includes(keyword);
+      const matchDate = (q.quiz_date || '').toLowerCase().includes(keyword);
+      if (!matchTitle && !matchSubject && !matchUnit && !matchDate) return false;
+    }
+    return true;
+  });
+
+  const total = AppState.paperQuizzes.length;
+  if (countBadge) {
+    const template = (window.I18n && window.I18n.t('paper_quiz_count_badge_text')) || '顯示 {filtered} / {total} 個測驗';
+    countBadge.textContent = template.replace('{filtered}', filtered.length).replace('{total}', total);
+  }
+
+  select.innerHTML = '';
+  if (AppState.paperQuizzes.length === 0) {
+    select.innerHTML = '<option value="">尚無紙本測驗，請點擊「➕ 建立新測驗」</option>';
+    AppState.currentPaperQuizId = null;
+    AppState.currentPaperQuizData = null;
+    renderPaperQuizMatrix(null);
+    return;
+  }
+
+  if (filtered.length === 0) {
+    const noMatchText = (window.I18n && window.I18n.t('paper_quiz_no_match')) || '查無符合科目或關鍵字的測驗';
+    select.innerHTML = `<option value="">${noMatchText}</option>`;
+    AppState.currentPaperQuizId = null;
+    AppState.currentPaperQuizData = null;
+    renderPaperQuizMatrix(null);
+    return;
+  }
+
+  filtered.forEach((q) => {
+    const opt = document.createElement('option');
+    opt.value = q.id;
+    const subjStr = q.subject ? `[${q.subject}] ` : '';
+    const subTitle = q.sub_unit_title ? ` (${q.sub_unit_title})` : '';
+    const pendingStr = q.stats.pending_verify_count > 0 ? ` ⚠️(${q.stats.pending_verify_count}待審)` : '';
+    opt.textContent = `${subjStr}${q.quiz_date} ${q.title}${subTitle}${pendingStr}`;
+    select.appendChild(opt);
+  });
+
+  let chosenId = null;
+  if (preferredQuizId && filtered.some(q => q.id === preferredQuizId)) {
+    chosenId = preferredQuizId;
+  } else if (AppState.currentPaperQuizId && filtered.some(q => q.id === AppState.currentPaperQuizId)) {
+    chosenId = AppState.currentPaperQuizId;
+  } else {
+    chosenId = filtered[0].id;
+  }
+
+  select.value = chosenId;
+  AppState.currentPaperQuizId = chosenId;
+  await loadPaperQuizMatrix(chosenId);
+}
+
+async function loadPaperQuizData(force = false, preferredQuizId = null) {
   if (!AppState.currentCourseId) {
     const tbody = document.getElementById('paper-quiz-matrix-tbody');
     if (tbody) tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 30px; color: var(--text-muted);">尚未選擇班級/課程</td></tr>`;
@@ -4405,33 +4505,8 @@ async function loadPaperQuizData(force = false) {
     const data = await API.get(`/api/paper-quizzes/${AppState.currentCourseId}`);
     AppState.paperQuizzes = data.quizzes || [];
 
-    const select = document.getElementById('paper-quiz-select');
-    if (!select) return;
-
-    select.innerHTML = '';
-    if (AppState.paperQuizzes.length === 0) {
-      select.innerHTML = '<option value="">尚無紙本測驗，請點擊「➕ 建立新測驗」</option>';
-      AppState.currentPaperQuizId = null;
-      AppState.currentPaperQuizData = null;
-      renderPaperQuizMatrix(null);
-      return;
-    }
-
-    AppState.paperQuizzes.forEach((q) => {
-      const opt = document.createElement('option');
-      opt.value = q.id;
-      const subTitle = q.sub_unit_title ? ` [${q.sub_unit_title}]` : '';
-      const pendingStr = q.stats.pending_verify_count > 0 ? ` ⚠️(${q.stats.pending_verify_count}待審)` : '';
-      opt.textContent = `${q.quiz_date} ${q.title}${subTitle}${pendingStr}`;
-      select.appendChild(opt);
-    });
-
-    if (!AppState.currentPaperQuizId || !AppState.paperQuizzes.some(q => q.id === AppState.currentPaperQuizId)) {
-      AppState.currentPaperQuizId = AppState.paperQuizzes[0].id;
-    }
-    select.value = AppState.currentPaperQuizId;
-
-    await loadPaperQuizMatrix(AppState.currentPaperQuizId);
+    updatePaperQuizSubjectFilter();
+    await filterAndRenderPaperQuizSelect(preferredQuizId || AppState.currentPaperQuizId);
   } catch (err) {
     console.error('Failed to load paper quizzes:', err);
     showToast(`載入紙本測驗失敗：${err.message}`, 'error');
@@ -4459,6 +4534,8 @@ function renderPaperQuizMatrix(matrixData) {
   const thMaxScore = document.getElementById('th-quiz-max-score');
   const filterUnrecorded = document.getElementById('paper-quiz-filter-unrecorded')?.checked;
   const filterPending = document.getElementById('paper-quiz-filter-pending-photos')?.checked;
+  const filterAbsent = document.getElementById('paper-quiz-filter-absent')?.checked;
+  const filterMakeup = document.getElementById('paper-quiz-filter-makeup')?.checked;
 
   if (!matrixData || !matrixData.quiz) {
     if (statsContainer) statsContainer.innerHTML = '';
@@ -4481,6 +4558,7 @@ function renderPaperQuizMatrix(matrixData) {
     const lowestStr = stats.min_score_actual !== null ? `${stats.min_score_actual}` : '-';
     const recordedStr = `${stats.scored_count + stats.absent_count} / ${stats.total_students}`;
     const pendingClass = stats.pending_verify_count > 0 ? 'warning' : '';
+    const makeupInfo = stats.makeup_count > 0 ? ` (${stats.makeup_count}人補考中)` : '';
 
     statsContainer.innerHTML = `
       <div class="paper-quiz-stat-card">
@@ -4497,7 +4575,7 @@ function renderPaperQuizMatrix(matrixData) {
       </div>
       <div class="paper-quiz-stat-card">
         <div class="paper-quiz-stat-val">${recordedStr}</div>
-        <div class="paper-quiz-stat-label">已登記人數 (${stats.absent_count} 缺考)</div>
+        <div class="paper-quiz-stat-label">已登記 (${stats.absent_count} 缺考${makeupInfo})</div>
       </div>
       <div class="paper-quiz-stat-card">
         <div class="paper-quiz-stat-val ${pendingClass}">${stats.pending_verify_count}</div>
@@ -4517,10 +4595,16 @@ function renderPaperQuizMatrix(matrixData) {
 
       if (filterUnrecorded && hasRecord) return;
       if (filterPending && !isPendingPhoto) return;
+      if (filterAbsent && !s.is_absent) return;
+      if (filterMakeup && !s.allow_makeup) return;
 
       const tr = document.createElement('tr');
       tr.dataset.studentId = s.student_id;
       tr.dataset.rowIndex = rowIndex;
+      tr.dataset.leaveType = s.leave_type || '';
+      tr.dataset.allowMakeup = s.allow_makeup ? '1' : '0';
+      tr.dataset.isMakeup = s.is_makeup ? '1' : '0';
+
       if (s.is_absent) tr.classList.add('is-absent');
 
       const numText = isEn ? `No. ${s.student_number}` : `${s.student_number}號`;
@@ -4540,7 +4624,9 @@ function renderPaperQuizMatrix(matrixData) {
       }
 
       let sourceTagHtml = '-';
-      if (s.submitted_by === 'student') {
+      if (s.is_makeup) {
+        sourceTagHtml = `<span class="quiz-source-tag" style="background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3);">補考成績</span>`;
+      } else if (s.submitted_by === 'student') {
         sourceTagHtml = `<span class="quiz-source-tag student">學生自登</span>`;
       } else if (s.submitted_by === 'leader') {
         sourceTagHtml = `<span class="quiz-source-tag leader">組長代登</span>`;
@@ -4549,16 +4635,48 @@ function renderPaperQuizMatrix(matrixData) {
       }
 
       const scoreVal = s.score !== null ? s.score : '';
+      const isInputDisabled = s.is_absent && !s.allow_makeup;
+
+      // 假別標示
+      let leaveBadgeHtml = '';
+      if (s.leave_label) {
+        leaveBadgeHtml = `<span class="badge" style="font-size: 0.72rem; padding: 2px 6px; background: rgba(239, 68, 68, 0.12); color: #ef4444; border-radius: 4px; border: 1px solid rgba(239, 68, 68, 0.25); white-space: nowrap;">${s.leave_label}</span>`;
+      }
+
+      // 補考切換按鈕
+      let makeupBtnHtml = '';
+      if (s.is_absent) {
+        if (s.allow_makeup) {
+          makeupBtnHtml = `
+            <button type="button" class="btn-makeup-toggle" data-student-id="${s.student_id}" data-allow="0" title="點擊關閉該生補考" style="font-size: 0.72rem; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.15); color: #10b981; cursor: pointer; white-space: nowrap;">
+              ✅ 補考中 (點擊關閉)
+            </button>
+          `;
+        } else {
+          makeupBtnHtml = `
+            <button type="button" class="btn-makeup-toggle" data-student-id="${s.student_id}" data-allow="1" title="點擊開啟該生補考" style="font-size: 0.72rem; font-weight: 600; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--card-border); background: rgba(255, 255, 255, 0.05); color: var(--text-muted); cursor: pointer; white-space: nowrap;">
+              🔄 開放補考
+            </button>
+          `;
+        }
+      }
 
       tr.innerHTML = `
         <td style="font-weight: 700;">${numText}</td>
         <td style="font-weight: 600;">${getStudentDisplayName(s)}</td>
         <td>${groupBadge}</td>
         <td>
-          <input type="number" step="any" min="0" max="${quiz.max_score}" class="score-quick-input ${scoreVal !== '' ? (scoreVal < quiz.passing_score ? 'failed' : 'passed') : ''}" value="${scoreVal}" placeholder="-" ${s.is_absent ? 'disabled' : ''}>
+          <input type="number" step="any" min="0" max="${quiz.max_score}" class="score-quick-input ${scoreVal !== '' ? (scoreVal < quiz.passing_score ? 'failed' : 'passed') : ''}" value="${scoreVal}" placeholder="${s.allow_makeup ? '補考分' : '-'}" ${isInputDisabled ? 'disabled' : ''}>
+          ${s.allow_makeup ? '<div style="font-size: 0.7rem; color: #10b981; font-weight: 700; margin-top: 2px;">(開放補考中)</div>' : ''}
         </td>
-        <td style="text-align: center;">
-          <input type="checkbox" class="quiz-absent-checkbox" ${s.is_absent ? 'checked' : ''}>
+        <td style="text-align: center; vertical-align: middle;">
+          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+            <div style="display: inline-flex; align-items: center; gap: 6px;">
+              <input type="checkbox" class="quiz-absent-checkbox" ${s.is_absent ? 'checked' : ''}>
+              ${leaveBadgeHtml}
+            </div>
+            ${makeupBtnHtml}
+          </div>
         </td>
         <td style="text-align: center;">${photoColHtml}</td>
         <td>${sourceTagHtml}</td>
@@ -4571,6 +4689,22 @@ function renderPaperQuizMatrix(matrixData) {
       const absentCheckbox = tr.querySelector('.quiz-absent-checkbox');
       const noteInput = tr.querySelector('.quiz-note-input');
       const photoBadge = tr.querySelector('.quiz-photo-badge');
+      const makeupBtn = tr.querySelector('.btn-makeup-toggle');
+
+      if (makeupBtn) {
+        makeupBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const stuId = Number(makeupBtn.dataset.studentId);
+          const allowVal = makeupBtn.dataset.allow === '1';
+          try {
+            const res = await API.post(`/api/paper-quizzes/${quiz.id}/makeup/${stuId}`, { allow_makeup: allowVal });
+            showToast(res.message || '補考設定已更新！', 'positive');
+            await loadPaperQuizMatrix(quiz.id);
+          } catch (err) {
+            showToast(`操作失敗：${err.message}`, 'error');
+          }
+        });
+      }
 
       scoreInput.addEventListener('input', () => {
         const val = parseFloat(scoreInput.value);
@@ -4584,9 +4718,11 @@ function renderPaperQuizMatrix(matrixData) {
       absentCheckbox.addEventListener('change', () => {
         if (absentCheckbox.checked) {
           tr.classList.add('is-absent');
-          scoreInput.disabled = true;
-          scoreInput.value = '';
-          scoreInput.classList.remove('failed', 'passed');
+          if (tr.dataset.allowMakeup !== '1') {
+            scoreInput.disabled = true;
+            scoreInput.value = '';
+            scoreInput.classList.remove('failed', 'passed');
+          }
         } else {
           tr.classList.remove('is-absent');
           scoreInput.disabled = false;
@@ -4664,13 +4800,19 @@ async function savePaperQuizRecords() {
 
     const isAbsent = absentCheckbox ? absentCheckbox.checked : false;
     const rawScore = scoreInput ? scoreInput.value.trim() : '';
-    const score = isAbsent || rawScore === '' ? null : Number(rawScore);
+    const score = isAbsent && tr.dataset.allowMakeup !== '1' ? null : (rawScore === '' ? null : Number(rawScore));
     const note = noteInput ? noteInput.value.trim() : '';
+    const allowMakeup = tr.dataset.allowMakeup === '1';
+    const leaveType = tr.dataset.leaveType || '';
+    const isMakeup = tr.dataset.isMakeup === '1' || (allowMakeup && score !== null);
 
     records.push({
       student_id: studentId,
       score,
       is_absent: isAbsent,
+      allow_makeup: allowMakeup,
+      leave_type: leaveType,
+      is_makeup: isMakeup,
       note,
     });
   });
@@ -4691,6 +4833,7 @@ function openPaperQuizModal(isEdit = false) {
   const titleEl = document.getElementById('modal-paper-quiz-title');
   const idInput = document.getElementById('quiz-edit-id');
   const titleInput = document.getElementById('quiz-edit-title');
+  const subjectInput = document.getElementById('quiz-edit-subject');
   const dateInput = document.getElementById('quiz-edit-date');
   const maxInput = document.getElementById('quiz-edit-max-score');
   const passInput = document.getElementById('quiz-edit-pass-score');
@@ -4716,9 +4859,10 @@ function openPaperQuizModal(isEdit = false) {
 
   if (isEdit && AppState.currentPaperQuizData && AppState.currentPaperQuizData.quiz) {
     const q = AppState.currentPaperQuizData.quiz;
-    if (titleEl) titleEl.textContent = '⚙️ 編輯紙本測驗設定';
+    if (titleEl) titleEl.textContent = (window.I18n && window.I18n.t('paper_quiz_modal_edit_title')) || '⚙️ 編輯紙本測驗設定';
     if (idInput) idInput.value = q.id;
     if (titleInput) titleInput.value = q.title;
+    if (subjectInput) subjectInput.value = q.subject || '';
     if (dateInput) dateInput.value = q.quiz_date;
     if (maxInput) maxInput.value = q.max_score;
     if (passInput) passInput.value = q.passing_score;
@@ -4726,9 +4870,11 @@ function openPaperQuizModal(isEdit = false) {
     if (allowSelfCheck) allowSelfCheck.checked = !!q.allow_self_entry;
     if (allowLeaderCheck) allowLeaderCheck.checked = !!q.allow_leader_entry;
   } else {
-    if (titleEl) titleEl.textContent = '📝 建立新紙本測驗';
+    if (titleEl) titleEl.textContent = (window.I18n && window.I18n.t('paper_quiz_modal_create_title')) || '📝 建立新紙本測驗';
     if (idInput) idInput.value = '';
     if (titleInput) titleInput.value = '';
+    const currentFilteredSubject = document.getElementById('paper-quiz-filter-subject')?.value || '';
+    if (subjectInput) subjectInput.value = currentFilteredSubject;
     if (dateInput) dateInput.value = getTaiwanTodayDateStr();
     if (maxInput) maxInput.value = '100';
     if (passInput) passInput.value = '60';
@@ -4744,6 +4890,7 @@ async function submitPaperQuizForm(e) {
   e.preventDefault();
   const idInput = document.getElementById('quiz-edit-id');
   const titleInput = document.getElementById('quiz-edit-title');
+  const subjectInput = document.getElementById('quiz-edit-subject');
   const dateInput = document.getElementById('quiz-edit-date');
   const maxInput = document.getElementById('quiz-edit-max-score');
   const passInput = document.getElementById('quiz-edit-pass-score');
@@ -4752,6 +4899,7 @@ async function submitPaperQuizForm(e) {
   const allowLeaderCheck = document.getElementById('quiz-edit-allow-leader');
 
   const title = titleInput.value.trim();
+  const subject = subjectInput ? subjectInput.value.trim() : '';
   const quiz_date = dateInput.value;
   if (!title) {
     alert('請輸入測驗名稱');
@@ -4764,6 +4912,7 @@ async function submitPaperQuizForm(e) {
 
   const payload = {
     title,
+    subject,
     quiz_date,
     max_score: Number(maxInput.value) || 100,
     passing_score: Number(passInput.value) || 60,
@@ -4778,13 +4927,13 @@ async function submitPaperQuizForm(e) {
       await API.put(`/api/paper-quizzes/${editId}`, payload);
       showToast('紙本測驗更新成功！', 'positive');
       closeModal('modal-paper-quiz-editor');
-      await loadPaperQuizData();
+      await loadPaperQuizData(false, Number(editId));
     } else {
       const res = await API.post(`/api/paper-quizzes/${AppState.currentCourseId}`, payload);
       showToast('紙本測驗建立成功！', 'positive');
       closeModal('modal-paper-quiz-editor');
       AppState.currentPaperQuizId = res.quiz.id;
-      await loadPaperQuizData();
+      await loadPaperQuizData(false, res.quiz.id);
     }
   } catch (err) {
     alert(`儲存測驗失敗：${err.message}`);
@@ -5349,6 +5498,26 @@ function initEventListeners() {
     });
   }
 
+  const filterSubject = document.getElementById('paper-quiz-filter-subject');
+  if (filterSubject) {
+    filterSubject.addEventListener('change', () => filterAndRenderPaperQuizSelect());
+  }
+
+  const searchKeyword = document.getElementById('paper-quiz-search-keyword');
+  if (searchKeyword) {
+    searchKeyword.addEventListener('input', () => filterAndRenderPaperQuizSelect());
+  }
+
+  const btnClearSearch = document.getElementById('btn-clear-quiz-search');
+  if (btnClearSearch) {
+    btnClearSearch.addEventListener('click', () => {
+      if (searchKeyword) {
+        searchKeyword.value = '';
+        filterAndRenderPaperQuizSelect();
+      }
+    });
+  }
+
   const btnCreateQuiz = document.getElementById('btn-create-paper-quiz');
   if (btnCreateQuiz) btnCreateQuiz.addEventListener('click', () => openPaperQuizModal(false));
 
@@ -5372,6 +5541,16 @@ function initEventListeners() {
   const filterPending = document.getElementById('paper-quiz-filter-pending-photos');
   if (filterPending) {
     filterPending.addEventListener('change', () => renderPaperQuizMatrix(AppState.currentPaperQuizData));
+  }
+
+  const filterAbsent = document.getElementById('paper-quiz-filter-absent');
+  if (filterAbsent) {
+    filterAbsent.addEventListener('change', () => renderPaperQuizMatrix(AppState.currentPaperQuizData));
+  }
+
+  const filterMakeup = document.getElementById('paper-quiz-filter-makeup');
+  if (filterMakeup) {
+    filterMakeup.addEventListener('change', () => renderPaperQuizMatrix(AppState.currentPaperQuizData));
   }
 
   const btnApprovePhoto = document.getElementById('btn-quiz-verify-approve');

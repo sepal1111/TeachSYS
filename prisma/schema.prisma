@@ -554,6 +554,7 @@ model PaperQuiz {
   id               Int      @id @default(autoincrement())
   courseId         Int      @map("course_id")
   title            String
+  subject          String?  @default("")
   quizDate         String   @map("quiz_date")
   maxScore         Float    @default(100) @map("max_score")
   passingScore     Float    @default(60) @map("passing_score")
@@ -575,6 +576,10 @@ model PaperQuizRecord {
   studentId     Int     @map("student_id")
   score         Float?
   isAbsent      Int     @default(0) @map("is_absent")
+  leaveType     String? @default("") @map("leave_type")
+  allowMakeup   Int     @default(0) @map("allow_makeup")
+  isMakeup      Int     @default(0) @map("is_makeup")
+  makeupScore   Float?  @map("makeup_score")
   photoUrl      String? @map("photo_url")
   submittedBy   String  @default("teacher") @map("submitted_by") // 'teacher' | 'student' | 'leader'
   submittedById Int?    @map("submitted_by_id")

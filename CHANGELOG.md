@@ -1,5 +1,73 @@
 # CHANGELOG
 
+## [2026-09-08d] 紙本測驗預設科目精簡（國語、英語、數學、社會、自然）並保留教師自訂輸入功能
+
+- **修改模組/檔案**：
+  - 前端介面與字典：`static/index.html`、`static/js/i18n.js`
+- **修改類別**：使用者體驗 (UI/UX) / 介面微調 / 預設值最佳化
+- **具體修改內容說明**：
+  1. **預設測驗科目清單調整**：
+     - 精簡紙本測驗建立與編輯彈窗中的 `<datalist>` 預設科目為國小最核心的五大領域：**國語、英語、數學、社會、自然**。
+     - 輸入欄位繼續維持 HTML5 `<input type="text" list="...">` 原生架構，除可快速點選上述五大預設科目外，教師亦可完全自由手動輸入任何校本課程、彈性課程或特殊學科名稱。
+     - 提示字元（Placeholder）同步更新為「`例：國語、英語、數學...`」。
+
+## [2026-09-08c] 紙本測驗勾稽當日學生出缺席狀況、缺考自動標示假別與教師端補考開關功能
+
+- **修改模組/檔案**：
+  - 資料庫定義：`prisma/schema.prisma`、`src/db.ts`
+  - 後端路由：`src/routes/paperQuizzes.ts`、`src/routes/studentContent.ts`
+  - 前端介面與邏輯：
+    - 教師端：`static/index.html`、`static/js/app.js`、`static/js/i18n.js`
+    - 學生端：`static/js/student.js`
+- **修改類別**：功能增強 / 資料勾稽與防呆 / 補考工作流 / 使用者體驗 (UI/UX) / 國際化 (i18n)
+- **具體修改內容說明**：
+  1. **資料表擴充補考與請假欄位**：
+     - `PaperQuizRecord` 模型與 SQLite `paper_quiz_records` 表格新增 `leave_type` (假別)、`allow_makeup` (開放補考 0/1)、`is_makeup` (是否為補考 0/1)、`makeup_score` (補考分數) 四個欄位，並支援自動熱遷移（`tryAlter`）。
+  2. **建立測驗時自動勾稽當日出缺席（Attendance Cross-Check）**：
+     - 教師建立測驗時，系統自動比對該班級在 `quiz_date` 當天的出席紀錄；凡當日非出席（如病假 `sick_leave`、事假 `personal_leave`、公假 `official_leave`、喪假 `bereavement_leave`、曠課 `absent`），自動為其建立缺考紀錄（`is_absent = 1`），標記其假別代碼與「當日XX未出席」備註。
+  3. **成績矩陣動態假別標記與教師端補考開關**：
+     - 成績輸入矩陣自動呈現請假圖示徽章（如 `🤒 病假`、`🏠 事假`、`🏛️ 公假`、`🕯️ 喪假`、`❌ 曠課`）。
+     - 針對每位缺考學生提供獨立「🔄 開放補考」按鈕，教師點擊可即時切換狀態為「✅ 補考中」；開啟後分數欄位自動解鎖供填寫補考分數，並支援批次儲存或即時 API 更新。
+     - 統計數據列新增「補考進行中」即時統計卡片。
+  4. **快捷篩選工具列升級**：
+     - 新增「只看缺考/請假」與「只看開放補考」快捷篩選核取方塊，方便教師在大班級中一鍵掌握缺考與補考名單。
+  5. **學生端防呆與補考自登流程連動**：
+     - 學生若為缺考且教師尚未開放補考，系統標記缺考與請假假別，隱藏自登表單並提示「尚未開放補考，請洽任課教師」；後端 API 嚴格防呆拒絕未開放自登（HTTP 403）。
+     - 教師開啟補考後，學生端即時切換為「🔄 允許補考」，學生拍照上傳考卷完成自登後，系統自動將其標記為補考紀錄（`is_makeup = 1`）並解除缺考狀態。
+  6. **繁中與英文雙語支援（i18n）**：
+     - 補齊 `paper_quiz_filter_absent`、`paper_quiz_filter_makeup`、`paper_quiz_stat_makeup` 等雙語詞彙。
+
+## [2026-09-08b] 教師端紙本測驗「科目分類設定」、「科目動態篩選」與「關鍵字即時搜尋」功能全面上線
+
+- **修改模組/檔案**：
+  - 資料庫定義：`prisma/schema.prisma`、`src/db.ts`
+  - 後端路由：`src/routes/paperQuizzes.ts`、`src/routes/studentContent.ts`
+  - 前端介面與邏輯：
+    - 教師端：`static/index.html`、`static/js/app.js`、`static/js/i18n.js`
+    - 學生端：`static/js/student.js`
+- **修改類別**：功能增強 / 資料過濾與搜尋 / 使用者體驗 (UI/UX) / 國際化 (i18n)
+- **具體修改內容說明**：
+  1. **資料表與後端 API 支援科目分類（`subject`）**：
+     - `prisma/schema.prisma` 與 SQLite 資料庫 `paper_quizzes` 新增 `subject TEXT DEFAULT ''` 欄位與自動遷移（`initSchema` 中支援 `tryAlter`）。
+     - 後端 `paperQuizzes.ts` 路由全面支援：
+       - `POST /api/paper-quizzes/:courseId`：建立測驗時寫入 `subject`。
+       - `PUT /api/paper-quizzes/:quizId`：編輯測驗時更新 `subject`。
+       - `GET /api/paper-quizzes/:courseId` 與 `GET /:quizId/matrix`：回傳測驗物件均包含 `subject`。
+       - 學生端 `GET /api/student/paper-quizzes`：同步回傳 `subject` 供學生與小組長檢視。
+  2. **測驗建立與編輯彈窗（Modal）新增「科目分類」欄位**：
+     - 在「📝 建立新紙本測驗」與「⚙️ 編輯紙本測驗設定」對話框中加入「科目分類」輸入框。
+     - 整合 HTML5 `<datalist>` 提供全方位常見學科快速點選（包含國文、英文、數學、自然、社會、理化、物理、化學、生物、地球科學、歷史、地理、公民、資訊科技、生活科技、體育、音樂、美術、綜合活動等），同時支援教師自由輸入任何自訂科目名稱。
+  3. **頂部工具列「📚 科目分類篩選」與「🔍 關鍵字即時搜尋」**：
+     - **動態科目篩選選單**：自動彙整該班級所有現存測驗的科目名稱並去重排序，提供「全部科目」與各科目選單；選取特定科目後即時過濾測驗。
+     - **關鍵字搜尋框與一鍵清除**：支援輸入測驗名稱、科目名稱、關聯單元或測驗日期關鍵字即時搜尋，並提供 ✕ 一鍵清除按鈕。
+     - **動態計數徽章**：即時顯示「顯示 X / Y 個測驗」，過濾狀態一目了然。
+     - **智慧選中連動**：當篩選或搜尋條件變更時，若目前選取之測驗不在過濾結果內，系統自動切換至第一筆符合測驗並更新成績矩陣；若無匹配測驗則顯示友善無符合提示。
+  4. **學生端與小組長專區呈現優化**：
+     - 學生端小考卡片標題處自動標記專屬「📚 科目」膠囊徽章。
+     - 小組長專區之測驗選取下拉選單標記 `[科目]` 前綴，方便組長快速辨識與代登。
+  5. **繁中與英文雙語支援（i18n）**：
+     - 補齊 `paper_quiz_filter_subject_label`、`paper_quiz_filter_all_subjects`、`paper_quiz_search_label`、`paper_quiz_search_placeholder`、`paper_quiz_subject_label` 等全語系詞彙。
+
 ## [2026-09-08a] 系統操作手冊（Guide）全域小標籤中英雙語切換優化
 
 - **修改模組/檔案**：

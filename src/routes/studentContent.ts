@@ -665,11 +665,21 @@ studentContentRouter.get("/paper-quizzes", async (req, res) => {
   });
   const recordMap = new Map(myRecords.map((r) => [r.quizId, r]));
 
+  const quizDates = Array.from(new Set(quizzes.map((q) => q.quizDate)));
+  const myAttendances = await prisma.attendance.findMany({
+    where: { courseId, studentId, date: { in: quizDates } },
+  });
+  const attMap = new Map(myAttendances.map((a) => [a.date, a.status]));
+
   const result = quizzes.map((q) => {
     const rec = recordMap.get(q.id);
+    const attStatus = attMap.get(q.quizDate);
+    const isUnattended = !!(attStatus && attStatus !== "present" && attStatus !== "late");
+
     return {
       id: q.id,
       title: q.title,
+      subject: q.subject || "",
       quiz_date: q.quizDate,
       max_score: q.maxScore,
       passing_score: q.passingScore,
@@ -681,11 +691,28 @@ studentContentRouter.get("/paper-quizzes", async (req, res) => {
             id: rec.id,
             score: rec.score,
             is_absent: rec.isAbsent === 1,
+            leave_type: rec.leaveType || (rec.isAbsent === 1 && isUnattended ? attStatus : ""),
+            allow_makeup: rec.allowMakeup === 1,
+            is_makeup: rec.isMakeup === 1,
             photo_url: rec.photoUrl,
             submitted_by: rec.submittedBy,
             is_verified: rec.isVerified === 1,
             note: rec.note,
             updated_at: rec.updatedAt,
+          }
+        : isUnattended
+        ? {
+            id: null,
+            score: null,
+            is_absent: true,
+            leave_type: attStatus,
+            allow_makeup: false,
+            is_makeup: false,
+            photo_url: null,
+            submitted_by: "system",
+            is_verified: false,
+            note: "當日未出席",
+            updated_at: null,
           }
         : null,
     };
@@ -706,6 +733,15 @@ studentContentRouter.post("/paper-quizzes/:quizId/self-entry", upload.single("ph
   }
   if (quiz.allowSelfEntry === 0) {
     res.status(403).json({ detail: "本場測驗目前未開放學生自我登錄！" });
+    return;
+  }
+
+  // 檢查是否為缺考且未開啟補考
+  const existingRecord = await prisma.paperQuizRecord.findUnique({
+    where: { quizId_studentId: { quizId, studentId } },
+  });
+  if (existingRecord && existingRecord.isAbsent === 1 && existingRecord.allowMakeup === 0) {
+    res.status(403).json({ detail: "您本場測驗登記為缺考，尚未由教師開啟補考權限！" });
     return;
   }
 
@@ -736,17 +772,19 @@ studentContentRouter.post("/paper-quizzes/:quizId/self-entry", upload.single("ph
   const scoreNum = Math.min(Math.max(0, Number(rawScore) || 0), quiz.maxScore);
   const note = req.body?.note ? String(req.body.note).trim() : null;
   const now = new Date().toISOString();
+  const isMakeupEntry = existingRecord && existingRecord.allowMakeup === 1 ? 1 : 0;
 
   const record = await prisma.paperQuizRecord.upsert({
     where: { quizId_studentId: { quizId, studentId } },
     update: {
       score: scoreNum,
       isAbsent: 0,
+      isMakeup: isMakeupEntry,
       photoUrl,
       submittedBy: "student",
       submittedById: studentId,
       isVerified: 0,
-      note,
+      note: note || (isMakeupEntry ? "學生補考自登" : undefined),
       updatedAt: now,
     },
     create: {
@@ -754,6 +792,7 @@ studentContentRouter.post("/paper-quizzes/:quizId/self-entry", upload.single("ph
       studentId,
       score: scoreNum,
       isAbsent: 0,
+      isMakeup: isMakeupEntry,
       photoUrl,
       submittedBy: "student",
       submittedById: studentId,
