@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## [2026-09-08a] 系統操作手冊（Guide）全域小標籤中英雙語切換優化
+
+- **修改模組/檔案**：
+  - 前端頁面：`static/guide.html`
+- **修改類別**：國際化 (i18n) / 使用者體驗 (UI/UX) / 文件手冊維護
+- **具體修改內容說明**：
+  1. **補齊手冊所有功能小標籤（`.guide-item-badge`）中英雙語對照**：
+     - 全面檢查並將 26+ 個原本僅有英文的小標籤包裹為 `<span data-lang="zh">` 與 `<span data-lang="en">` 雙語 span 結構。
+     - 包含項目涵蓋：
+       - 出缺席管理：`6 大假別` (`6 LEAVE TYPES`)、`全新功能` (`NEW`)
+       - 座位與分組：`智慧排座` (`ARRANGEMENT`)、`圖示與計分` (`AVATARS & SCORING`)
+       - 歷程與投影：`影音觀察` (`MULTIMEDIA`)、`奧運頒獎台` (`OLYMPIC PODIUM`)
+       - 報表與系統：`Excel 報表` (`EXCEL REPORTS`)、`照片與校徽` (`PHOTOS & LOGO`)
+       - 工具箱專案：`📌 課堂公布欄` (`📌 BULLETIN BOARD`)、`🎲 隨機抽籤` (`🎲 LUCKY DRAW`)、`⏱️ 計時碼錶` (`⏱️ TIMER & STOPWATCH`)
+       - 學生端與作業：`全新功能` (`NEW`)、`學生登入` (`STUDENT LOGIN`)、`作業設定` (`SETUP`)、`學生繳交` (`SUBMIT`)、`小組繳交` (`GROUP`)
+       - 測驗與批改：`題型管理` (`QUESTION TYPES`)、`自動批改` (`AUTO-GRADED`)、`評分批改` (`GRADING`)、`師生問答` (`Q&A THREAD`)
+       - 實體點數卡：`全新功能` (`NEW`)、`掃碼加分` (`STUDENT SCAN`)
+       - 獎勵與安全：`獎勵設定` (`SETUP`)、`兌換審核` (`REDEEM`)、`安全防護` (`SECURITY`)、`雙語系統` (`BILINGUAL i18n`)
+       - 常見問題 Q&A：`常見問題` (`Q&A`)
+  2. **流暢切換與無痛渲染**：
+     - 透過原生 CSS `[data-lang="en"]` 與 `body.lang-en [data-lang="zh"]` 機制實現零延遲、零額外 script 開銷的無縫雙語切換。
+     - 實機瀏覽器驗證中文／英文語系切換時版面整齊、標籤顏色與字體完全協調一致。
+
 ## [2026-09-07f] 教學歷程「紙本測驗成績管理」、學生「考卷拍照佐證自登」與「小組長職務專區」全面上線
 
 - **修改模組/檔案**：
