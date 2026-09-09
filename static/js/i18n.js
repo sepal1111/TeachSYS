@@ -393,7 +393,7 @@
 
       // 公布欄
       'bulletin_title': '📌 課堂即時公布欄',
-      'bulletin_hint': '💡 教師可在此書寫注意事項、學習任務或隨堂提示，內容依班級自動儲存。',
+      'bulletin_hint': '💡 課堂佈告已啟用即時自動儲存：新增、修改標題或編輯內容皆會即時寫入資料庫。',
       'bulletin_font_size_label': '字體大小：',
       'bulletin_font_small': '小',
       'bulletin_font_medium': '中',
@@ -437,6 +437,12 @@
       'bulletin_delete_post_confirm': '確定要刪除當前佈告「{title}」嗎？此動作無法復原。',
       'bulletin_delete_post_only_one': '目前只有一個佈告，無法刪除！若要清空內容請使用「清除內容」。',
       'bulletin_default_post_title': '課堂佈告',
+      'bulletin_load_failed': '公布欄載入失敗：',
+      'bulletin_save_failed': '公布欄儲存失敗：',
+      'bulletin_status_dirty': '● 變更中...',
+      'bulletin_status_saving': '⏳ 自動儲存中...',
+      'bulletin_status_saved': '✅ 已自動儲存',
+      'bulletin_status_error': '⚠️ 儲存失敗，請檢查連線',
       'common_cancel': '取消',
       'common_confirm': '確定',
 
@@ -1117,7 +1123,7 @@
 
       // Bulletin Board
       'bulletin_title': '📌 Classroom Live Bulletin Board',
-      'bulletin_hint': '💡 Teachers can write notes, tasks, or reminders here. Auto-saved per class.',
+      'bulletin_hint': '💡 Real-time auto-save enabled: creating boards, renaming, and editing content are instantly saved to the database.',
       'bulletin_font_size_label': 'Font Size:',
       'bulletin_font_small': 'S',
       'bulletin_font_medium': 'M',
@@ -1161,6 +1167,12 @@
       'bulletin_delete_post_confirm': 'Are you sure you want to delete board "{title}"? This cannot be undone.',
       'bulletin_delete_post_only_one': 'Cannot delete the only board! Use "Clear Content" to empty it.',
       'bulletin_default_post_title': 'Class Board',
+      'bulletin_load_failed': 'Failed to load bulletin board: ',
+      'bulletin_save_failed': 'Failed to save bulletin board: ',
+      'bulletin_status_dirty': '● Editing...',
+      'bulletin_status_saving': '⏳ Auto-saving...',
+      'bulletin_status_saved': '✅ Auto-saved',
+      'bulletin_status_error': '⚠️ Save failed, check connection',
       'common_cancel': 'Cancel',
       'common_confirm': 'Confirm',
 
@@ -1738,7 +1750,6 @@
       '#btn-open-forgot-password-modal': 'auth_forgot_btn',
       '#btn-confirm-forgot-reset': 'forgot_btn_reset',
       '#btn-bulletin-fullscreen': 'bulletin_btn_fullscreen',
-      '#btn-bulletin-save': 'bulletin_btn_save',
       '#btn-bulletin-clear': 'bulletin_btn_clear',
       '#btn-start-lucky-draw': 'draw_btn_start',
       '#btn-reset-draw-pool': 'draw_btn_reset_pool',

@@ -45,6 +45,7 @@ model Course {
   rewardRedemptions RewardRedemption[]
   paperQuizzes     PaperQuiz[]
   discussionLogs   GroupDiscussionLog[]
+  bulletinPosts    BulletinPost[]
 
   @@map("courses")
 }
@@ -615,4 +616,24 @@ model GroupDiscussionLog {
   leader Student?   @relation(fields: [leaderId], references: [id], onDelete: SetNull)
 
   @@map("group_discussion_logs")
+}
+
+// ==========================================================================
+// 課堂即時公布欄 (Bulletin Board)：教學互動工具箱內的公布欄，一個課程可建立多份
+// 佈告並切換顯示，內容原本只存瀏覽器 localStorage（換機/清快取即遺失），改為
+// 寫入資料庫，比照其他課程附屬資料的模式（course_id 外鍵 + cascade 刪除）。
+// ==========================================================================
+
+model BulletinPost {
+  id         Int    @id @default(autoincrement())
+  courseId   Int    @map("course_id")
+  title      String
+  content    String @default("")
+  orderIndex Int    @default(0) @map("order_index")
+  createdAt  String @map("created_at")
+  updatedAt  String @map("updated_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("bulletin_posts")
 }

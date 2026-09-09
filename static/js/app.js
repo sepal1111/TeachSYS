@@ -564,6 +564,11 @@ function switchTab(tabName) {
     triggerPaperQuizAutoSave(true);
   }
 
+  // Auto-flush in-progress bulletin post edit before leaving tab
+  if (window.TeachingToolkit?.bulletin && typeof window.TeachingToolkit.bulletin.flushActivePost === 'function') {
+    window.TeachingToolkit.bulletin.flushActivePost();
+  }
+
   // Auto-commit pending quick scores if any before leaving tab
   if (AppState.quickScoringMode && AppState.pendingQuickScores) {
     const hasPending = Object.values(AppState.pendingQuickScores).some(s => Number(s) !== 0);
@@ -728,6 +733,12 @@ async function loadToolkitData() {
     // 計時器與碼錶不受影響，維持可用，不強制切換子分頁。
     if (window.TeachingToolkit) window.TeachingToolkit.setCourseAvailability(false);
     return;
+  }
+  if (window.TeachingToolkit) {
+    window.TeachingToolkit.setCourseAvailability(true);
+    if (window.TeachingToolkit.bulletin) {
+      window.TeachingToolkit.bulletin.loadCourse(AppState.currentCourseId);
+    }
   }
   try {
     // Use the dashboard endpoint (not the plain roster) so each student
@@ -5634,6 +5645,9 @@ function renderPaperQuizOverviewTable(data) {
 function initEventListeners() {
   // Course change dropdown
   document.getElementById('course-select').addEventListener('change', async (e) => {
+    if (window.TeachingToolkit?.bulletin && typeof window.TeachingToolkit.bulletin.flushActivePost === 'function') {
+      window.TeachingToolkit.bulletin.flushActivePost();
+    }
     if (AppState.quickScoringMode && AppState.pendingQuickScores) {
       const hasPending = Object.values(AppState.pendingQuickScores).some(s => Number(s) !== 0);
       if (hasPending) {

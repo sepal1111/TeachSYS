@@ -1,5 +1,73 @@
 # CHANGELOG
 
+## [2026-09-09d] 課堂公佈欄新增或編輯佈告全面改為即時自動儲存到資料庫
+
+- **修改模組/檔案**：
+  - 前端小工具邏輯：`static/js/toolkit.js`（`BulletinBoard`、`TeachingToolkit` 模組）
+  - 前端全域邏輯：`static/js/app.js`（`switchTab`、`course-select` 切換事件）
+  - 前端介面：`static/index.html`（更新公布欄提示與狀態標籤）
+  - 多語系文案：`static/js/i18n.js`（中/英文即時自動儲存狀態與提示文案）
+- **修改類別**：功能強化與資料持久化（即時自動儲存）
+- **修改內容**：
+  1. **富文字與編輯即時自動存檔**：
+     - 監聽 `compositionend`（中文輸入法選字完畢）、`paste`（貼上內容）、`blur`（編輯區失焦移開）事件，立即觸發即時存檔。
+     - 粗體（`btnBold`）、項目清單（`btnList`）、文字顏色（`setTextColor`）點擊套用後，均即時寫入資料庫。
+  2. **新增與重新命名佈告即時持久化**：
+     - 新增佈告（`handlePostTitleSubmit` 的 add 分支）前一律先 flush 當前正在編輯的內容，隨後建立新佈告並自動聚焦編輯區，即時寫入資料庫。
+     - 重新命名佈告（`renameActivePost` / `handlePostTitleSubmit` 的 rename 分支）前同樣先 flush 當前內容，確保標題與內容皆即時寫入資料庫。
+  3. **分頁切換離頁零丟失保護**：
+     - 在工具箱內部切換子分頁（`TeachingToolkit.switchSubtab`）前呼叫 `flushActivePost()`。
+     - 在全螢幕投影（`openFullscreen`）前呼叫 `flushActivePost()`。
+     - 在主系統切換分頁（`app.js` 的 `switchTab`）與切換課程時，加入公布欄未完成內容即時 flush。
+     - 加入 `pagehide` 事件監聽，確保行動端或關閉分頁時即時保存。
+  4. **美化即時狀態指示**：
+     - 狀態標籤支援即時儲存時間戳記（例如 `✅ 已自動儲存 (20:10:35)` / `⏳ 自動儲存中...` / `● 變更中...` / `⚠️ 儲存失敗，請檢查連線`），讓教師直觀掌握存檔時間。
+     - 更新下方提示文案為「💡 課堂佈告已啟用即時自動儲存：新增、修改標題或編輯內容皆會即時寫入資料庫。」
+
+## [2026-09-09c] 課堂即時公布欄改為真正的「即時」自動儲存，取消固定防抖延遲
+
+- **修改模組/檔案**：
+  - 前端邏輯：`static/js/toolkit.js`（`BulletinBoard` 模組）
+- **修改類別**：使用者體驗改善
+- **背景**：上一版（[2026-09-09a]/[2026-09-09b]）雖已改為寫入資料庫並加上儲存狀態警示，但每次輸入仍會等待 800ms 防抖（debounce）才真正送出 API 請求，教師打字後仍有一小段延遲才會顯示「已儲存」。
+- **修改內容**：
+  1. 移除固定的 800ms `setTimeout` 防抖，`saveContent` 改為呼叫新增的 `triggerImmediateSave`，每次輸入立刻送出寫入請求。
+  2. 為避免打字速度快於「網路請求 + SQLite 寫入」耗時而同時送出多個重疊請求，`triggerImmediateSave` 改採「同一時間只有一個請求在飛行中」的合併機制：若前一次寫入尚未完成，只記錄「還有更新待送出」（`_pendingResave`），待該次請求完成後立即用當下最新內容再送一次，確保最終送達伺服器的內容不會遺漏中途的按鍵輸入，也不會有回應先後順序錯亂覆蓋新內容的問題。
+  3. `flushActivePost()`（切換佈告／新增佈告／切換課程前用來確保不遺失編輯內容）同步改為呼叫 `triggerImmediateSave`，不再需要額外清除防抖計時器。
+
+## [2026-09-09b] 課堂即時公布欄加入「尚未儲存／儲存中／已儲存／儲存失敗」警示與離頁保護
+
+- **修改模組/檔案**：
+  - 前端邏輯：`static/js/toolkit.js`（`BulletinBoard` 模組）
+  - 前端介面：`static/index.html`（新增 `#bulletin-save-status` 標籤）
+  - 樣式：`static/css/style.css`（新增 `.bulletin-save-status` 系列樣式）
+  - 多語系文案：`static/js/i18n.js`（新增 `bulletin_status_*` 四組狀態文字）
+- **修改類別**：使用者體驗改善（防呆警示）／Bug 修復（切換佈告或課程時可能遺失未儲存內容）
+- **背景**：上一版本（見下方 [2026-09-09a]）已將公布欄內容改為寫入資料庫，但內容編輯採 800ms 防抖自動存檔，教師在防抖等待期間或連線失敗當下若直接切換佈告、切換課程、或關閉分頁，先前完全沒有任何提示，容易誤以為「已經自動存好了」。
+- **修復方式**：
+  1. 在「儲存內容」按鈕旁新增狀態標籤，依 `saveStatus`（`dirty`／`saving`／`saved`／`error`）即時顯示「● 尚未儲存」（橘）、「⏳ 儲存中...」（灰）、「✅ 已儲存」（綠，2.5 秒後自動淡出）、「⚠️ 儲存失敗，尚未儲存」（紅，需成功儲存後才會消失）。
+  2. 新增 `beforeunload` 監聽：只要狀態是 `dirty`／`saving`／`error`（尚未確認成功寫入資料庫），關閉分頁或重新整理時會跳出瀏覽器原生的「確定要離開嗎」警示。
+  3. 修正切換佈告（`switchPost`）、新增佈告（`handlePostTitleSubmit` 的 add 分支）、切換課程（`loadCourse`）這三個流程：原本仰賴防抖計時器「剛好」還沒被清掉才不會遺失內容，改為新增 `flushActivePost()`，在離開目前這份佈告前一律立即（略過防抖）送出儲存，避免快速切換時遺失剛打的字。
+  4. 若儲存請求還在進行中（`saving`）時使用者又繼續輸入，成功回應不會誤蓋掉之後新產生的 `dirty` 狀態（以 `this.saveStatus === 'saving'` 才轉為 `saved`/`error` 的守衛避免競態）。
+
+## [2026-09-09a] 課堂即時公布欄（教學互動工具箱）改為將佈告內容寫入資料庫，不再只存瀏覽器快取
+
+- **新增/修改模組/檔案**：
+  - 資料庫結構定義：`prisma/schema.prisma`（新增 `BulletinPost` model）
+  - 資料庫初始化：`src/db.ts`（新增 `bulletin_posts` 資料表 CREATE TABLE 與索引）
+  - 新增後端路由：`src/routes/bulletin.ts`（`GET/POST /api/bulletin/:courseId`、`PUT/DELETE /api/bulletin/:courseId/:id`）
+  - 路由掛載：`src/index.ts`
+  - 前端邏輯：`static/js/toolkit.js`（`BulletinBoard` 模組）
+  - 多語系文案：`static/js/i18n.js`（新增 `bulletin_load_failed`、`bulletin_save_failed`）
+- **修改類別**：功能缺陷修復（資料持久化）
+- **問題原因**：課堂公布欄的多份佈告內容原本只呼叫 `localStorage.setItem` 存在瀏覽器快取（key 為 `bulletin_posts_course_{courseId}`），從未呼叫任何後端 API，因此換裝置、清除瀏覽器資料或改用無痕視窗時，教師寫好的佈告內容會直接遺失。
+- **修復方式**：
+  1. 新增 `bulletin_posts` 資料表（`course_id` 外鍵、`title`/`content`/`order_index`/`created_at`/`updated_at`），比照其他課程附屬資料模式，隨課程刪除自動 cascade 清除。
+  2. 新增 `/api/bulletin/:courseId` 系列路由，提供佈告的建立、列表、更新（標題／內容）、刪除。
+  3. 前端 `BulletinBoard.loadCourse` 改為向伺服器讀取佈告列表；輸入框改為 800ms 防抖後呼叫 API 寫入內容，手動按下「儲存內容」則立即送出並顯示成功提示；新增/重新命名/刪除佈告也一併改為呼叫對應 API。
+  4. 保留一次性搬移邏輯：若伺服器端該課程尚無任何佈告，會自動偵測瀏覽器內殘留的舊版 localStorage 資料並上傳建檔，避免既有教師已寫好的內容因升級而消失，搬移完成後清除舊的 localStorage 鍵值。
+  5. 黑板主題／字體大小等純 UI 偏好設定（非佈告內容本身）維持存在 localStorage，不受影響。
+
 ## [2026-09-08n] 修復日期選擇器第一次點選時彈窗閃退立即消失的事件衝突問題
 
 - **修改模組/檔案**：

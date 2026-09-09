@@ -3247,6 +3247,46 @@ body.mobile-scoring-only #quick-group-bar .btn {
   white-space: nowrap;
 }
 
+.bulletin-save-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px 10px;
+  border-radius: 999px;
+  visibility: hidden;
+}
+
+.bulletin-save-status.is-visible {
+  visibility: visible;
+}
+
+.bulletin-save-status.status-dirty {
+  color: var(--accent-warning);
+  background: var(--accent-warning-bg);
+  border: 1px solid var(--accent-warning-border);
+}
+
+.bulletin-save-status.status-saving {
+  color: var(--text-muted);
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+}
+
+.bulletin-save-status.status-saved {
+  color: var(--accent-positive);
+  background: var(--accent-positive-bg);
+  border: 1px solid var(--accent-positive-border);
+}
+
+.bulletin-save-status.status-error {
+  color: var(--accent-negative);
+  background: var(--accent-negative-bg);
+  border: 1px solid var(--accent-negative-border);
+}
+
 .btn-bulletin-color {
   width: 22px;
   height: 22px;

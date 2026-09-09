@@ -522,6 +522,23 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_group_discussion_logs_course ON group_discussion_logs(course_id, group_id);"
   );
 
+  // 課堂即時公布欄：原本只存 localStorage，改為寫入資料庫（見 routes/bulletin.ts）。
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS bulletin_posts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL DEFAULT '',
+      order_index INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_bulletin_posts_course ON bulletin_posts(course_id, order_index);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE group_members ADD COLUMN is_leader INTEGER DEFAULT 0;");
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");

@@ -674,8 +674,8 @@
               <button type="button" class="btn btn-sm btn-secondary btn-bulletin-theme" data-theme="slate-dark" data-i18n="bulletin_theme_dark">科技黑</button>
               <button type="button" class="btn btn-sm btn-secondary btn-bulletin-theme" data-theme="clean-white" data-i18n="bulletin_theme_white">極簡白</button>
             </div>
-            <div class="bulletin-tool-group" style="margin-left: auto; display: flex; gap: 8px;">
-              <button type="button" id="btn-bulletin-save" class="btn btn-sm" style="background: linear-gradient(135deg, #4fae82, #059669); border:none; font-weight:700;" data-i18n="bulletin_btn_save">💾 儲存內容</button>
+            <div class="bulletin-tool-group" style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+              <span id="bulletin-save-status" class="bulletin-save-status"></span>
               <button type="button" id="btn-bulletin-clear" class="btn btn-sm btn-secondary" style="color: #f87171;" data-i18n="bulletin_btn_clear">🗑️ 清除內容</button>
               <button type="button" id="btn-bulletin-fullscreen" class="btn btn-sm" style="background: linear-gradient(135deg, #7b98e0, #4a67ba); border:none; font-weight:700;" data-i18n="bulletin_btn_fullscreen">⛶ 全螢幕投影</button>
             </div>
@@ -684,7 +684,7 @@
             <div id="bulletin-editor" class="bulletin-editor" contenteditable="true" spellcheck="false" data-placeholder="在此書寫課程重點、注意事項或隨堂提示..."></div>
           </div>
           <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);" data-i18n="bulletin_hint">
-            💡 教師可在此書寫注意事項、學習任務或隨堂提示，內容依班級自動儲存。
+            💡 課堂佈告已啟用即時自動儲存：新增、修改標題或編輯內容皆會即時寫入資料庫。
           </div>
           </div>
         </div>

@@ -36,6 +36,7 @@ import { studentPointCardsRouter } from "./routes/studentPointCards";
 import { rewardsRouter } from "./routes/rewards";
 import { studentRewardsRouter } from "./routes/studentRewards";
 import { paperQuizzesRouter } from "./routes/paperQuizzes";
+import { bulletinRouter } from "./routes/bulletin";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
 const bundleDir = getBundleDir();
@@ -226,6 +227,7 @@ app.use("/api/live-wall", requireAuth, liveWallRouter);
 app.use("/api/point-cards", requireAuth, pointCardsRouter);
 app.use("/api/rewards", requireAuth, rewardsRouter);
 app.use("/api/paper-quizzes", requireAuth, paperQuizzesRouter);
+app.use("/api/bulletin", requireAuth, bulletinRouter);
 
 // --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
 app.use("/api/auth/student", studentAuthRouter);
@@ -252,7 +254,7 @@ function isPortFree(port: number): Promise<boolean> {
       .createServer()
       .once("error", () => resolve(false))
       .once("listening", () => tester.close(() => resolve(true)))
-      .listen(port, "127.0.0.1");
+      .listen(port, "0.0.0.0");
   });
 }
 
