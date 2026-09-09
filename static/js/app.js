@@ -536,19 +536,28 @@ const TAB_TO_CONTEXT_MAP = {
   materials: 'logs',
   seating: 'manage',
   grouping: 'manage',
-  admin: 'manage'
+  students: 'manage',
+  rules: 'manage',
+  reports: 'manage',
+  rewards: 'manage',
+  pointcards: 'admin',
+  appearance: 'admin',
+  security: 'admin',
+  admin: 'admin'
 };
 
 const CONTEXT_DEFAULT_TAB_MAP = {
   live: 'scoring',
   logs: 'notes',
-  manage: 'seating'
+  manage: 'seating',
+  admin: 'pointcards'
 };
 
 const lastActiveTabPerContext = {
   live: 'scoring',
   logs: 'notes',
-  manage: 'seating'
+  manage: 'seating',
+  admin: 'pointcards'
 };
 
 function switchTab(tabName) {
@@ -720,6 +729,28 @@ function refreshActiveTab(tabName, force = false) {
       break;
     case 'toolkit':
       loadToolkitData();
+      break;
+    case 'students':
+      loadAdminStudentsData();
+      break;
+    case 'rules':
+      loadAdminRulesData();
+      break;
+    case 'reports':
+      break;
+    case 'rewards':
+      if (window.RewardsManager && typeof window.RewardsManager.reload === 'function') {
+        window.RewardsManager.reload();
+      }
+      break;
+    case 'pointcards':
+      if (window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {
+        window.PointCardsManager.reload();
+      }
+      break;
+    case 'appearance':
+      break;
+    case 'security':
       break;
     case 'admin':
       loadAdminData();
@@ -1108,6 +1139,7 @@ async function confirmSaveQuickNote() {
 // students are skipped entirely rather than added to the scoring selection,
 // so a class-wide or group-wide score never lands on someone who isn't here.
 function selectStudentsSkippingAbsent(candidateIds) {
+  if (AppState.quickScoringMode) return;
   AppState.selectedStudentIds.clear();
   const absentIds = new Set(AppState.students.filter(s => s.is_absent).map(s => s.id));
   let skipped = 0;
@@ -1132,6 +1164,8 @@ function renderQuickGroupBar() {
 
   const isEn = window.I18n && window.I18n.getLanguage() === 'en';
   const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
+  const isQuick = Boolean(AppState.quickScoringMode);
+  const disabledHint = isQuick ? (t('quick_scoring_groups_disabled_hint') || '快速加減分模式下無法選擇小組') : '';
 
   // 1. All Class button
   const allBtn = document.createElement('button');
@@ -1144,6 +1178,10 @@ function renderQuickGroupBar() {
   allBtn.style.justifyContent = 'center';
   allBtn.style.gap = '2px';
   allBtn.style.minWidth = '75px';
+  if (isQuick) {
+    allBtn.disabled = true;
+    allBtn.setAttribute('title', disabledHint);
+  }
   allBtn.innerHTML = `
     <div style="font-weight: 700; display: flex; align-items: center; gap: 4px;">
       <span>🏫</span>
@@ -1152,6 +1190,7 @@ function renderQuickGroupBar() {
     <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">(${AppState.students.length}${isEn ? ' students' : '人'})</span>
   `;
   allBtn.onclick = () => {
+    if (AppState.quickScoringMode) return;
     AppState.currentScoringGroupTarget = null;
     selectStudentsSkippingAbsent(AppState.students.map(s => s.id));
   };
@@ -1169,6 +1208,10 @@ function renderQuickGroupBar() {
     btn.style.justifyContent = 'center';
     btn.style.gap = '2px';
     btn.style.minWidth = '85px';
+    if (isQuick) {
+      btn.disabled = true;
+      btn.setAttribute('title', disabledHint);
+    }
 
     const groupScore = (AppState.groupScoresMap && AppState.groupScoresMap[g.id] !== undefined)
       ? AppState.groupScoresMap[g.id]
@@ -1186,6 +1229,7 @@ function renderQuickGroupBar() {
       </div>
     `;
     btn.onclick = () => {
+      if (AppState.quickScoringMode) return;
       AppState.currentScoringGroupTarget = {
         plan_id: g.plan_id || AppState.activeGroupPlanId,
         group_id: g.id,
@@ -1212,8 +1256,13 @@ async function toggleQuickScoringMode() {
     AppState.quickScoringMode = true;
     AppState.pendingQuickScores = {};
     AppState.selectedStudentIds.clear();
+    AppState.currentScoringGroupTarget = null;
     updateFloatingScoringDrawer();
     localStorage.setItem('quick_scoring_mode', 'true');
+    const groupBar = document.getElementById('quick-group-bar');
+    if (groupBar && document.activeElement && groupBar.contains(document.activeElement)) {
+      document.activeElement.blur();
+    }
     updateQuickScoringToggleUI();
     renderScoringView();
   }
@@ -1293,6 +1342,22 @@ function updateQuickScoringToggleUI() {
     if (icon) icon.textContent = '⚡';
     if (text) text.textContent = t('quick_scoring_off');
     if (hint) hint.textContent = isSeating ? t('scoring_hint_seating_normal') : t('scoring_hint_normal');
+  }
+
+  // Synchronize quick group bar buttons disabled state
+  const groupBar = document.getElementById('quick-group-bar');
+  if (groupBar) {
+    const isQuick = Boolean(AppState.quickScoringMode);
+    const disabledHint = isQuick ? (t('quick_scoring_groups_disabled_hint') || '快速加減分模式下無法選擇小組') : '';
+    const groupButtons = groupBar.querySelectorAll('button');
+    groupButtons.forEach(b => {
+      b.disabled = isQuick;
+      if (isQuick) {
+        b.setAttribute('title', disabledHint);
+      } else {
+        b.removeAttribute('title');
+      }
+    });
   }
 }
 
@@ -3081,13 +3146,31 @@ async function loadDashboardData(force = false) {
         const allGrid = document.getElementById('all-students-score-grid');
         const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
         if (indContainer) {
-          indContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px; font-weight: 600;">${t('dash_range_prompt_ind')}</div>`;
+          indContainer.innerHTML = `
+            <div class="proj-range-waiting-card" style="padding: 36px 20px;">
+              <div class="proj-range-waiting-icon" style="font-size: 2.6rem;">🏆</div>
+              <div class="proj-range-waiting-title" style="color: var(--text-main); font-size: 1.1rem;">${t('dash_range_prompt_ind')}</div>
+              <div class="proj-range-waiting-desc">可直接選擇日期或點擊快捷標籤（近 7 天、近 30 天、本月）</div>
+            </div>
+          `;
         }
         if (grpContainer) {
-          grpContainer.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px; font-weight: 600;">${t('dash_range_prompt_grp')}</div>`;
+          grpContainer.innerHTML = `
+            <div class="proj-range-waiting-card" style="padding: 36px 20px;">
+              <div class="proj-range-waiting-icon" style="font-size: 2.6rem;">🚩</div>
+              <div class="proj-range-waiting-title" style="color: var(--text-main); font-size: 1.1rem;">${t('dash_range_prompt_grp')}</div>
+              <div class="proj-range-waiting-desc">可直接選擇日期或點擊快捷標籤（近 7 天、近 30 天、本月）</div>
+            </div>
+          `;
         }
         if (allGrid) {
-          allGrid.innerHTML = `<div style="text-align: center; color: var(--text-muted); padding: 30px; grid-column: 1 / -1; font-weight: 600;">${t('dash_range_prompt_all')}</div>`;
+          allGrid.innerHTML = `
+            <div class="proj-range-waiting-card" style="padding: 36px 20px; grid-column: 1 / -1;">
+              <div class="proj-range-waiting-icon" style="font-size: 2.6rem;">📋</div>
+              <div class="proj-range-waiting-title" style="color: var(--text-main); font-size: 1.1rem;">${t('dash_range_prompt_all')}</div>
+              <div class="proj-range-waiting-desc">可直接選擇日期或點擊快捷標籤（近 7 天、近 30 天、本月）</div>
+            </div>
+          `;
         }
         return;
       }
@@ -5998,6 +6081,48 @@ function initEventListeners() {
       loadDashboardData();
     });
   }
+
+  // Handle date range preset pills (近 7 天, 近 30 天, 本月) for both dashboard & projection
+  document.querySelectorAll('.proj-range-preset-pill').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const isDash = btn.dataset.target === 'dash' || btn.closest('#dashboard-range-inputs');
+      const startInput = document.getElementById(isDash ? 'dash-start-date' : 'proj-start-date');
+      const endInput = document.getElementById(isDash ? 'dash-end-date' : 'proj-end-date');
+      if (!startInput || !endInput) return;
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      let sDate;
+      const eDate = new Date();
+      if (btn.dataset.days) {
+        const days = parseInt(btn.dataset.days, 10);
+        sDate = new Date();
+        sDate.setDate(sDate.getDate() - (days - 1));
+      } else if (btn.dataset.preset === 'month') {
+        sDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+
+      if (sDate) {
+        startInput.value = toYMD(sDate);
+        endInput.value = toYMD(eDate);
+
+        // Synchronize between dash and proj
+        const otherStart = document.getElementById(isDash ? 'proj-start-date' : 'dash-start-date');
+        const otherEnd = document.getElementById(isDash ? 'proj-end-date' : 'dash-end-date');
+        if (otherStart) otherStart.value = startInput.value;
+        if (otherEnd) otherEnd.value = endInput.value;
+
+        startInput.dispatchEvent(new Event('change', { bubbles: true }));
+        endInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+        const applyBtn = document.getElementById(isDash ? 'btn-apply-dash-range' : 'btn-apply-proj-range');
+        if (applyBtn) applyBtn.click();
+      }
+    });
+  });
 
   document.getElementById('btn-open-big-screen').addEventListener('click', openBigScreenProjection);
   document.getElementById('btn-close-big-screen').addEventListener('click', closeBigScreenProjection);

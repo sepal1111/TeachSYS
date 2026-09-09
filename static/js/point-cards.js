@@ -505,7 +505,12 @@
 
   // 事件綁定
   document.addEventListener('DOMContentLoaded', () => {
-    // 1. 監聽切換至 pointcards subtab
+    // 1. 監聽切換至 pointcards tab / subtab
+    document.querySelectorAll('.nav-tab[data-tab="pointcards"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        loadPointCardsData();
+      });
+    });
     document.querySelectorAll('.admin-subtab-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         if (btn.getAttribute('data-subtab') === 'pointcards') {

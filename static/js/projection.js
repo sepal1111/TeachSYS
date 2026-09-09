@@ -463,6 +463,39 @@ function initEventListeners() {
     }
   });
 
+  // Range quick preset pills (近7天, 近30天, 本月)
+  document.querySelectorAll('#proj-range-inputs .proj-range-preset-pill').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const startInput = document.getElementById('proj-start-date');
+      const endInput = document.getElementById('proj-end-date');
+      if (!startInput || !endInput) return;
+
+      const now = new Date();
+      const pad = n => String(n).padStart(2, '0');
+      const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+      let sDate;
+      const eDate = new Date();
+      if (btn.dataset.days) {
+        const days = parseInt(btn.dataset.days, 10);
+        sDate = new Date();
+        sDate.setDate(sDate.getDate() - (days - 1));
+      } else if (btn.dataset.preset === 'month') {
+        sDate = new Date(now.getFullYear(), now.getMonth(), 1);
+      }
+
+      if (sDate) {
+        startInput.value = toYMD(sDate);
+        endInput.value = toYMD(eDate);
+        startInput.dispatchEvent(new Event('change', { bubbles: true }));
+        endInput.dispatchEvent(new Event('change', { bubbles: true }));
+        lastProjectionFingerprint = null;
+        refreshProjectionData(true);
+      }
+    });
+  });
+
   // Mode buttons
   const btnInd = document.getElementById('btn-proj-mode-individual');
   const btnGrp = document.getElementById('btn-proj-mode-group');
@@ -801,7 +834,13 @@ async function refreshProjectionData(force = false) {
           if (podiumContainer) podiumContainer.style.display = 'none';
           if (allStudentsContainer) allStudentsContainer.style.display = 'block';
           if (allGrid) {
-            allGrid.innerHTML = `<div style="color: #94a3b8; text-align: center; padding: 40px; grid-column: 1 / -1; font-size: 1.15rem; font-weight: 700;">${t('proj_range_prompt_all')}</div>`;
+            allGrid.innerHTML = `
+              <div class="proj-range-waiting-card">
+                <div class="proj-range-waiting-icon">📅</div>
+                <div class="proj-range-waiting-title">${t('proj_range_prompt_all')}</div>
+                <div class="proj-range-waiting-desc">可直接點選上方日期輸入框，或使用「近 7 天」、「近 30 天」、「本月」快捷鍵立即查詢</div>
+              </div>
+            `;
           }
         } else {
           if (podiumContainer) podiumContainer.style.display = 'flex';
@@ -832,7 +871,13 @@ async function refreshProjectionData(force = false) {
             `;
           }
           if (runnerList) {
-            runnerList.innerHTML = `<div style="color: #94a3b8; text-align: center; padding: 30px; grid-column: 1 / -1; font-weight: 600; font-size: 1.05rem;">${t('proj_range_prompt_podium')}</div>`;
+            runnerList.innerHTML = `
+              <div class="proj-range-waiting-card">
+                <div class="proj-range-waiting-icon">🏆</div>
+                <div class="proj-range-waiting-title">${t('proj_range_prompt_podium')}</div>
+                <div class="proj-range-waiting-desc">可直接點選上方日期輸入框，或使用「近 7 天」、「近 30 天」、「本月」快捷鍵立即查詢</div>
+              </div>
+            `;
           }
         }
         return;

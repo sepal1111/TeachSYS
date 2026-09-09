@@ -65,7 +65,7 @@
   <nav class="nav-tabs-wrapper context-nav-wrapper">
     <!-- Desktop/Tablet Context Scenario Navigation -->
     <div class="context-nav-container desktop-nav-tabs">
-      <!-- Tier 1: Three Primary Scenario Mode Pills -->
+      <!-- Tier 1: Four Primary Scenario Mode Pills -->
       <div class="context-scenario-pills" role="tablist" aria-label="教學情境切換">
         <button type="button" class="scenario-pill active" data-context="live" id="pill-context-live">
           <span class="scenario-text" data-i18n="nav_context_live">⚡ 課堂即時</span>
@@ -74,7 +74,10 @@
           <span class="scenario-text" data-i18n="nav_context_logs">📖 學習歷程</span>
         </button>
         <button type="button" class="scenario-pill" data-context="manage" id="pill-context-manage">
-          <span class="scenario-text" data-i18n="nav_context_manage">⚙️ 班級管理</span>
+          <span class="scenario-text" data-i18n="nav_context_manage">🏫 班級管理</span>
+        </button>
+        <button type="button" class="scenario-pill" data-context="admin" id="pill-context-admin">
+          <span class="scenario-text" data-i18n="nav_context_admin">⚙️ 系統與後台</span>
         </button>
       </div>
 
@@ -100,7 +103,17 @@
         <div class="context-subtab-group" data-context="manage" id="subtabs-group-manage" style="display: none;">
           <button class="nav-tab" data-tab="seating">🪑 座位表編排</button>
           <button class="nav-tab" data-tab="grouping">🧩 彈性分組</button>
-          <button class="nav-tab" data-tab="admin">⚙️ 系統與後台</button>
+          <button class="nav-tab" data-tab="students">👨‍🎓 學生名冊管理</button>
+          <button class="nav-tab" data-tab="rules">🎯 評分項目設定</button>
+          <button class="nav-tab" data-tab="reports">📊 報表資料匯出</button>
+          <button class="nav-tab" data-tab="rewards">🎁 獎勵兌換管理</button>
+        </div>
+
+        <!-- Subtabs for "System & Admin" (系統與後台) -->
+        <div class="context-subtab-group" data-context="admin" id="subtabs-group-admin" style="display: none;">
+          <button class="nav-tab" data-tab="pointcards">🎫 實體點數卡管理</button>
+          <button class="nav-tab" data-tab="appearance">🖼️ 標誌設定</button>
+          <button class="nav-tab" data-tab="security">🔐 密碼安全與手冊</button>
         </div>
       </div>
     </div>
@@ -110,7 +123,8 @@
       <div class="mobile-scenario-pills">
         <button type="button" class="mobile-scenario-btn active" data-context="live" data-i18n="nav_context_live">⚡ 課堂即時</button>
         <button type="button" class="mobile-scenario-btn" data-context="logs" data-i18n="nav_context_logs">📖 學習歷程</button>
-        <button type="button" class="mobile-scenario-btn" data-context="manage" data-i18n="nav_context_manage">⚙️ 班級管理</button>
+        <button type="button" class="mobile-scenario-btn" data-context="manage" data-i18n="nav_context_manage">🏫 班級管理</button>
+        <button type="button" class="mobile-scenario-btn" data-context="admin" data-i18n="nav_context_admin">⚙️ 系統與後台</button>
       </div>
 
       <div style="display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 6px;">
@@ -128,10 +142,18 @@
             <option value="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</option>
             <option value="materials" data-i18n="nav_materials">📚 課程素材(LMS)</option>
           </optgroup>
-          <optgroup label="⚙️ 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
+          <optgroup label="🏫 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
             <option value="seating">🪑 座位表編排</option>
             <option value="grouping">🧩 彈性分組</option>
-            <option value="admin">⚙️ 系統與後台</option>
+            <option value="students">👨‍🎓 學生名冊管理</option>
+            <option value="rules">🎯 評分項目設定</option>
+            <option value="reports">📊 報表資料匯出</option>
+            <option value="rewards">🎁 獎勵兌換管理</option>
+          </optgroup>
+          <optgroup label="⚙️ 系統與後台 (System & Admin)" data-i18n-label="nav_context_admin">
+            <option value="pointcards">🎫 實體點數卡管理</option>
+            <option value="appearance">🖼️ 標誌設定</option>
+            <option value="security">🔐 密碼安全與手冊</option>
           </optgroup>
         </select>
       </div>
@@ -527,12 +549,19 @@
           </div>
         </div>
 
-        <div id="dashboard-range-inputs" style="display: none; gap: 12px; align-items: center; margin-bottom: 16px; background: rgba(0,0,0,0.06); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
-          <label style="font-size: 0.9rem; font-weight: 700;" data-i18n="dash_range_label">自訂日期範圍：</label>
-          <input type="date" id="dash-start-date" class="input-control" style="width: auto;">
-          <span>~</span>
-          <input type="date" id="dash-end-date" class="input-control" style="width: auto;">
-          <button id="btn-apply-dash-range" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="dash_btn_apply_range">套用範圍</button>
+        <div id="dashboard-range-inputs" class="dash-range-bar" style="display: none;">
+          <label class="dash-range-label" data-i18n="dash_range_label">📅 自訂日期範圍：</label>
+          <div class="dash-range-dates-wrap">
+            <input type="date" id="dash-start-date" class="proj-date-input">
+            <span class="proj-range-sep">至</span>
+            <input type="date" id="dash-end-date" class="proj-date-input">
+          </div>
+          <div class="proj-range-presets" role="group" aria-label="快捷日期範圍">
+            <button type="button" class="proj-range-preset-pill" data-target="dash" data-days="7" data-i18n="proj_preset_7d">近 7 天</button>
+            <button type="button" class="proj-range-preset-pill" data-target="dash" data-days="30" data-i18n="proj_preset_30d">近 30 天</button>
+            <button type="button" class="proj-range-preset-pill" data-target="dash" data-preset="month" data-i18n="proj_preset_this_month">本月</button>
+          </div>
+          <button type="button" id="btn-apply-dash-range" class="btn btn-secondary btn-apply-range" data-i18n="dash_btn_apply_range">套用範圍</button>
         </div>
 
         <!-- Mode Toggle Buttons: 個人排行 vs 小組排行 vs 座號總覽 -->
@@ -868,21 +897,9 @@
       </div>
     </section>
 
-    <!-- 8. 系統與後台 Pane -->
-    <section id="pane-admin" class="tab-pane">
-      <!-- Admin Sub-Navigation Mode Switcher (後台分類切換按鈕列) -->
-      <div class="admin-subnav-bar" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; padding: 6px; background: var(--input-bg); border-radius: var(--radius-xl); border: 1.5px solid var(--card-border); box-shadow: var(--shadow-xs);">
-        <button class="btn admin-subtab-btn active" data-subtab="students" data-i18n="admin_subtab_students" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🧑‍🎓 學生名冊管理</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="rules" data-i18n="admin_subtab_rules" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎯 評分項目設定</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="reports" data-i18n="admin_subtab_reports" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">📊 報表資料匯出</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="appearance" data-i18n="admin_subtab_appearance" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🖼️ 標誌設定</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="pointcards" data-i18n="admin_subtab_pointcards" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎫 實體點數卡管理</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="rewards" data-i18n="admin_subtab_rewards" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🎁 獎勵兌換管理</button>
-        <button class="btn btn-secondary admin-subtab-btn" data-subtab="security" data-i18n="admin_subtab_security" style="font-size: 0.92rem; padding: 8px 18px; border-radius: var(--radius-lg);">🔐 密碼安全與手冊</button>
-      </div>
-
-      <!-- 1. 學生名冊管理 Subpane (預設顯示) -->
-      <div id="admin-subpane-students" class="admin-subpane active">
+    <!-- 8. 學生名冊管理 Pane (歸屬班級管理) -->
+    <section id="pane-students" class="tab-pane">
+      <div id="admin-subpane-students" class="admin-subpane">
         <!-- Student List & Management Card (學生名單編輯與管理) -->
         <div class="glass-card">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
@@ -927,9 +944,11 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- 2. 評分項目設定 Subpane -->
-      <div id="admin-subpane-rules" class="admin-subpane" style="display: none;">
+    <!-- 9. 評分項目設定 Pane (歸屬班級管理) -->
+    <section id="pane-rules" class="tab-pane">
+      <div id="admin-subpane-rules" class="admin-subpane">
         <div class="glass-card">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="glass-card-title" data-i18n="admin_rules_title">⚙️ 評分項目與分數自訂管理</div>
@@ -943,9 +962,11 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- 3. 報表資料匯出 Subpane -->
-      <div id="admin-subpane-reports" class="admin-subpane" style="display: none;">
+    <!-- 10. 報表資料匯出 Pane (歸屬班級管理) -->
+    <section id="pane-reports" class="tab-pane">
+      <div id="admin-subpane-reports" class="admin-subpane">
         <div class="glass-card">
           <div class="glass-card-header">
             <div class="glass-card-title" data-i18n="admin_reports_title">📊 匯出資料報表 (Excel)</div>
@@ -962,76 +983,102 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- 4. 標誌與外觀主題 Subpane -->
-      <div id="admin-subpane-appearance" class="admin-subpane" style="display: none;">
-        <!-- Logo & Favicon Customization Card -->
-        <div class="glass-card">
+    <!-- 11. 獎勵兌換管理 Pane (歸屬班級管理) -->
+    <section id="pane-rewards" class="tab-pane">
+      <div id="admin-subpane-rewards" class="admin-subpane">
+        <!-- Overview Stat Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_total_items">🎁 上架獎勵項目</div>
+            <div id="reward-stat-total-items" style="font-size: 2rem; font-weight: 900; color: var(--primary);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_pending">⏳ 待審核/待發放申請</div>
+            <div id="reward-stat-pending" style="font-size: 2rem; font-weight: 900; color: var(--accent-warning);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_completed">🎉 累計已完成兌換</div>
+            <div id="reward-stat-completed" style="font-size: 2rem; font-weight: 900; color: var(--accent-positive);">0</div>
+          </div>
+        </div>
+
+        <!-- 獎勵功能二級標籤切換 -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1.5px solid var(--card-border); padding-bottom: 10px;">
+          <button type="button" id="btn-rewards-tab-items" class="btn active" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="reward_tab_items">🎁 獎勵品項管理</button>
+          <button type="button" id="btn-rewards-tab-redemptions" class="btn btn-secondary" style="font-size: 0.88rem; padding: 6px 16px;"><span data-i18n="reward_tab_redemptions">📋 學生實體兌換審核台</span> <span id="badge-redemption-pending-count" class="badge" style="display:none; background:var(--accent-negative); color:#fff; border-radius:10px; padding:1px 6px; font-size:0.75rem; margin-left:4px;">0</span></button>
+        </div>
+
+        <!-- 二級頁籤 A: 獎勵品項管理 -->
+        <div id="rewards-panel-items" class="glass-card">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="glass-card-title" data-i18n="admin_appearance_title">🖼️ 學校 / 班級 Logo 與 Favicon 自訂設定</div>
-          </div>
-          <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); margin-bottom: 16px;" data-i18n-html="admin_logo_desc">
-            可上傳您學校的專屬校徽或班級 Logo（支援 <b>PNG</b>、<b>JPG</b> 或 <b>SVG</b> 格式），系統頂部標誌、登入畫面與瀏覽器分頁圖示 (Favicon) 將同步即時替換。
-          </div>
-          
-          <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
-            <div style="width: 72px; height: 72px; border-radius: var(--radius-lg); background: var(--input-bg); border: 1.5px solid var(--card-border); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 6px;">
-              <img id="admin-logo-preview" src="/api/system/logo" alt="Logo Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <div class="glass-card-title" data-i18n="reward_panel_items_title">🎁 獎勵品項清單（虛擬徽章、特殊圖卡、實體獎品）</div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btn-open-add-reward-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="reward_btn_add_item">➕ 新增獎勵品項</button>
             </div>
-            <div style="display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 250px;">
-              <div class="custom-file-wrap" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                <label class="btn btn-secondary custom-file-btn" style="font-size: 0.85rem; padding: 7px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0;">
-                  <span data-i18n="file_choose_btn">📁 選擇檔案</span>
-                  <input type="file" id="logo-file-input" accept="image/png, image/jpeg, image/svg+xml" style="display: none;">
-                </label>
-                <span class="custom-file-name" data-i18n="file_none_chosen" style="font-size: 0.85rem; color: var(--text-muted);">未選擇任何檔案</span>
-              </div>
-              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <button id="btn-upload-logo" class="btn" style="font-size: 0.88rem; padding: 7px 16px;" data-i18n="admin_btn_upload_logo">💾 上傳更換 Logo / Favicon</button>
-                <button id="btn-reset-logo" class="btn btn-secondary" style="font-size: 0.88rem; padding: 7px 16px;" data-i18n="admin_btn_reset_logo">🔄 恢復系統預設 Logo</button>
+          </div>
+
+          <!-- 篩選列 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_type_label">類型篩選：</span>
+              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                <button type="button" class="btn btn-secondary btn-reward-filter-type active" data-type="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_filter_all">全部</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="badge" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_badge">🏅 榮譽徽章</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="collectible_card" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_collectible_card">🎴 特殊圖卡</button>
+                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="physical" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_physical">🎁 實體獎品</button>
               </div>
             </div>
+          </div>
+
+          <!-- 獎勵品項卡片網格 -->
+          <div id="reward-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
+            <!-- JS dynamically injects items -->
+          </div>
+          <div id="reward-items-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_items_empty_hint">
+            目前尚未建立任何獎勵品項，點擊上方「➕ 新增獎勵品項」開始設定吧！
           </div>
         </div>
 
-      </div>
-
-      <!-- 5. 密碼安全與手冊 Subpane -->
-      <div id="admin-subpane-security" class="admin-subpane" style="display: none;">
-        <!-- Teacher Operation Manual Card -->
-        <div class="glass-card" style="background: linear-gradient(135deg, rgba(91, 124, 214, 0.08), rgba(149, 117, 196, 0.08)); border-color: rgba(123, 152, 224, 0.3);">
+        <!-- 二級頁籤 B: 學生實體兌換審核台 -->
+        <div id="rewards-panel-redemptions" class="glass-card" style="display: none;">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="glass-card-title" data-i18n="admin_manual_title">📖 教師系統操作指南與使用手冊</div>
-            <a href="/guide" target="_blank" class="btn" style="text-decoration: none; font-size: 0.88rem; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;" data-i18n="admin_btn_open_guide">
-              📚 開啟完整操作說明網頁
-            </a>
-          </div>
-          <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text-main);" data-i18n="admin_manual_desc">
-            包含「3 步驟快速上手、即時評分、5 大出缺席假別、座位拖曳與梅花座編排、彈性分組、質性影音筆記、大螢幕奧運頒獎台投影」等全功能詳細步驟圖文說明。
-          </div>
-        </div>
-
-        <!-- System Password Management Card -->
-        <div class="glass-card">
-          <div class="glass-card-header">
-            <div class="glass-card-title" data-i18n="admin_security_title">🔐 系統權限與密碼字頭設定</div>
-          </div>
-          <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); margin-bottom: 14px;" data-i18n-html="admin_security_desc">
-            密碼公式為「<b>密碼字頭</b>」+「<b>當天的月日 (例: 0822)</b>」。預設字頭為 <code>Admin</code>（今日預設密碼為 <b>Admin + MMDD</b>）。<br>
-            <span style="color: var(--text-muted); font-size: 0.85rem;">💡 同一瀏覽器驗證通過後當天有效，隔天自動再次要求驗證。字頭長度須至少為 4 碼。</span>
+            <div class="glass-card-title" data-i18n="reward_panel_redemptions_title">📋 學生實體兌換審核與發放台</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="reward_panel_redemptions_subtitle">
+              實體兌換採三階段安全流程：學生提出申請 ➔ 教師核准（暫時預扣點數） ➔ 確認拿取（真實扣點）
+            </div>
           </div>
 
-          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: 520px; margin-bottom: 12px;">
-            <input type="password" id="admin-current-password-input" class="input-control" placeholder="輸入目前驗證密碼" style="flex: 1; min-width: 160px;" data-i18n-placeholder="admin_current_password_placeholder">
-            <input type="text" id="admin-new-prefix-input" class="input-control" placeholder="新的字頭 (至少4碼，例: Admin)" style="flex: 1; min-width: 160px;" data-i18n-placeholder="admin_new_prefix_placeholder">
-            <button id="btn-save-password-prefix" class="btn" data-i18n="admin_btn_save_prefix">💾 儲存修改字頭</button>
+          <!-- 審核狀態篩選 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_status_label">審核進度：</span>
+              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                <button type="button" class="btn btn-secondary btn-redemption-filter active" data-status="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_status_filter_all">全部</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="requested" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_requested">📌 待審核</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="approved_held" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_approved_held">⏳ 待領取 (預扣中)</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="completed" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_completed">✅ 已完成發放</button>
+                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="rejected" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_rejected">❌ 已駁回/取消</button>
+              </div>
+            </div>
+            <button type="button" id="btn-refresh-redemptions" class="btn btn-secondary" style="font-size: 0.82rem; padding: 5px 12px;" data-i18n="reward_btn_refresh">🔄 重新整理</button>
           </div>
-          <button id="btn-admin-logout" class="btn btn-danger" style="font-size: 0.88rem; padding: 6px 14px;" data-i18n="admin_btn_logout">🚪 登出系統（清除此瀏覽器驗證）</button>
+
+          <!-- 兌換紀錄列表 -->
+          <div id="redemptions-list-container">
+            <!-- JS dynamically injects redemptions -->
+          </div>
+          <div id="redemptions-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_redemptions_empty_hint">
+            目前沒有符合條件的兌換紀錄。
+          </div>
         </div>
       </div>
+    </section>
 
-      <!-- 6. 實體點數卡管理 Subpane -->
-      <div id="admin-subpane-pointcards" class="admin-subpane" style="display: none;">
+    <!-- 12. 實體點數卡管理 Pane (歸屬系統與後台) -->
+    <section id="pane-pointcards" class="tab-pane">
+      <div id="admin-subpane-pointcards" class="admin-subpane">
         <!-- Overview Stat Cards -->
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
           <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
@@ -1121,93 +1168,74 @@
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- 7. 獎勵兌換管理 Subpane -->
-      <div id="admin-subpane-rewards" class="admin-subpane" style="display: none;">
-        <!-- Overview Stat Cards -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
-          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_total_items">🎁 上架獎勵項目</div>
-            <div id="reward-stat-total-items" style="font-size: 2rem; font-weight: 900; color: var(--primary);">0</div>
-          </div>
-          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_pending">⏳ 待審核/待發放申請</div>
-            <div id="reward-stat-pending" style="font-size: 2rem; font-weight: 900; color: var(--accent-warning);">0</div>
-          </div>
-          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
-            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="reward_stat_completed">🎉 累計已完成兌換</div>
-            <div id="reward-stat-completed" style="font-size: 2rem; font-weight: 900; color: var(--accent-positive);">0</div>
-          </div>
-        </div>
-
-        <!-- 獎勵功能二級標籤切換 -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1.5px solid var(--card-border); padding-bottom: 10px;">
-          <button type="button" id="btn-rewards-tab-items" class="btn active" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="reward_tab_items">🎁 獎勵品項管理</button>
-          <button type="button" id="btn-rewards-tab-redemptions" class="btn btn-secondary" style="font-size: 0.88rem; padding: 6px 16px;"><span data-i18n="reward_tab_redemptions">📋 學生實體兌換審核台</span> <span id="badge-redemption-pending-count" class="badge" style="display:none; background:var(--accent-negative); color:#fff; border-radius:10px; padding:1px 6px; font-size:0.75rem; margin-left:4px;">0</span></button>
-        </div>
-
-        <!-- 二級頁籤 A: 獎勵品項管理 -->
-        <div id="rewards-panel-items" class="glass-card">
+    <!-- 13. 標誌設定 Pane (歸屬系統與後台) -->
+    <section id="pane-appearance" class="tab-pane">
+      <div id="admin-subpane-appearance" class="admin-subpane">
+        <!-- Logo & Favicon Customization Card -->
+        <div class="glass-card">
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="glass-card-title" data-i18n="reward_panel_items_title">🎁 獎勵品項清單（虛擬徽章、特殊圖卡、實體獎品）</div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button type="button" id="btn-open-add-reward-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="reward_btn_add_item">➕ 新增獎勵品項</button>
-            </div>
+            <div class="glass-card-title" data-i18n="admin_appearance_title">🖼️ 學校 / 班級 Logo 與 Favicon 自訂設定</div>
           </div>
-
-          <!-- 篩選列 -->
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
-            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_type_label">類型篩選：</span>
-              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
-                <button type="button" class="btn btn-secondary btn-reward-filter-type active" data-type="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_filter_all">全部</button>
-                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="badge" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_badge">🏅 榮譽徽章</button>
-                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="collectible_card" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_collectible_card">🎴 特殊圖卡</button>
-                <button type="button" class="btn btn-secondary btn-reward-filter-type" data-type="physical" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_filter_physical">🎁 實體獎品</button>
+          <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); margin-bottom: 16px;" data-i18n-html="admin_logo_desc">
+            可上傳您學校的專屬校徽或班級 Logo（支援 <b>PNG</b>、<b>JPG</b> 或 <b>SVG</b> 格式），系統頂部標誌、登入畫面與瀏覽器分頁圖示 (Favicon) 將同步即時替換。
+          </div>
+          
+          <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+            <div style="width: 72px; height: 72px; border-radius: var(--radius-lg); background: var(--input-bg); border: 1.5px solid var(--card-border); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 6px;">
+              <img id="admin-logo-preview" src="/api/system/logo" alt="Logo Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 250px;">
+              <div class="custom-file-wrap" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <label class="btn btn-secondary custom-file-btn" style="font-size: 0.85rem; padding: 7px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                  <span data-i18n="file_choose_btn">📁 選擇檔案</span>
+                  <input type="file" id="logo-file-input" accept="image/png, image/jpeg, image/svg+xml" style="display: none;">
+                </label>
+                <span class="custom-file-name" data-i18n="file_none_chosen" style="font-size: 0.85rem; color: var(--text-muted);">未選擇任何檔案</span>
+              </div>
+              <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <button id="btn-upload-logo" class="btn" style="font-size: 0.88rem; padding: 7px 16px;" data-i18n="admin_btn_upload_logo">💾 上傳更換 Logo / Favicon</button>
+                <button id="btn-reset-logo" class="btn btn-secondary" style="font-size: 0.88rem; padding: 7px 16px;" data-i18n="admin_btn_reset_logo">🔄 恢復系統預設 Logo</button>
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
 
-          <!-- 獎勵品項卡片網格 -->
-          <div id="reward-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px;">
-            <!-- JS dynamically injects items -->
+    <!-- 14. 密碼安全與手冊 Pane (歸屬系統與後台) -->
+    <section id="pane-security" class="tab-pane">
+      <div id="admin-subpane-security" class="admin-subpane">
+        <!-- Teacher Operation Manual Card -->
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(91, 124, 214, 0.08), rgba(149, 117, 196, 0.08)); border-color: rgba(123, 152, 224, 0.3);">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title" data-i18n="admin_manual_title">📖 教師系統操作指南與使用手冊</div>
+            <a href="/guide" target="_blank" class="btn" style="text-decoration: none; font-size: 0.88rem; padding: 7px 16px; display: inline-flex; align-items: center; gap: 6px;" data-i18n="admin_btn_open_guide">
+              📚 開啟完整操作說明網頁
+            </a>
           </div>
-          <div id="reward-items-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_items_empty_hint">
-            目前尚未建立任何獎勵品項，點擊上方「➕ 新增獎勵品項」開始設定吧！
+          <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text-main);" data-i18n="admin_manual_desc">
+            包含「3 步驟快速上手、即時評分、5 大出缺席假別、座位拖曳與梅花座編排、彈性分組、質性影音筆記、大螢幕奧運頒獎台投影」等全功能詳細步驟圖文說明。
           </div>
         </div>
 
-        <!-- 二級頁籤 B: 學生實體兌換審核台 -->
-        <div id="rewards-panel-redemptions" class="glass-card" style="display: none;">
-          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
-            <div class="glass-card-title" data-i18n="reward_panel_redemptions_title">📋 學生實體兌換審核與發放台</div>
-            <div style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="reward_panel_redemptions_subtitle">
-              實體兌換採三階段安全流程：學生提出申請 ➔ 教師核准（暫時預扣點數） ➔ 確認拿取（真實扣點）
-            </div>
+        <!-- System Password Management Card -->
+        <div class="glass-card">
+          <div class="glass-card-header">
+            <div class="glass-card-title" data-i18n="admin_security_title">🔐 系統權限與密碼字頭設定</div>
+          </div>
+          <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main); margin-bottom: 14px;" data-i18n-html="admin_security_desc">
+            密碼公式為「<b>密碼字頭</b>」+「<b>當天的月日 (例: 0822)</b>」。預設字頭為 <code>Admin</code>（今日預設密碼為 <b>Admin + MMDD</b>）。<br>
+            <span style="color: var(--text-muted); font-size: 0.85rem;">💡 同一瀏覽器驗證通過後當天有效，隔天自動再次要求驗證。字頭長度須至少為 4 碼。</span>
           </div>
 
-          <!-- 審核狀態篩選 -->
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 12px 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1px solid var(--card-border);">
-            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="reward_filter_status_label">審核進度：</span>
-              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
-                <button type="button" class="btn btn-secondary btn-redemption-filter active" data-status="all" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none;" data-i18n="reward_status_filter_all">全部</button>
-                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="requested" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_requested">📌 待審核</button>
-                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="approved_held" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_approved_held">⏳ 待領取 (預扣中)</button>
-                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="completed" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_completed">✅ 已完成發放</button>
-                <button type="button" class="btn btn-secondary btn-redemption-filter" data-status="rejected" style="font-size: 0.8rem; padding: 5px 12px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="reward_status_filter_rejected">❌ 已駁回/取消</button>
-              </div>
-            </div>
-            <button type="button" id="btn-refresh-redemptions" class="btn btn-secondary" style="font-size: 0.82rem; padding: 5px 12px;" data-i18n="reward_btn_refresh">🔄 重新整理</button>
+          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; max-width: 520px; margin-bottom: 12px;">
+            <input type="password" id="admin-current-password-input" class="input-control" placeholder="輸入目前驗證密碼" style="flex: 1; min-width: 160px;" data-i18n-placeholder="admin_current_password_placeholder">
+            <input type="text" id="admin-new-prefix-input" class="input-control" placeholder="新的字頭 (至少4碼，例: Admin)" style="flex: 1; min-width: 160px;" data-i18n-placeholder="admin_new_prefix_placeholder">
+            <button id="btn-save-password-prefix" class="btn" data-i18n="admin_btn_save_prefix">💾 儲存修改字頭</button>
           </div>
-
-          <!-- 兌換紀錄列表 -->
-          <div id="redemptions-list-container">
-            <!-- JS dynamically injects redemptions -->
-          </div>
-          <div id="redemptions-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_redemptions_empty_hint">
-            目前沒有符合條件的兌換紀錄。
-          </div>
+          <button id="btn-admin-logout" class="btn btn-danger" style="font-size: 0.88rem; padding: 6px 14px;" data-i18n="admin_btn_logout">🚪 登出系統（清除此瀏覽器驗證）</button>
         </div>
       </div>
     </section>
@@ -1600,12 +1628,19 @@
     </div>
 
     <!-- Projection Custom Range Input Bar (大螢幕自訂日期欄位，當選擇指定區間時顯示) -->
-    <div id="proj-range-inputs" style="display: none; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: rgba(30, 41, 59, 0.95); border-radius: var(--radius-lg); margin-bottom: 15px; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
-      <label style="font-size: 0.92rem; font-weight: 700; color: #cbd5e1;" data-i18n="proj_range_label">📅 投影自訂日期：</label>
-      <input type="date" id="proj-start-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
-      <span style="color: #94a3b8; font-weight: bold;">~</span>
-      <input type="date" id="proj-end-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
-      <button id="btn-apply-proj-range" class="btn" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="proj_range_apply_btn">套用區間</button>
+    <div id="proj-range-inputs" class="proj-range-bar">
+      <label class="proj-range-label" data-i18n="proj_range_label">📅 投影自訂日期：</label>
+      <div class="proj-range-dates-wrap">
+        <input type="date" id="proj-start-date" class="proj-date-input">
+        <span class="proj-range-sep">至</span>
+        <input type="date" id="proj-end-date" class="proj-date-input">
+      </div>
+      <div class="proj-range-presets" role="group" aria-label="快捷日期區間">
+        <button type="button" class="proj-range-preset-pill" data-days="7" data-i18n="proj_preset_7d">近 7 天</button>
+        <button type="button" class="proj-range-preset-pill" data-days="30" data-i18n="proj_preset_30d">近 30 天</button>
+        <button type="button" class="proj-range-preset-pill" data-preset="month" data-i18n="proj_preset_this_month">本月</button>
+      </div>
+      <button type="button" id="btn-apply-proj-range" class="btn btn-apply-range" data-i18n="proj_range_apply_btn">套用區間</button>
     </div>
 
     <!-- 1. 原有榮譽榜 Podium & List Container (頒獎台 + 名次清單，個人排行與小組排行使用) -->

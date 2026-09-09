@@ -36,12 +36,21 @@
       'tab_journal': '📓 教學日誌',
       'tab_dashboard': '📊 儀表板與排行榜',
       'tab_admin': '⚙️ 系統與後台',
+      'tab_students': '👨‍🎓 學生名冊管理',
+      'tab_rules': '🎯 評分項目設定',
+      'tab_reports': '📊 報表資料匯出',
+      'tab_rewards': '🎁 獎勵兌換管理',
+      'tab_pointcards': '🎫 實體點數卡管理',
+      'tab_appearance': '🖼️ 標誌設定',
+      'tab_security': '🔐 密碼安全與手冊',
       'nav_context_live': '⚡ 課堂即時',
       'nav_context_logs': '📖 學習歷程',
-      'nav_context_manage': '⚙️ 班級管理',
+      'nav_context_manage': '🏫 班級管理',
+      'nav_context_admin': '⚙️ 系統與後台',
       'nav_context_live_sub': '課堂即時互動與評分',
       'nav_context_logs_sub': '學習歷程與教學回顧',
-      'nav_context_manage_sub': '座位分組與系統設定',
+      'nav_context_manage_sub': '座位分組與名冊規則',
+      'nav_context_admin_sub': '點數卡、標誌與密碼安全',
       'mobile_nav_label': '🧭 選擇功能：',
 
       // 1. 即時評分
@@ -74,6 +83,7 @@
       'quick_scoring_off': '快速加減分：關閉',
       'quick_scoring_pending_suffix': '（{count}人待計入）',
       'quick_scoring_saved_toast': '已成功計入 {count} 位學生的快速加減分！',
+      'quick_scoring_groups_disabled_hint': '快速加減分模式下無法選擇小組',
       'scoring_hint_quick': '💡 快速加減分暫存中：點擊 ➕ / ➖ 調整分數，關閉模式時將自動計入總分',
       'scoring_hint_normal': '💡 點擊學生卡片跳出選單評分',
       'btn_select_all': '全選',
@@ -373,6 +383,9 @@
       'proj_fullscreen_exit': '✕ 退出全螢幕',
       'proj_range_label': '📅 投影自訂日期：',
       'proj_range_apply_btn': '套用區間',
+      'proj_preset_7d': '近 7 天',
+      'proj_preset_30d': '近 30 天',
+      'proj_preset_this_month': '本月',
       'proj_range_prompt_all': '📅 請於上方選擇開始與結束日期，並點擊「套用區間」查詢座號成績',
       'proj_range_prompt_podium': '📅 請於上方選擇開始與結束日期，並點擊「套用區間」查詢排行榜',
       'proj_runners_up_title': '🏅 榮譽榜單其他名次',
@@ -766,12 +779,21 @@
       'tab_journal': '📓 Lesson Journal',
       'tab_dashboard': '📊 Leaderboard',
       'tab_admin': '⚙️ Admin Settings',
+      'tab_students': '👨‍🎓 Student Roster',
+      'tab_rules': '🎯 Scoring Rules',
+      'tab_reports': '📊 Export Reports',
+      'tab_rewards': '🎁 Reward Store',
+      'tab_pointcards': '🎫 Point Cards',
+      'tab_appearance': '🖼️ School Logo',
+      'tab_security': '🔐 Password & Manual',
       'nav_context_live': '⚡ Live Teaching',
       'nav_context_logs': '📖 Learning Logs',
-      'nav_context_manage': '⚙️ Classroom Setup',
+      'nav_context_manage': '🏫 Classroom Setup',
+      'nav_context_admin': '⚙️ System & Admin',
       'nav_context_live_sub': 'Live Interaction & Scoring',
       'nav_context_logs_sub': 'Learning Logs & Analytics',
-      'nav_context_manage_sub': 'Seating, Groups & Admin',
+      'nav_context_manage_sub': 'Seating, Groups & Roster Rules',
+      'nav_context_admin_sub': 'Point Cards, Logo & Security',
       'mobile_nav_label': '🧭 Select Module:',
 
       // 1. Scoring
@@ -804,6 +826,7 @@
       'quick_scoring_off': 'Quick Scoring: OFF',
       'quick_scoring_pending_suffix': ' ({count} pending)',
       'quick_scoring_saved_toast': 'Successfully saved quick scores for {count} students!',
+      'quick_scoring_groups_disabled_hint': 'Group selection is disabled during Quick Scoring mode',
       'scoring_hint_quick': '💡 Staging points: click ➕ / ➖ to adjust, closing quick mode will commit changes',
       'scoring_hint_normal': '💡 Click student cards to open rule selection popover',
       'btn_select_all': 'Select All',
@@ -1103,6 +1126,9 @@
       'proj_fullscreen_exit': '✕ Exit Fullscreen',
       'proj_range_label': '📅 Select Projector Dates:',
       'proj_range_apply_btn': 'Apply Range',
+      'proj_preset_7d': 'Last 7 Days',
+      'proj_preset_30d': 'Last 30 Days',
+      'proj_preset_this_month': 'This Month',
       'proj_range_prompt_all': '📅 Please select start and end dates above and click "Apply Range" to view scores by number',
       'proj_range_prompt_podium': '📅 Please select start and end dates above and click "Apply Range" to view leaderboard',
       'proj_runners_up_title': '🏅 Honor Roll Runner-ups',
@@ -1645,9 +1671,17 @@
       'grouping': 'tab_grouping',
       'notes': 'tab_notes',
       'journal': 'tab_journal',
+      'paperQuiz': 'nav_paper_quiz',
       'dashboard': 'tab_dashboard',
       'toolkit': 'tab_toolkit',
       'materials': 'tab_materials',
+      'students': 'tab_students',
+      'rules': 'tab_rules',
+      'reports': 'tab_reports',
+      'rewards': 'tab_rewards',
+      'pointcards': 'tab_pointcards',
+      'appearance': 'tab_appearance',
+      'security': 'tab_security',
       'admin': 'tab_admin'
     };
 
@@ -1706,6 +1740,14 @@
     const scoreHint = document.getElementById('scoring-mode-hint');
     if (scoreHint) {
       scoreHint.textContent = isQuickOn ? t('scoring_hint_quick') : t('scoring_hint_normal');
+    }
+    const groupBarBtns = document.querySelectorAll('#quick-group-bar button');
+    if (groupBarBtns.length > 0) {
+      const hint = isQuickOn ? t('quick_scoring_groups_disabled_hint') : '';
+      groupBarBtns.forEach(b => {
+        if (isQuickOn) b.setAttribute('title', hint);
+        else b.removeAttribute('title');
+      });
     }
 
     // 5. Card Titles & Action Buttons
@@ -1831,6 +1873,13 @@
     if (btnProjGrp) btnProjGrp.textContent = t('dash_mode_group');
     const btnProjAll = document.getElementById('btn-proj-mode-all');
     if (btnProjAll) btnProjAll.textContent = t('dash_mode_all');
+
+    // 9.5 Date Range Preset Pills
+    document.querySelectorAll('.proj-range-preset-pill').forEach(btn => {
+      if (btn.dataset.days === '7') btn.textContent = t('proj_preset_7d');
+      else if (btn.dataset.days === '30') btn.textContent = t('proj_preset_30d');
+      else if (btn.dataset.preset === 'month') btn.textContent = t('proj_preset_this_month');
+    });
 
     // 10. Admin Subtabs & Toolkit Subtabs
     const adminSubtabsMap = {

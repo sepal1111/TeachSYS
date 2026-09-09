@@ -158,12 +158,19 @@
   </header>
 
   <!-- Projection Custom Range Input Bar -->
-  <div id="proj-range-inputs" style="display: none; align-items: center; justify-content: center; gap: 10px; padding: 10px 16px; background: rgba(30, 41, 59, 0.95); border-radius: var(--radius-lg); margin: 16px auto 0 auto; max-width: 600px; border: 1px solid rgba(255,255,255,0.18); box-shadow: 0 8px 24px rgba(0,0,0,0.4);">
-    <label style="font-size: 0.92rem; font-weight: 700; color: #cbd5e1;" data-i18n="proj_range_label">📅 投影自訂日期：</label>
-    <input type="date" id="proj-start-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
-    <span style="color: #94a3b8; font-weight: bold;">~</span>
-    <input type="date" id="proj-end-date" class="input-control" style="width: auto; background: #0f172a; color: #fff; border-color: #475569; padding: 6px 12px; font-size: 0.95rem;">
-    <button id="btn-apply-proj-range" class="btn" style="font-size: 0.88rem; padding: 6px 16px;" data-i18n="proj_range_apply_btn">套用區間</button>
+  <div id="proj-range-inputs" class="proj-range-bar">
+    <label class="proj-range-label" data-i18n="proj_range_label">📅 投影自訂日期：</label>
+    <div class="proj-range-dates-wrap">
+      <input type="date" id="proj-start-date" class="proj-date-input">
+      <span class="proj-range-sep">至</span>
+      <input type="date" id="proj-end-date" class="proj-date-input">
+    </div>
+    <div class="proj-range-presets" role="group" aria-label="快捷日期區間">
+      <button type="button" class="proj-range-preset-pill" data-days="7" data-i18n="proj_preset_7d">近 7 天</button>
+      <button type="button" class="proj-range-preset-pill" data-days="30" data-i18n="proj_preset_30d">近 30 天</button>
+      <button type="button" class="proj-range-preset-pill" data-preset="month" data-i18n="proj_preset_this_month">本月</button>
+    </div>
+    <button type="button" id="btn-apply-proj-range" class="btn btn-apply-range" data-i18n="proj_range_apply_btn">套用區間</button>
   </div>
 
   <!-- Main Content Container -->
