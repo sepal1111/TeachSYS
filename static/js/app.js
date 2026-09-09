@@ -18,6 +18,7 @@ const AppState = {
   dashboardViewMode: 'individual',
   projectionViewMode: 'individual',
   quickScoringMode: localStorage.getItem('quick_scoring_mode') === 'true',
+  pendingQuickScores: {},
   scoringViewMode: localStorage.getItem('scoring_view_mode') === 'seating' ? 'seating' : 'grid',
   seatingData: null
 };
@@ -561,6 +562,14 @@ function switchTab(tabName) {
 
   if (getActiveTabName() === 'paperQuiz' && typeof triggerPaperQuizAutoSave === 'function') {
     triggerPaperQuizAutoSave(true);
+  }
+
+  // Auto-commit pending quick scores if any before leaving tab
+  if (AppState.quickScoringMode && AppState.pendingQuickScores) {
+    const hasPending = Object.values(AppState.pendingQuickScores).some(s => Number(s) !== 0);
+    if (hasPending) {
+      commitPendingQuickScores();
+    }
   }
 
   // Auto-hide floating score popover & clear selection on tab switch
@@ -1179,11 +1188,71 @@ function renderQuickGroupBar() {
 
 let lastClickCoords = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 
-function toggleQuickScoringMode() {
-  AppState.quickScoringMode = !AppState.quickScoringMode;
-  localStorage.setItem('quick_scoring_mode', AppState.quickScoringMode ? 'true' : 'false');
-  updateQuickScoringToggleUI();
-  renderScoringView();
+async function toggleQuickScoringMode() {
+  if (AppState.quickScoringMode) {
+    // Closing quick scoring -> commit any pending staged scores!
+    await commitPendingQuickScores();
+    AppState.quickScoringMode = false;
+    localStorage.setItem('quick_scoring_mode', 'false');
+    updateQuickScoringToggleUI();
+    renderScoringView();
+  } else {
+    // Opening quick scoring -> enter staged mode
+    AppState.quickScoringMode = true;
+    AppState.pendingQuickScores = {};
+    AppState.selectedStudentIds.clear();
+    updateFloatingScoringDrawer();
+    localStorage.setItem('quick_scoring_mode', 'true');
+    updateQuickScoringToggleUI();
+    renderScoringView();
+  }
+}
+
+async function commitPendingQuickScores() {
+  const pending = AppState.pendingQuickScores || {};
+  const updates = Object.entries(pending)
+    .filter(([_, score]) => Number(score) !== 0)
+    .map(([sid, score]) => ({ student_id: Number(sid), score: Number(score) }));
+
+  if (updates.length === 0) {
+    AppState.pendingQuickScores = {};
+    return;
+  }
+
+  const btn = document.getElementById('btn-toggle-quick-scoring');
+  if (btn) {
+    btn.disabled = true;
+  }
+
+  try {
+    const res = await API.post(`/api/scores/${AppState.currentCourseId}/batch`, {
+      updates
+    });
+
+    AppState.pendingQuickScores = {};
+
+    const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
+    const msg = window.I18n
+      ? window.I18n.t('quick_scoring_saved_toast', { count: updates.length })
+      : `已成功計入 ${updates.length} 位學生的快速加減分！`;
+
+    if (res.undo_id) {
+      showUndoToast(res.undo_id, msg);
+    } else {
+      showToast(msg);
+    }
+
+    // Refresh student scores from server & broadcast to big screen
+    await loadScoringData();
+    notifyScoreUpdates();
+  } catch (err) {
+    console.error('Failed to commit quick scores:', err);
+    alert(`快速評分計入失敗：${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+    }
+  }
 }
 
 function updateQuickScoringToggleUI() {
@@ -1193,14 +1262,21 @@ function updateQuickScoringToggleUI() {
   const hint = document.getElementById('scoring-mode-hint');
   if (!btn) return;
 
-  const t = (key) => window.I18n ? window.I18n.t(key) : key;
+  const t = (key, p) => window.I18n ? window.I18n.t(key, p) : key;
   const isSeating = AppState.scoringViewMode === 'seating';
 
   if (AppState.quickScoringMode) {
     btn.classList.add('active');
     if (icon) icon.textContent = '⚡';
-    if (text) text.textContent = t('quick_scoring_on');
-    if (hint) hint.textContent = isSeating ? t('scoring_hint_seating_quick') : t('scoring_hint_quick');
+
+    const pendingMap = AppState.pendingQuickScores || {};
+    const pendingCount = Object.values(pendingMap).filter(v => Number(v) !== 0).length;
+    let label = t('quick_scoring_on');
+    if (pendingCount > 0) {
+      label += t('quick_scoring_pending_suffix', { count: pendingCount });
+    }
+    if (text) text.textContent = label;
+    if (hint) hint.textContent = t('scoring_hint_quick');
   } else {
     btn.classList.remove('active');
     if (icon) icon.textContent = '⚡';
@@ -1209,80 +1285,37 @@ function updateQuickScoringToggleUI() {
   }
 }
 
-async function executeDirectQuickScore(student, delta, cardElement) {
-  const isAbsent = student.is_absent;
-  const attStatus = student.today_attendance || 'present';
-  const t = (k, p) => window.I18n ? window.I18n.t(k, p) : k;
-
-  const attLabels = {
-    present: t('att_present'),
-    sick_leave: t('att_sick_leave'),
-    personal_leave: t('att_personal_leave'),
-    official_leave: t('att_official_leave'),
-    bereavement_leave: t('att_bereavement_leave'),
-    late: t('att_late')
-  };
-
-  const displayName = getStudentDisplayName(student);
-
-  if (isAbsent) {
-    const leaveLabel = attLabels[attStatus] || '缺席/請假';
-    const actionText = delta > 0 ? t('action_score_plus') : t('action_score_minus');
-    const confirmPrompt = window.I18n ? window.I18n.t('student_absent_confirm', {
-      name: displayName,
-      status: leaveLabel,
-      action: actionText
-    }) : `學生【${displayName}】今日登記為【${leaveLabel}】，確定仍要${actionText}嗎？`;
-    if (!await showConfirmModal({ icon: '⚠️', title: '出缺席狀態提醒', desc: confirmPrompt, confirmText: '仍要評分', cancelText: '取消' })) {
-      return;
-    }
+function stageQuickScore(student, delta, cardElement) {
+  if (!AppState.pendingQuickScores) {
+    AppState.pendingQuickScores = {};
   }
+  const current = Number(AppState.pendingQuickScores[student.id]) || 0;
+  const next = current + delta;
+  AppState.pendingQuickScores[student.id] = next;
 
-  const ruleTitle = delta > 0 ? '快速加分' : '快速扣分';
-  const displayRuleTitle = window.I18n ? window.I18n.getRuleDisplayTitle(ruleTitle) : ruleTitle;
-  const category = delta > 0 ? 'positive' : 'negative';
+  // Find badge in cardElement or document
+  const badge = cardElement
+    ? cardElement.querySelector(`#quick-pending-${student.id}`)
+    : document.getElementById(`quick-pending-${student.id}`);
 
-  // Trigger floating micro-animation
-  if (cardElement) {
-    const floatEl = document.createElement('div');
-    floatEl.className = `score-float-feedback ${category}`;
-    floatEl.textContent = delta > 0 ? `+${delta}` : `${delta}`;
-    cardElement.appendChild(floatEl);
-    setTimeout(() => floatEl.remove(), 750);
-  }
-
-  // Optimistically update local score
-  student.score = (student.score || 0) + delta;
-  prevStudentScoresMap[student.id] = student.score;
-  const badge = cardElement ? cardElement.querySelector(`#score-badge-${student.id}`) : null;
   if (badge) {
-    badge.textContent = `⭐ ${student.score} ${t('pts')}`;
+    if (next > 0) {
+      badge.textContent = `+${next}`;
+      badge.className = 'quick-score-pending-badge has-pending positive';
+    } else if (next < 0) {
+      badge.textContent = `${next}`;
+      badge.className = 'quick-score-pending-badge has-pending negative';
+    } else {
+      badge.textContent = '';
+      badge.className = 'quick-score-pending-badge';
+    }
+
+    badge.classList.remove('pop-animate');
+    void badge.offsetWidth;
+    badge.classList.add('pop-animate');
   }
 
-  try {
-    const res = await API.post(`/api/scores/${AppState.currentCourseId}/add`, {
-      student_ids: [student.id],
-      rule_title: ruleTitle,
-      score: delta,
-      category: category
-    });
-
-    // Trigger Toast Undo
-    const toastMsg = window.I18n ? window.I18n.t('undo_toast_single', {
-      name: `${student.student_number}號 ${displayName}`,
-      icon: '⚡',
-      rule: displayRuleTitle,
-      score: delta > 0 ? `+${delta}` : delta
-    }) : `已為【${student.student_number}號 ${displayName}】${ruleTitle} ${delta > 0 ? '+' : ''}${delta} 分`;
-
-    showUndoToast(res.undo_id, toastMsg);
-
-    // Refresh scoring data & broadcast real-time sync for big screen
-    notifyScoreUpdates();
-  } catch (err) {
-    alert(`評分失敗：${err.message}`);
-    loadScoringData();
-  }
+  updateQuickScoringToggleUI();
 }
 
 // --- Scoring View Mode Controller (Grid vs Seating) ---
@@ -1422,34 +1455,45 @@ function renderScoringStudentGrid() {
       : '';
 
     if (AppState.quickScoringMode) {
-      // Quick +/- Score Mode Layout
+      const pendingVal = (AppState.pendingQuickScores && Number(AppState.pendingQuickScores[student.id])) || 0;
+      card.className = `student-card quick-mode-card ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''}`;
       card.innerHTML = `
+        <div class="quick-score-pending-badge ${pendingVal !== 0 ? 'has-pending' : ''} ${pendingVal > 0 ? 'positive' : (pendingVal < 0 ? 'negative' : '')}" id="quick-pending-${student.id}">
+          ${pendingVal > 0 ? `+${pendingVal}` : (pendingVal < 0 ? `${pendingVal}` : '')}
+        </div>
         <div class="student-avatar gender-${student.gender}" style="overflow: hidden; padding: 0;">
           ${getStudentAvatarImgHtml(student)}
         </div>
         <div class="student-number">${numText}</div>
         <div class="student-name" title="${displayName}">${displayName}</div>
-        ${groupTagHtml}
-        <div class="quick-score-action-bar">
-          <button class="btn-quick-score minus" title="${t('btn_minus_score')}" data-student-id="${student.id}">➖</button>
-          <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score} ${scoreUnit}</div>
-          <button class="btn-quick-score plus" title="${t('btn_plus_score')}" data-student-id="${student.id}">➕</button>
+        <div class="quick-card-actions">
+          <button class="btn-quick-staged minus" title="${t('btn_minus_score')}" data-student-id="${student.id}" type="button">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+            </svg>
+          </button>
+          <button class="btn-quick-staged plus" title="${t('btn_plus_score')}" data-student-id="${student.id}" type="button">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+              <rect x="9" y="3" width="4" height="16" rx="2" fill="#887bc4" />
+            </svg>
+          </button>
         </div>
       `;
 
-      const btnMinus = card.querySelector('.btn-quick-score.minus');
+      const btnMinus = card.querySelector('.btn-quick-staged.minus');
       if (btnMinus) {
         btnMinus.addEventListener('click', (e) => {
           e.stopPropagation();
-          executeDirectQuickScore(student, -1, card);
+          stageQuickScore(student, -1, card);
         });
       }
 
-      const btnPlus = card.querySelector('.btn-quick-score.plus');
+      const btnPlus = card.querySelector('.btn-quick-staged.plus');
       if (btnPlus) {
         btnPlus.addEventListener('click', (e) => {
           e.stopPropagation();
-          executeDirectQuickScore(student, 1, card);
+          stageQuickScore(student, 1, card);
         });
       }
     } else {
@@ -1466,6 +1510,10 @@ function renderScoringStudentGrid() {
     }
 
     card.addEventListener('click', async (e) => {
+      if (AppState.quickScoringMode) {
+        // Do not trigger student selection or popup drawers in quick scoring mode
+        return;
+      }
       lastClickCoords = { x: e.clientX, y: e.clientY };
       AppState.currentScoringGroupTarget = null;
       if (isAbsent) {
@@ -1575,36 +1623,48 @@ function renderScoringSeatingView() {
           : '';
 
         if (AppState.quickScoringMode) {
+          const pendingVal = (AppState.pendingQuickScores && Number(AppState.pendingQuickScores[student.id])) || 0;
+          seatEl.className = `seat-cell scoring-seat-cell occupied quick-mode-cell ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''} ${cardFlashClass}`;
           seatEl.innerHTML = `
+            <div class="quick-score-pending-badge ${pendingVal !== 0 ? 'has-pending' : ''} ${pendingVal > 0 ? 'positive' : (pendingVal < 0 ? 'negative' : '')}" id="quick-pending-${student.id}">
+              ${pendingVal > 0 ? `+${pendingVal}` : (pendingVal < 0 ? `${pendingVal}` : '')}
+            </div>
             <div class="seat-coord-badge">(${cell.row},${cell.col})</div>
             <div style="margin-top: 2px; display: flex; justify-content: center;">
-              <div class="student-avatar gender-${student.gender}" style="width: 36px; height: 36px; margin-bottom: 2px; overflow: hidden; padding: 0;">
+              <div class="student-avatar gender-${student.gender}" style="width: 38px; height: 38px; margin-bottom: 2px; overflow: hidden; padding: 0;">
                 ${getStudentAvatarImgHtml(student)}
               </div>
             </div>
-            <div style="font-size: 0.76rem; color: var(--text-muted); font-weight: 800;">${numText}</div>
-            <div style="font-size: 0.85rem; font-weight: 800; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
-            ${groupTagHtml}
-            <div class="quick-score-action-bar">
-              <button class="btn-quick-score minus" title="${t('btn_minus_score')}" data-student-id="${student.id}">➖</button>
-              <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score || 0} ${scoreUnit}</div>
-              <button class="btn-quick-score plus" title="${t('btn_plus_score')}" data-student-id="${student.id}">➕</button>
+            <div class="student-number" style="font-size: 0.74rem; font-weight: 700; padding: 1px 6px;">${numText}</div>
+            <div class="student-name" style="font-size: 0.86rem; font-weight: 800; margin: 2px 0 6px 0; max-width: 96%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${displayName}">${displayName}</div>
+            <div class="quick-card-actions" style="gap: 4px;">
+              <button class="btn-quick-staged minus" style="height: 38px; border-radius: 10px;" title="${t('btn_minus_score')}" data-student-id="${student.id}" type="button">
+                <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                  <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+                </svg>
+              </button>
+              <button class="btn-quick-staged plus" style="height: 38px; border-radius: 10px;" title="${t('btn_plus_score')}" data-student-id="${student.id}" type="button">
+                <svg width="18" height="18" viewBox="0 0 22 22" fill="none">
+                  <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+                  <rect x="9" y="3" width="4" height="16" rx="2" fill="#887bc4" />
+                </svg>
+              </button>
             </div>
           `;
 
-          const btnMinus = seatEl.querySelector('.btn-quick-score.minus');
+          const btnMinus = seatEl.querySelector('.btn-quick-staged.minus');
           if (btnMinus) {
             btnMinus.addEventListener('click', (e) => {
               e.stopPropagation();
-              executeDirectQuickScore(student, -1, seatEl);
+              stageQuickScore(student, -1, seatEl);
             });
           }
 
-          const btnPlus = seatEl.querySelector('.btn-quick-score.plus');
+          const btnPlus = seatEl.querySelector('.btn-quick-staged.plus');
           if (btnPlus) {
             btnPlus.addEventListener('click', (e) => {
               e.stopPropagation();
-              executeDirectQuickScore(student, 1, seatEl);
+              stageQuickScore(student, 1, seatEl);
             });
           }
         } else {
@@ -1623,6 +1683,10 @@ function renderScoringSeatingView() {
         }
 
         seatEl.addEventListener('click', async (e) => {
+          if (AppState.quickScoringMode) {
+            // Do not trigger student selection or popup drawers in quick scoring mode
+            return;
+          }
           lastClickCoords = { x: e.clientX, y: e.clientY };
           AppState.currentScoringGroupTarget = null;
           if (isAbsent) {
@@ -1714,30 +1778,43 @@ function renderScoringUnassignedStudents(seatedStudentIds) {
     if (isAbsent) card.setAttribute('data-att-label', attLabels[attStatus] || '未出席');
 
     if (AppState.quickScoringMode) {
+      const pendingVal = (AppState.pendingQuickScores && Number(AppState.pendingQuickScores[student.id])) || 0;
+      card.className = `student-card quick-mode-card ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''} ${cardFlashClass}`;
       card.innerHTML = `
+        <div class="quick-score-pending-badge ${pendingVal !== 0 ? 'has-pending' : ''} ${pendingVal > 0 ? 'positive' : (pendingVal < 0 ? 'negative' : '')}" id="quick-pending-${student.id}">
+          ${pendingVal > 0 ? `+${pendingVal}` : (pendingVal < 0 ? `${pendingVal}` : '')}
+        </div>
         <div class="student-avatar gender-${student.gender}" style="overflow: hidden; padding: 0;">
           ${getStudentAvatarImgHtml(student)}
         </div>
         <div class="student-number">${numText}</div>
         <div class="student-name" title="${displayName}">${displayName}</div>
-        <div class="quick-score-action-bar">
-          <button class="btn-quick-score minus" title="${t('btn_minus_score')}" data-student-id="${student.id}">➖</button>
-          <div class="student-score-badge ${scoreAnimClass}" id="score-badge-${student.id}">⭐ ${student.score || 0} ${scoreUnit}</div>
-          <button class="btn-quick-score plus" title="${t('btn_plus_score')}" data-student-id="${student.id}">➕</button>
+        <div class="quick-card-actions">
+          <button class="btn-quick-staged minus" title="${t('btn_minus_score')}" data-student-id="${student.id}" type="button">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+            </svg>
+          </button>
+          <button class="btn-quick-staged plus" title="${t('btn_plus_score')}" data-student-id="${student.id}" type="button">
+            <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+              <rect x="3" y="9" width="16" height="4" rx="2" fill="#887bc4" />
+              <rect x="9" y="3" width="4" height="16" rx="2" fill="#887bc4" />
+            </svg>
+          </button>
         </div>
       `;
-      const btnMinus = card.querySelector('.btn-quick-score.minus');
+      const btnMinus = card.querySelector('.btn-quick-staged.minus');
       if (btnMinus) {
         btnMinus.addEventListener('click', (e) => {
           e.stopPropagation();
-          executeDirectQuickScore(student, -1, card);
+          stageQuickScore(student, -1, card);
         });
       }
-      const btnPlus = card.querySelector('.btn-quick-score.plus');
+      const btnPlus = card.querySelector('.btn-quick-staged.plus');
       if (btnPlus) {
         btnPlus.addEventListener('click', (e) => {
           e.stopPropagation();
-          executeDirectQuickScore(student, 1, card);
+          stageQuickScore(student, 1, card);
         });
       }
     } else {
@@ -1752,6 +1829,9 @@ function renderScoringUnassignedStudents(seatedStudentIds) {
     }
 
     card.addEventListener('click', async (e) => {
+      if (AppState.quickScoringMode) {
+        return;
+      }
       lastClickCoords = { x: e.clientX, y: e.clientY };
       AppState.currentScoringGroupTarget = null;
       if (isAbsent) {
@@ -1782,6 +1862,11 @@ function updateFloatingScoringDrawer() {
   const drawer = document.getElementById('floating-scoring-bar');
   const label = document.getElementById('selected-students-label');
   if (!drawer || !label) return;
+
+  if (AppState.quickScoringMode) {
+    drawer.classList.remove('visible');
+    return;
+  }
 
   const count = AppState.selectedStudentIds.size;
   const isEn = window.I18n && window.I18n.getLanguage() === 'en';
@@ -5548,7 +5633,13 @@ function renderPaperQuizOverviewTable(data) {
 // --- Global Event Listeners ---
 function initEventListeners() {
   // Course change dropdown
-  document.getElementById('course-select').addEventListener('change', (e) => {
+  document.getElementById('course-select').addEventListener('change', async (e) => {
+    if (AppState.quickScoringMode && AppState.pendingQuickScores) {
+      const hasPending = Object.values(AppState.pendingQuickScores).some(s => Number(s) !== 0);
+      if (hasPending) {
+        await commitPendingQuickScores();
+      }
+    }
     AppState.currentCourseId = parseInt(e.target.value);
     AppState.selectedStudentIds.clear();
     syncAppRealtimeConnection();

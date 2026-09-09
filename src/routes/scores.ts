@@ -121,6 +121,68 @@ scoresRouter.post("/:courseId/add", async (req, res) => {
   });
 });
 
+scoresRouter.post("/:courseId/batch", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const { updates, date } = req.body ?? {};
+  if (!Array.isArray(updates) || updates.length === 0) {
+    res.json({ message: "No updates provided", count: 0 });
+    return;
+  }
+
+  const scoreDate: string = date || getTodayStrTaipei();
+  const nowTimestamp = getNowStrTaipei();
+  const insertedIds: number[] = [];
+
+  for (const item of updates) {
+    const sid = Number(item.student_id);
+    const scoreVal = Number(item.score);
+    if (!sid || isNaN(scoreVal) || scoreVal === 0) continue;
+
+    const defaultTitle = scoreVal > 0 ? "快速加分" : "快速扣分";
+    const ruleTitle = item.rule_title || defaultTitle;
+    const category = scoreVal > 0 ? "positive" : "negative";
+
+    const log = await prisma.scoreLog.create({
+      data: {
+        courseId,
+        studentId: sid,
+        ruleId: null,
+        ruleTitle,
+        score: scoreVal,
+        category,
+        date: scoreDate,
+        timestamp: nowTimestamp,
+        planId: null,
+        groupId: null,
+      },
+    });
+    insertedIds.push(log.id);
+  }
+
+  if (insertedIds.length === 0) {
+    res.json({ message: "No valid scores applied", count: 0 });
+    return;
+  }
+
+  const undoPayload = JSON.stringify({
+    score_log_ids: insertedIds,
+    course_id: courseId,
+    rule_title: "快速加減分",
+    count: insertedIds.length,
+    batch: true,
+  });
+  const undoLog = await prisma.undoLog.create({
+    data: { actionType: "score", targetId: courseId, payloadJson: undoPayload, createdAt: nowTimestamp },
+  });
+
+  broadcastToCourse(courseId, "score_updated");
+  res.json({
+    message: `Successfully applied batch scores to ${insertedIds.length} students`,
+    count: insertedIds.length,
+    undo_id: undoLog.id,
+  });
+});
+
 scoresRouter.post("/undo", async (req, res) => {
   const undoId: number = req.body?.undo_id;
   const undoEntry = await prisma.undoLog.findFirst({ where: { id: undoId, isUndone: 0 } });

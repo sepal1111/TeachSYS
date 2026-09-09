@@ -717,82 +717,160 @@ body::before {
   letter-spacing: -0.02em;
 }
 
-/* Quick Scoring Action Bar on Student Cards */
-.quick-score-action-bar {
+/* Quick Scoring Staged Mode Styles (Clean Card & Large Overlay) */
+.student-card.quick-mode-card {
+  position: relative;
+  background: var(--card-bg, #ffffff);
+  border: 1.5px solid var(--card-border, #e2e8f0);
+  border-radius: 20px;
+  padding: 14px 10px 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  cursor: default !important;
+  user-select: none;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.student-card.quick-mode-card:hover {
+  transform: none !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07) !important;
+}
+
+.student-card.quick-mode-card .student-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  margin-bottom: 6px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.student-card.quick-mode-card .student-number {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 2px 8px;
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+
+.student-card.quick-mode-card .student-name {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+/* Action buttons: big rounded square red minus and green plus */
+.quick-card-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 4px;
-  margin-top: 8px;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding: 0 2px;
 }
 
-.quick-score-action-bar .student-score-badge {
-  margin-top: 0;
-  padding: 2px 6px;
-  font-size: 0.8rem;
-  font-weight: 800;
-  white-space: nowrap;
+.btn-quick-staged {
   flex: 1;
-  text-align: center;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.btn-quick-score {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  min-height: 28px;
-  border-radius: var(--radius-full);
+  height: 50px;
+  max-width: 64px;
+  border: none;
+  border-radius: 14px;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.82rem;
-  font-weight: 900;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  user-select: none;
-  -webkit-user-select: none;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
   padding: 0;
+  outline: none;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.1s ease;
+}
+
+.btn-quick-staged:hover {
+  filter: brightness(1.06);
+}
+
+.btn-quick-staged:active {
+  transform: scale(0.92);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.btn-quick-staged.minus {
+  background: #e53935;
+}
+
+.btn-quick-staged.minus:hover {
+  background: #dc2626;
+}
+
+.btn-quick-staged.plus {
+  background: #10b981;
+}
+
+.btn-quick-staged.plus:hover {
+  background: #059669;
+}
+
+/* Staged pending score large overlay */
+.quick-score-pending-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 3.5rem;
+  font-weight: 900;
   line-height: 1;
+  pointer-events: none;
+  z-index: 10;
+  letter-spacing: -0.04em;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Outfit", sans-serif;
+  text-shadow: 0 0 16px rgba(255, 255, 255, 0.96), 0 0 8px #ffffff, 0 2px 10px rgba(0, 0, 0, 0.2);
+  display: none;
 }
 
-.btn-quick-score:hover {
-  transform: scale(1.15);
+.quick-score-pending-badge.has-pending {
+  display: block;
 }
 
-.btn-quick-score:active {
-  transform: scale(0.9);
+.quick-score-pending-badge.positive {
+  color: #10b981;
 }
 
-.btn-quick-score.plus {
-  background: linear-gradient(135deg, #4fae82, #059669);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(79, 174, 130, 0.4);
+.quick-score-pending-badge.negative {
+  color: #e53935;
 }
 
-.btn-quick-score.plus:hover {
-  background: linear-gradient(135deg, #34d399, #4fae82);
-  box-shadow: 0 4px 12px rgba(79, 174, 130, 0.6);
+.quick-score-pending-badge.pop-animate {
+  animation: pendingScorePop 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.btn-quick-score.minus {
-  background: linear-gradient(135deg, #d9807e, #dc2626);
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(217, 128, 126, 0.4);
+@keyframes pendingScorePop {
+  0% { transform: translateX(-50%) scale(0.8); }
+  50% { transform: translateX(-50%) scale(1.16); }
+  100% { transform: translateX(-50%) scale(1); }
 }
 
-.btn-quick-score.minus:hover {
-  background: linear-gradient(135deg, #f87171, #d9807e);
-  box-shadow: 0 4px 12px rgba(217, 128, 126, 0.6);
+/* Seating View Specific Overrides for Quick Scoring */
+.scoring-seat-cell.quick-mode-cell {
+  cursor: default !important;
+}
+
+.scoring-seat-cell .quick-score-pending-badge {
+  top: 6px;
+  font-size: 2.6rem;
+}
+
+.scoring-seat-cell .btn-quick-staged {
+  height: 38px;
+  max-width: 48px;
+  border-radius: 10px;
+}
+
+.scoring-seat-cell .btn-quick-staged svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* Quick Scoring Mode Toggle Button Active State */
