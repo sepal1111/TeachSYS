@@ -939,12 +939,15 @@
         const isFemale = gender === 'female' || gender === 'F' || gender === '女';
         const fallbackAvatar = isFemale ? '/static/avatars/girl.png' : '/static/avatars/boy.png';
         const code = item.student_code || item.student_id;
+        const codeStr = code ? String(code).trim() : '';
         const num = item.student_number || item.seat_number;
-        const primaryPhoto = code ? `/photo/${code}.jpg` : fallbackAvatar;
+        const hasNoPhoto = item.has_photo === false || (codeStr && window.StudentPhotoCache && window.StudentPhotoCache.missing.has(codeStr));
+        const primaryPhoto = (codeStr && !hasNoPhoto) ? `/photo/${encodeURIComponent(codeStr)}.jpg` : fallbackAvatar;
 
         if (avatarWrap) avatarWrap.className = 'lucky-spotlight-avatar-wrap';
         if (avatarImg) {
           avatarImg.onerror = function() {
+            if (codeStr && window.StudentPhotoCache) window.StudentPhotoCache.missing.add(codeStr);
             this.onerror = null;
             this.src = fallbackAvatar;
           };
@@ -998,9 +1001,11 @@
           const isFemale = gender === 'female' || gender === 'F' || gender === '女';
           const fallbackAvatar = isFemale ? '/static/avatars/girl.png' : '/static/avatars/boy.png';
           const code = w.student_code || w.student_id;
+          const codeStr = code ? String(code).trim() : '';
           const num = w.student_number || w.seat_number;
-          const primaryPhoto = code ? `/photo/${code}.jpg` : fallbackAvatar;
-          const onerrorChain = `this.onerror=null;this.src='${fallbackAvatar}';`;
+          const hasNoPhoto = w.has_photo === false || (codeStr && window.StudentPhotoCache && window.StudentPhotoCache.missing.has(codeStr));
+          const primaryPhoto = (codeStr && !hasNoPhoto) ? `/photo/${encodeURIComponent(codeStr)}.jpg` : fallbackAvatar;
+          const onerrorChain = `if(window.StudentPhotoCache&&'${codeStr}')window.StudentPhotoCache.missing.add('${codeStr}');this.onerror=null;this.src='${fallbackAvatar}';`;
 
           card.innerHTML = `
             <div class="lucky-multi-badge">${badgeText} #${idx + 1}</div>

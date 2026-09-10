@@ -18,22 +18,24 @@ function computeDataFingerprint(data, context) {
   return `${context.courseId}_${context.period}_${context.range || ''}_${context.mode || ''}_S[${students}]_G[${groups}]_R[${indRanks}]`;
 }
 
+window.StudentPhotoCache = window.StudentPhotoCache || { missing: new Set(), loaded: new Set() };
+
 function getStudentAvatarImgHtml(student) {
-  let photoSrc = '';
-  if (student.student_code) {
-    photoSrc = `/photo/${student.student_code}.jpg`;
-  }
   const isFemale = student.gender === 'F' || student.gender === 'female' || student.gender === '女';
   const defaultAvatar = isFemale ? '👧' : '👦';
+  const code = student.student_code ? String(student.student_code).trim() : '';
 
-  if (!photoSrc) {
+  if (student.has_photo === false || !code || (window.StudentPhotoCache && window.StudentPhotoCache.missing.has(code))) {
     return `<div style="font-size: 1.5rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;">${defaultAvatar}</div>`;
   }
 
+  const photoSrc = `/photo/${encodeURIComponent(code)}.jpg`;
+  const onerrorChain = `if(window.StudentPhotoCache&&'${code}')window.StudentPhotoCache.missing.add('${code}');this.style.display='none';this.parentElement.innerHTML='<div style=\\'font-size: 1.5rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;\\'>${defaultAvatar}</div>';`;
+
   return `
-    <img src="${photoSrc}" alt="${student.name}" 
+    <img src="${photoSrc}" alt="${student.name || ''}" 
       style="width: 100%; height: 100%; object-fit: cover; display: block;" 
-      onerror="this.style.display='none';this.parentElement.innerHTML='<div style=\\'font-size: 1.5rem; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;\\'>${defaultAvatar}</div>';" />
+      onerror="${onerrorChain}" />
   `;
 }
 

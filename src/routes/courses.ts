@@ -1,8 +1,10 @@
-// Port of app/routers/courses.py
+import fs from "fs";
+import path from "path";
 import { Router } from "express";
 import multer from "multer";
 import ExcelJS from "exceljs";
 import { prisma } from "../db";
+import { getBinDir } from "../paths";
 import { parseTextImport } from "../utils/textImport";
 import { parseCsvStudents, parseXlsxStudents } from "../utils/fileImport";
 import { autoCatch } from "../asyncRoute";
@@ -10,6 +12,7 @@ import { defaultStudentAccount, defaultStudentPassword, hashPassword } from "../
 import crypto from "crypto";
 
 export const coursesRouter = autoCatch(Router());
+const photoDir = path.join(getBinDir(), "photo");
 const upload = multer({ storage: multer.memoryStorage() });
 
 // login_account is unique system-wide (see prisma schema comment). The deterministic
@@ -168,6 +171,7 @@ coursesRouter.get("/:courseId/students", async (req, res) => {
       group_name: s.group?.groupName ?? null,
       seat_row: s.seatRow,
       seat_col: s.seatCol,
+      has_photo: Boolean(s.studentCode && fs.existsSync(path.join(photoDir, `${s.studentCode}.jpg`))),
     }))
   );
 });

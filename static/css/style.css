@@ -3685,17 +3685,25 @@ body.mobile-scoring-only #quick-group-bar .btn {
   font-weight: 900;
   font-family: ui-monospace, SFMono-Regular, "Roboto Mono", Consolas, monospace;
   letter-spacing: 2px;
-  color: #ffffff;
+  color: var(--primary-dark, #4a67ba);
+  text-shadow: 0 2px 8px rgba(74, 103, 186, 0.12);
   transition: color 0.3s;
 }
 
+#stopwatch-digits {
+  color: var(--accent-positive, #4fae82);
+  text-shadow: 0 2px 8px rgba(79, 174, 130, 0.15);
+}
+
 .timer-digits.urgent {
-  color: #d3a24c;
+  color: #d97706;
+  text-shadow: 0 0 16px rgba(217, 119, 6, 0.35);
   animation: urgentBlink 0.5s infinite alternate;
 }
 
 .timer-digits.finished {
-  color: #d9807e;
+  color: #dc2626;
+  text-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
 }
 
 .timer-digits.alarm-pulse {
@@ -3715,11 +3723,12 @@ body.mobile-scoring-only #quick-group-bar .btn {
 .timer-progress-track {
   width: 100%;
   max-width: 460px;
-  height: 8px;
-  background: rgba(255, 255, 255, 0.1);
+  height: 10px;
+  background: rgba(0, 0, 0, 0.08);
   border-radius: var(--radius-full);
   margin: 10px auto 0;
   overflow: hidden;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .timer-progress-fill {
