@@ -306,6 +306,65 @@
   }
   .assignment-textarea { min-height: 70px; resize: vertical; }
 
+  /* --- 📁 課堂檔案蒐集摺疊卡片 (Student File Collections Collapsible) --- */
+  .filecollect-card {
+    border: 1.5px solid var(--card-border);
+    border-radius: var(--radius-lg);
+    background: var(--card-bg);
+    margin-bottom: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .filecollect-card:hover {
+    border-color: var(--student-primary-border);
+  }
+  .filecollect-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--card-bg);
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+  }
+  .filecollect-card-header:hover {
+    background: var(--student-primary-bg);
+  }
+  .filecollect-card.expanded .filecollect-card-header {
+    border-bottom: 1px solid var(--card-border);
+    background: rgba(2, 132, 199, 0.03);
+  }
+  .filecollect-chevron-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--student-primary-dark);
+    font-size: 0.85rem;
+    font-weight: 800;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, background-color 0.15s ease;
+  }
+  .filecollect-card-header:hover .filecollect-chevron-icon {
+    background: var(--student-primary-border);
+    color: var(--student-primary-dark);
+  }
+  .filecollect-card.expanded .filecollect-chevron-icon {
+    transform: rotate(90deg);
+  }
+  .filecollect-card-body {
+    padding: 18px;
+  }
+  .filecollect-card:not(.expanded) .filecollect-card-body {
+    display: none;
+  }
+
   /* --- 提問串（Submission Comments）：作業/測驗下方的師生一對一（或對小組）留言 --- */
   .comment-thread { margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--card-border); }
   .comment-thread-toggle {
@@ -423,6 +482,7 @@
 
       <div class="student-tab-bar">
         <button type="button" id="btnContentTabMaterials" class="student-tab-btn active">📚 課程與作業</button>
+        <button type="button" id="btnContentTabFileCollect" class="student-tab-btn">📁 檔案蒐集</button>
         <button type="button" id="btnContentTabQuizzes" class="student-tab-btn">📝 紙本小考</button>
         <button type="button" id="btnContentTabScores" class="student-tab-btn">🌟 我的點數</button>
         <button type="button" id="btnContentTabLiveWall" class="student-tab-btn">🎨 即時互動牆</button>
@@ -772,6 +832,30 @@
             <span id="livewallHistoryToggleIcon">▶</span>
           </p>
           <div id="livewallHistoryList" hidden style="margin-top:12px; display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+      </div>
+
+      <!-- 📁 檔案蒐集分頁 -->
+      <div id="fileCollectTabPane" class="student-tab-pane" hidden>
+        <div class="student-card">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <h2 class="student-title" style="font-size: 1.25rem;">📁 課堂檔案上傳與成果</h2>
+              <div class="student-subtitle" style="margin-bottom: 0;">請查看下方老師開放的主題，上傳影音作品或檔案成果</div>
+            </div>
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+              <button type="button" id="btnExpandAllStudentFileCollect" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; min-height: 38px;">📂 全部展開</button>
+              <button type="button" id="btnCollapseAllStudentFileCollect" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 12px; min-height: 38px;">📁 全部收合</button>
+              <button type="button" id="btnRefreshStudentFileCollect" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px; min-height: 38px;">🔄 重新整理</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="studentFileCollectList" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Injected by student.js -->
+        </div>
+        <div id="studentFileCollectEmpty" class="student-card" style="text-align: center; color: var(--text-muted); display: none;">
+          目前老師尚未建立任何檔案蒐集項目。
         </div>
       </div>
     </div>

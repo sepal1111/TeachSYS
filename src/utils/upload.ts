@@ -13,3 +13,10 @@ export function sanitizeFilenamePart(text: string): string {
   const cleaned = text.replace(/[\\/*?:"<>|]/g, "").replace(/\s/g, "");
   return cleaned || "課程";
 }
+
+/** Strips Windows & Unix illegal path characters so text can be safely used as a folder segment. */
+export function sanitizeFolderSegment(text: string, fallback = "folder"): string {
+  const cleaned = text.replace(/[\\/*?:"<>|]/g, "_").trim();
+  return cleaned || fallback;
+}
+

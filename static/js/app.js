@@ -534,6 +534,7 @@ const TAB_TO_CONTEXT_MAP = {
   paperQuiz: 'logs',
   dashboard: 'logs',
   materials: 'logs',
+  filecollect: 'logs',
   seating: 'manage',
   grouping: 'manage',
   students: 'manage',
@@ -648,6 +649,11 @@ function switchTab(tabName) {
     }
   }
 
+  // Handle Toolkit LiveWall auto-close when leaving toolkit tab
+  if (window.TeachingToolkit?.liveWall && tabName !== 'toolkit') {
+    window.TeachingToolkit.liveWall.onLeaveLiveWallTab();
+  }
+
   // Always refresh — every case in refreshActiveTab() already guards for a missing
   // course itself (inline empty-course notice, or for 'toolkit' a prompt + redirect
   // to the course-independent Timer sub-tab). Gating this call on currentCourseId
@@ -741,6 +747,11 @@ function refreshActiveTab(tabName, force = false) {
     case 'rewards':
       if (window.RewardsManager && typeof window.RewardsManager.reload === 'function') {
         window.RewardsManager.reload();
+      }
+      break;
+    case 'filecollect':
+      if (window.FileCollectManager && typeof window.FileCollectManager.load === 'function') {
+        window.FileCollectManager.load();
       }
       break;
     case 'pointcards':

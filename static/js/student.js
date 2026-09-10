@@ -12,11 +12,13 @@
   const unitsContainer = document.getElementById('unitsContainer');
   const emptyState = document.getElementById('emptyState');
   const btnContentTabMaterials = document.getElementById('btnContentTabMaterials');
+  const btnContentTabFileCollect = document.getElementById('btnContentTabFileCollect');
   const btnContentTabQuizzes = document.getElementById('btnContentTabQuizzes');
   const btnContentTabScores = document.getElementById('btnContentTabScores');
   const btnContentTabLiveWall = document.getElementById('btnContentTabLiveWall');
   const btnContentTabLeader = document.getElementById('btnContentTabLeader');
   const materialsTabPane = document.getElementById('materialsTabPane');
+  const fileCollectTabPane = document.getElementById('fileCollectTabPane');
   const quizzesTabPane = document.getElementById('quizzesTabPane');
   const scoresTabPane = document.getElementById('scoresTabPane');
   const liveWallTabPane = document.getElementById('liveWallTabPane');
@@ -814,6 +816,7 @@
   // --- Tab Bar ---
   const TAB_PANES = {
     materials: { btn: btnContentTabMaterials, pane: materialsTabPane },
+    fileCollect: { btn: btnContentTabFileCollect, pane: fileCollectTabPane },
     quizzes: { btn: btnContentTabQuizzes, pane: quizzesTabPane },
     scores: { btn: btnContentTabScores, pane: scoresTabPane },
     liveWall: { btn: btnContentTabLiveWall, pane: liveWallTabPane },
@@ -842,6 +845,13 @@
   }
 
   btnContentTabMaterials.addEventListener('click', () => switchTab('materials'));
+
+  if (btnContentTabFileCollect) {
+    btnContentTabFileCollect.addEventListener('click', () => {
+      switchTab('fileCollect');
+      loadStudentFileCollections();
+    });
+  }
 
   if (btnContentTabQuizzes) {
     btnContentTabQuizzes.addEventListener('click', () => {
@@ -968,6 +978,9 @@
         LiveWall.refresh();
         // 歷史紀錄清單若已展開才刷新（例如老師在教師端刪除了某筆紀錄），未展開時不必多打一次 API。
         if (!document.getElementById('livewallHistoryList')?.hidden) LiveWall.loadHistory();
+      }
+      if (event === 'file_collection_updated' && !fileCollectTabPane.hidden) {
+        loadStudentFileCollections();
       }
     }, null, token);
   }
@@ -2669,6 +2682,358 @@
   const btnRefreshLeaderHub = document.getElementById('btnRefreshLeaderHub');
   if (btnRefreshLeaderHub) {
     btnRefreshLeaderHub.addEventListener('click', loadLeaderSection);
+  }
+
+  const btnRefreshFileCollect = document.getElementById('btnRefreshStudentFileCollect');
+  if (btnRefreshFileCollect) {
+    btnRefreshFileCollect.addEventListener('click', loadStudentFileCollections);
+  }
+
+  function formatBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  // ==========================================================================
+  // 📁 課堂臨時檔案蒐集 (Student File Collections) - 支援卡片摺疊與展開
+  // ==========================================================================
+  const studentTopicFoldState = new Map(); // topicId -> boolean (true: 展開, false: 收合)
+
+  async function loadStudentFileCollections() {
+    const listEl = document.getElementById('studentFileCollectList');
+    const emptyEl = document.getElementById('studentFileCollectEmpty');
+    if (!listEl) return;
+
+    try {
+      const topics = await api('/api/student/file-collections');
+      listEl.innerHTML = '';
+      if (!topics || topics.length === 0) {
+        if (emptyEl) emptyEl.style.display = 'block';
+        return;
+      }
+      if (emptyEl) emptyEl.style.display = 'none';
+
+      topics.forEach((topic) => {
+        const isOpen = Boolean(topic.allow_upload);
+        const myFiles = topic.my_files || [];
+
+        // 摺疊預設值：
+        // 1. 若學生手動切換過，維持學生設定；
+        // 2. 若開放上傳中，預設展開供學生交件；
+        // 3. 若已停止上傳，預設收合以避免版面雜亂；
+        // 4. 若所有主題皆已停止上傳，則第一個主題預設展開。
+        const hasUserToggled = studentTopicFoldState.has(topic.id);
+        const isExpanded = hasUserToggled
+          ? Boolean(studentTopicFoldState.get(topic.id))
+          : isOpen || (topics.every((t) => !t.allow_upload) && topics[0]?.id === topic.id);
+
+        const card = document.createElement('div');
+        card.className = `filecollect-card ${isExpanded ? 'expanded' : ''}`;
+        card.dataset.topicId = String(topic.id);
+
+        const statusBadge = isOpen
+          ? `<span class="badge" style="background: var(--accent-positive-bg, #ecfdf5); color: var(--accent-positive, #059669); border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; font-weight: 800;">🟢 開放上傳中</span>`
+          : `<span class="badge" style="background: var(--accent-negative-bg, #fef2f2); color: var(--accent-negative, #dc2626); border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.78rem; padding: 3px 10px; border-radius: 12px; font-weight: 800;">🔒 教師已停止上傳</span>`;
+
+        const myFilesCountBadge = myFiles.length > 0
+          ? `<span class="badge" style="background: #ecfdf5; color: #059669; border: 1px solid rgba(16, 185, 129, 0.3); font-size: 0.76rem; font-weight: 800; padding: 2px 8px; border-radius: 12px;">✅ 已繳交 ${myFiles.length} 檔</span>`
+          : `<span class="badge" style="background: rgba(0,0,0,0.04); color: var(--text-muted); font-size: 0.76rem; font-weight: 600; padding: 2px 8px; border-radius: 12px;">未繳交</span>`;
+
+        let uploadSectionHtml = '';
+        if (isOpen) {
+          uploadSectionHtml = `
+            <div class="filecollect-upload-box" style="margin: 14px 0; padding: 16px; border: 2px dashed var(--student-primary-border, #0284c7); border-radius: 10px; background: rgba(2, 132, 199, 0.04); text-align: center;">
+              <input type="file" multiple id="stu-file-input-${topic.id}" style="display: none;">
+              <button type="button" class="btn btn-primary btn-choose-files" style="font-weight: 800; padding: 9px 20px; font-size: 0.92rem;">
+                📤 選擇檔案 / 錄音錄影上傳
+              </button>
+              <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;">
+                ${topic.allowed_extensions ? `僅支援格式：<code>${escapeHtml(topic.allowed_extensions)}</code>` : '支援影片、錄音、照片或一般檔案 (可多選，單檔上限 250MB)'}
+              </div>
+              <div class="upload-progress-wrap" style="display: none; margin-top: 10px; font-size: 0.85rem; font-weight: 700; color: var(--student-primary);">
+                ⏳ 正在上傳中，請稍候...
+              </div>
+            </div>
+          `;
+        } else {
+          uploadSectionHtml = `
+            <div style="margin: 14px 0; padding: 12px 16px; border-radius: 8px; background: #fef2f2; border: 1px solid rgba(239, 68, 68, 0.25); color: #b91c1c; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <span>🔒</span>
+              <span>教師已截止此項目的收件，目前無法上傳新檔案，亦不可重新命名或刪除已繳交檔案。</span>
+            </div>
+          `;
+        }
+
+        // 渲染已上傳檔案列表
+        let filesHtml = '';
+        if (myFiles.length === 0) {
+          filesHtml = `<div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; padding: 8px 0;">你尚未在此主題上傳任何檔案。</div>`;
+        } else {
+          const fileItemsHtml = myFiles.map((f) => {
+            const ext = (f.original_filename || '').split('.').pop()?.toLowerCase() || '';
+            const mime = (f.mime_type || '').toLowerCase();
+            const isVideo = ['mp4', 'webm', 'mov', 'm4v'].includes(ext) || mime.startsWith('video/');
+            const isAudio = ['mp3', 'wav', 'm4a', 'ogg', 'aac'].includes(ext) || mime.startsWith('audio/');
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || mime.startsWith('image/');
+
+            let mediaPreview = '';
+            if (isVideo) {
+              mediaPreview = `
+                <div style="margin-top: 8px; max-width: 320px;">
+                  <video controls preload="metadata" playsinline style="width: 100%; max-height: 160px; border-radius: 6px; background: #000;">
+                    <source src="${fileUrlWithToken(f.file_url)}">
+                  </video>
+                </div>
+              `;
+            } else if (isAudio) {
+              mediaPreview = `
+                <div style="margin-top: 8px; max-width: 340px;">
+                  <audio controls preload="metadata" style="width: 100%; height: 36px;">
+                    <source src="${fileUrlWithToken(f.file_url)}">
+                  </audio>
+                </div>
+              `;
+            } else if (isImage) {
+              mediaPreview = `
+                <div style="margin-top: 8px;">
+                  <img src="${fileUrlWithToken(f.file_url)}" alt="${escapeHtml(f.display_name)}" style="max-height: 120px; border-radius: 6px; cursor: pointer; border: 1px solid var(--card-border);" onclick="window.open('${fileUrlWithToken(f.file_url)}', '_blank')">
+                </div>
+              `;
+            }
+
+            const downloadLink = fileUrlWithToken(f.file_url, f.display_name);
+
+            // 當教師停止上傳時，不得重新命名或刪除！
+            const renameBtnHtml = isOpen
+              ? `<button type="button" class="btn btn-secondary btn-sm btn-rename-file" data-file-id="${f.id}" data-file-name="${escapeHtml(f.display_name)}" style="font-size: 0.78rem; padding: 3px 8px;">✏️ 重新命名</button>`
+              : `<button type="button" class="btn btn-secondary btn-sm" disabled title="教師已停止上傳，不可修改檔名" style="font-size: 0.78rem; padding: 3px 8px; opacity: 0.5; cursor: not-allowed;">🔒 鎖定</button>`;
+
+            const deleteBtnHtml = isOpen
+              ? `<button type="button" class="btn btn-secondary btn-sm btn-delete-file" data-file-id="${f.id}" data-file-name="${escapeHtml(f.display_name)}" style="font-size: 0.78rem; padding: 3px 8px; color: var(--accent-negative); border-color: var(--accent-negative-border);">🗑️ 刪除</button>`
+              : '';
+
+            return `
+              <div class="stu-file-row" style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;">
+                  <div>
+                    <div style="font-weight: 800; font-size: 0.95rem; color: var(--text-main); word-break: break-all;">
+                      ${escapeHtml(f.display_name)}
+                    </div>
+                    ${f.display_name !== f.original_filename ? `<div style="font-size: 0.76rem; color: var(--text-muted); margin-top: 2px;">原檔名: ${escapeHtml(f.original_filename)}</div>` : ''}
+                    <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">
+                      大小：${formatBytes(f.file_size)} ｜ 上傳時間：${f.uploaded_at ? f.uploaded_at.slice(5, 16) : ''}
+                    </div>
+                  </div>
+                  <div style="display: flex; gap: 6px; align-items: center;">
+                    <a href="${downloadLink}" download class="btn btn-secondary btn-sm" style="font-size: 0.78rem; padding: 3px 8px; text-decoration: none;">📥 下載</a>
+                    ${renameBtnHtml}
+                    ${deleteBtnHtml}
+                  </div>
+                </div>
+                ${mediaPreview}
+              </div>
+            `;
+          }).join('');
+
+          filesHtml = `<div style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px;">${fileItemsHtml}</div>`;
+        }
+
+        card.innerHTML = `
+          <!-- 標題收合列 (點擊任意處可摺疊/展開) -->
+          <div class="filecollect-card-header" role="button" tabindex="0" title="點擊收合或展開此主題">
+            <div style="display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1;">
+              <span class="filecollect-chevron-icon">❯</span>
+              <div style="min-width: 0; flex: 1;">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <h3 style="margin: 0; font-size: 1.12rem; font-weight: 800; color: var(--text-main); word-break: break-all;">${escapeHtml(topic.title)}</h3>
+                  ${myFilesCountBadge}
+                </div>
+                ${topic.description ? `<div class="filecollect-desc-preview" style="font-size: 0.83rem; color: var(--text-muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 520px;">${escapeHtml(topic.description)}</div>` : ''}
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+              ${statusBadge}
+              <span class="filecollect-toggle-hint" style="font-size: 0.8rem; font-weight: 700; color: var(--student-primary); padding: 4px 8px; border-radius: 6px; background: rgba(2, 132, 199, 0.08); white-space: nowrap;">
+                ${isExpanded ? '收合 ▲' : '展開 ▼'}
+              </span>
+            </div>
+          </div>
+
+          <!-- 摺疊內容主體 -->
+          <div class="filecollect-card-body">
+            ${topic.description ? `<div style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px; white-space: pre-wrap; padding: 8px 12px; background: rgba(0,0,0,0.02); border-radius: 6px; border: 1px solid var(--card-border);">${escapeHtml(topic.description)}</div>` : ''}
+
+            ${uploadSectionHtml}
+
+            <div style="margin-top: 14px; border-top: 1px dashed var(--card-border); padding-top: 12px;">
+              <div style="font-size: 0.92rem; font-weight: 800; color: var(--text-main); display: flex; align-items: center; justify-content: space-between;">
+                <span>📁 我已繳交的檔案 (${myFiles.length})</span>
+              </div>
+              ${filesHtml}
+            </div>
+          </div>
+        `;
+
+        // 綁定收合/展開事件
+        const header = card.querySelector('.filecollect-card-header');
+        const toggleHint = card.querySelector('.filecollect-toggle-hint');
+
+        const toggleFold = (forceState) => {
+          const willExpand = typeof forceState === 'boolean' ? forceState : !card.classList.contains('expanded');
+          if (willExpand) {
+            card.classList.add('expanded');
+            if (toggleHint) toggleHint.textContent = '收合 ▲';
+          } else {
+            card.classList.remove('expanded');
+            if (toggleHint) toggleHint.textContent = '展開 ▼';
+          }
+          studentTopicFoldState.set(topic.id, willExpand);
+        };
+
+        if (header) {
+          header.addEventListener('click', (e) => {
+            if (e.target.closest('button') || e.target.closest('a') || e.target.closest('input')) return;
+            toggleFold();
+          });
+          header.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleFold();
+            }
+          });
+        }
+
+        // 綁定檔案上傳按鈕事件
+        if (isOpen) {
+          const fileInput = card.querySelector(`#stu-file-input-${topic.id}`);
+          const btnChoose = card.querySelector('.btn-choose-files');
+          const progressWrap = card.querySelector('.upload-progress-wrap');
+
+          if (btnChoose && fileInput) {
+            btnChoose.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async () => {
+              const files = fileInput.files;
+              if (!files || files.length === 0) return;
+
+              btnChoose.disabled = true;
+              if (progressWrap) progressWrap.style.display = 'block';
+
+              const formData = new FormData();
+              for (let i = 0; i < files.length; i++) {
+                formData.append('files', files[i]);
+              }
+
+              try {
+                const token = localStorage.getItem(TOKEN_KEY);
+                const res = await fetch(`/api/student/file-collections/${topic.id}/upload`, {
+                  method: 'POST',
+                  headers: token ? { Authorization: `Bearer ${token}` } : {},
+                  body: formData,
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.detail || '上傳失敗');
+
+                showToast(data.message || '檔案上傳成功！', 'positive');
+                studentTopicFoldState.set(topic.id, true);
+                loadStudentFileCollections();
+              } catch (err) {
+                showToast(`上傳失敗：${err.message}`, 'error');
+              } finally {
+                btnChoose.disabled = false;
+                if (progressWrap) progressWrap.style.display = 'none';
+                fileInput.value = '';
+              }
+            });
+          }
+        }
+
+        // 綁定重新命名與刪除事件
+        if (isOpen) {
+          card.querySelectorAll('.btn-rename-file').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const fileId = btn.dataset.fileId;
+              const currentName = btn.dataset.fileName;
+              const newName = prompt('請輸入新的檔案名稱：', currentName);
+              if (!newName || newName.trim() === '' || newName === currentName) return;
+
+              try {
+                const res = await api(`/api/student/file-collections/${topic.id}/items/${fileId}/rename`, {
+                  method: 'PUT',
+                  body: JSON.stringify({ display_name: newName.trim() }),
+                });
+                showToast(res.message || '檔案名稱已更新', 'positive');
+                studentTopicFoldState.set(topic.id, true);
+                loadStudentFileCollections();
+              } catch (err) {
+                showToast(`重新命名失敗：${err.message}`, 'error');
+              }
+            });
+          });
+
+          card.querySelectorAll('.btn-delete-file').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+              const fileId = btn.dataset.fileId;
+              const currentName = btn.dataset.fileName;
+              if (!confirm(`確定要刪除檔案「${currentName}」嗎？`)) return;
+
+              try {
+                const res = await api(`/api/student/file-collections/${topic.id}/items/${fileId}`, {
+                  method: 'DELETE',
+                });
+                showToast(res.message || '檔案已刪除', 'positive');
+                studentTopicFoldState.set(topic.id, true);
+                loadStudentFileCollections();
+              } catch (err) {
+                showToast(`刪除失敗：${err.message}`, 'error');
+              }
+            });
+          });
+        }
+
+        listEl.appendChild(card);
+      });
+
+      // 綁定頂部工具列「全部展開」、「全部收合」、「重新整理」
+      const btnExpandAll = document.getElementById('btnExpandAllStudentFileCollect');
+      if (btnExpandAll && !btnExpandAll.dataset.bound) {
+        btnExpandAll.dataset.bound = '1';
+        btnExpandAll.addEventListener('click', () => {
+          document.querySelectorAll('#studentFileCollectList .filecollect-card').forEach((c) => {
+            c.classList.add('expanded');
+            const hint = c.querySelector('.filecollect-toggle-hint');
+            if (hint) hint.textContent = '收合 ▲';
+            const tid = Number(c.dataset.topicId);
+            if (tid) studentTopicFoldState.set(tid, true);
+          });
+        });
+      }
+
+      const btnCollapseAll = document.getElementById('btnCollapseAllStudentFileCollect');
+      if (btnCollapseAll && !btnCollapseAll.dataset.bound) {
+        btnCollapseAll.dataset.bound = '1';
+        btnCollapseAll.addEventListener('click', () => {
+          document.querySelectorAll('#studentFileCollectList .filecollect-card').forEach((c) => {
+            c.classList.remove('expanded');
+            const hint = c.querySelector('.filecollect-toggle-hint');
+            if (hint) hint.textContent = '展開 ▼';
+            const tid = Number(c.dataset.topicId);
+            if (tid) studentTopicFoldState.set(tid, false);
+          });
+        });
+      }
+
+      const btnRefresh = document.getElementById('btnRefreshStudentFileCollect');
+      if (btnRefresh && !btnRefresh.dataset.bound) {
+        btnRefresh.dataset.bound = '1';
+        btnRefresh.addEventListener('click', () => loadStudentFileCollections());
+      }
+    } catch (err) {
+      console.error('[StudentFileCollect] error:', err);
+      showToast(err.message, 'error');
+    }
   }
 
   (async function init() {

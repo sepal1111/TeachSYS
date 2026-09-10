@@ -46,6 +46,8 @@ model Course {
   paperQuizzes     PaperQuiz[]
   discussionLogs   GroupDiscussionLog[]
   bulletinPosts    BulletinPost[]
+  fileCollections  FileCollection[]
+  fileCollectionItems FileCollectionItem[]
 
   @@map("courses")
 }
@@ -132,6 +134,7 @@ model Student {
   rewardRedemptions RewardRedemption[]
   paperQuizRecords PaperQuizRecord[]
   leaderDiscussionLogs GroupDiscussionLog[]
+  fileCollectionItems  FileCollectionItem[]
 
   @@map("students")
 }
@@ -637,3 +640,45 @@ model BulletinPost {
 
   @@map("bulletin_posts")
 }
+
+// ==========================================================================
+// 臨時檔案蒐集 (File Collections)
+// ==========================================================================
+
+model FileCollection {
+  id                Int      @id @default(autoincrement())
+  courseId          Int      @map("course_id")
+  title             String
+  description       String?
+  allowedExtensions String?  @map("allowed_extensions")
+  allowUpload       Int      @default(1) @map("allow_upload")
+  orderIndex        Int      @default(0) @map("order_index")
+  createdAt         String   @map("created_at")
+  updatedAt         String?  @map("updated_at")
+
+  course Course               @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  items  FileCollectionItem[]
+
+  @@map("file_collections")
+}
+
+model FileCollectionItem {
+  id               Int      @id @default(autoincrement())
+  collectionId     Int      @map("collection_id")
+  studentId        Int      @map("student_id")
+  courseId         Int      @map("course_id")
+  originalFilename String   @map("original_filename")
+  displayName      String   @map("display_name")
+  fileUrl          String   @map("file_url")
+  fileSize         Int      @map("file_size")
+  mimeType         String?  @map("mime_type")
+  uploadedAt       String   @map("uploaded_at")
+  updatedAt        String?  @map("updated_at")
+
+  collection FileCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  student    Student        @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course     Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("file_collection_items")
+}
+

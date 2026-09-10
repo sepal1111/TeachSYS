@@ -539,6 +539,50 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_bulletin_posts_course ON bulletin_posts(course_id, order_index);"
   );
 
+  // 臨時檔案蒐集 (File Collections)
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS file_collections (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NULL,
+      allowed_extensions TEXT NULL,
+      allow_upload INTEGER DEFAULT 1,
+      order_index INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_file_collections_course ON file_collections(course_id, order_index);"
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS file_collection_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      collection_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      original_filename TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      file_url TEXT NOT NULL,
+      file_size INTEGER NOT NULL,
+      mime_type TEXT NULL,
+      uploaded_at TEXT NOT NULL,
+      updated_at TEXT NULL,
+      FOREIGN KEY(collection_id) REFERENCES file_collections(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_file_collection_items_col ON file_collection_items(collection_id);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_file_collection_items_stu ON file_collection_items(student_id);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE group_members ADD COLUMN is_leader INTEGER DEFAULT 0;");
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");

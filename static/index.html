@@ -97,6 +97,7 @@
           <button class="nav-tab" data-tab="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</button>
           <button class="nav-tab" data-tab="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</button>
           <button class="nav-tab" data-tab="materials" data-i18n="nav_materials">📚 課程素材(LMS)</button>
+          <button class="nav-tab" data-tab="filecollect" data-i18n="tab_filecollect">📁 檔案蒐集</button>
         </div>
 
         <!-- Subtabs for "Classroom Setup" (班級管理) -->
@@ -141,6 +142,7 @@
             <option value="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</option>
             <option value="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</option>
             <option value="materials" data-i18n="nav_materials">📚 課程素材(LMS)</option>
+            <option value="filecollect" data-i18n="tab_filecollect">📁 檔案蒐集</option>
           </optgroup>
           <optgroup label="🏫 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
             <option value="seating">🪑 座位表編排</option>
@@ -1071,6 +1073,96 @@
           </div>
           <div id="redemptions-empty" style="display:none; text-align:center; padding:36px; color:var(--text-muted); font-size:0.92rem;" data-i18n="reward_redemptions_empty_hint">
             目前沒有符合條件的兌換紀錄。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 檔案蒐集 Pane (歸屬學習歷程) -->
+    <section id="pane-filecollect" class="tab-pane">
+      <div id="admin-subpane-filecollect" class="admin-subpane">
+        <!-- Overview Stat Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 18px;">
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="filecollect_stat_topics">📁 進行中主題</div>
+            <div id="filecollect-stat-total-topics" style="font-size: 2rem; font-weight: 900; color: var(--primary);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="filecollect_stat_files">📦 累計收件檔案</div>
+            <div id="filecollect-stat-total-files" style="font-size: 2rem; font-weight: 900; color: var(--accent-warning);">0</div>
+          </div>
+          <div class="glass-card" style="margin-bottom:0; padding:18px; text-align:center;">
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 700; margin-bottom: 4px;" data-i18n="filecollect_stat_students">👥 繳交學生人數</div>
+            <div id="filecollect-stat-total-students" style="font-size: 2rem; font-weight: 900; color: var(--accent-positive);">0</div>
+          </div>
+        </div>
+
+        <!-- Main Card: 主題清單 -->
+        <div id="filecollect-topics-view" class="glass-card">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div>
+              <div class="glass-card-title" data-i18n="filecollect_title">📁 課堂臨時檔案蒐集</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;" data-i18n="filecollect_subtitle">
+                快速發布收件主題，供學生上傳影音與檔案，支援即時預覽點播與一鍵停止上傳
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btn-open-create-collection" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="filecollect_btn_create">➕ 建立蒐集主題</button>
+              <button type="button" id="btn-refresh-collections" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">🔄 重新整理</button>
+            </div>
+          </div>
+
+          <!-- 主題卡片列表 -->
+          <div id="filecollect-topics-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 14px;">
+            <!-- JS dynamically injects cards -->
+          </div>
+          <div id="filecollect-topics-empty" style="display:none; text-align:center; padding:48px 20px; color:var(--text-muted); font-size:0.95rem;" data-i18n="filecollect_empty_hint">
+            目前尚未建立任何檔案蒐集項目，點選上方「➕ 建立蒐集主題」開始蒐集學生檔案！
+          </div>
+        </div>
+
+        <!-- 成果檢視與檔案預覽 View (點擊主題進入) -->
+        <div id="filecollect-files-view" class="glass-card" style="display: none;">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px; border-bottom: 1.5px solid var(--card-border); padding-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <button type="button" id="btn-filecollect-back-to-topics" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;">← 返回主題清單</button>
+              <h3 id="filecollect-view-topic-title" style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main);">收件成果</h3>
+              <span id="filecollect-view-topic-status-badge" class="badge" style="font-size: 0.82rem; padding: 4px 10px; border-radius: 12px;">狀態</span>
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button type="button" id="btn-filecollect-toggle-upload" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">🔒 停止上傳</button>
+              <button type="button" id="btn-filecollect-download-zip" class="btn btn-primary" style="font-size: 0.85rem; padding: 6px 14px;">📦 打包下載全部檔案 (ZIP)</button>
+              <button type="button" id="btn-filecollect-refresh-files" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;">🔄 重新整理</button>
+            </div>
+          </div>
+
+          <!-- 主題詳細資訊欄 -->
+          <div id="filecollect-view-topic-desc" style="margin: 12px 0 16px; font-size: 0.9rem; color: var(--text-muted); background: var(--input-bg); padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+          </div>
+
+          <!-- 篩選與搜尋列 -->
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; padding: 10px 14px; background: var(--input-bg); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <input type="text" id="filecollect-search-input" class="input-control" placeholder="🔍 搜尋學生姓名、座號或檔名..." style="font-size: 0.88rem; width: 220px;">
+              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                <button type="button" class="btn btn-secondary btn-file-filter active" data-type="all" style="font-size: 0.8rem; padding: 5px 12px; border: none; border-radius: 0;">全部</button>
+                <button type="button" class="btn btn-secondary btn-file-filter" data-type="video" style="font-size: 0.8rem; padding: 5px 12px; border: none; border-left: 1px solid var(--card-border); border-radius: 0;">🎬 影片</button>
+                <button type="button" class="btn btn-secondary btn-file-filter" data-type="audio" style="font-size: 0.8rem; padding: 5px 12px; border: none; border-left: 1px solid var(--card-border); border-radius: 0;">🎵 音訊</button>
+                <button type="button" class="btn btn-secondary btn-file-filter" data-type="image" style="font-size: 0.8rem; padding: 5px 12px; border: none; border-left: 1px solid var(--card-border); border-radius: 0;">🖼️ 圖片</button>
+                <button type="button" class="btn btn-secondary btn-file-filter" data-type="other" style="font-size: 0.8rem; padding: 5px 12px; border: none; border-left: 1px solid var(--card-border); border-radius: 0;">📄 其他</button>
+              </div>
+            </div>
+            <div id="filecollect-files-count-badge" style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">
+              共 0 個檔案
+            </div>
+          </div>
+
+          <!-- 檔案卡片清單（以預覽模式顯示） -->
+          <div id="filecollect-files-container" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px;">
+            <!-- JS dynamically injects preview cards -->
+          </div>
+          <div id="filecollect-files-empty" style="display:none; text-align:center; padding:48px 20px; color:var(--text-muted); font-size:0.95rem;">
+            目前尚無學生上傳檔案。
           </div>
         </div>
       </div>
@@ -2716,6 +2808,44 @@
        見 static/js/app.js 的 enterStudentMode()/exitStudentMode()。 -->
   <iframe id="student-app-frame" title="學生課程入口" style="display:none; position:fixed; inset:0; width:100%; height:100%; border:none; z-index:200000; background:#f8fafc;"></iframe>
 
+  <!-- Modal: 建立/編輯檔案蒐集主題 -->
+  <div id="modal-filecollect-editor" class="modal-overlay" style="z-index: 100025;">
+    <div class="modal-content glass-card" style="max-width: 520px; padding: 26px;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div class="modal-title" id="modal-filecollect-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="filecollect_modal_create_title">➕ 建立檔案蒐集主題</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-filecollect-editor">✕</button>
+      </div>
+      <form id="form-filecollect" style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="hidden" id="filecollect-edit-id" value="">
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="filecollect_name_label">主題名稱：*</label>
+          <input type="text" id="filecollect-edit-title" class="input-control" placeholder="例如：英語自我介紹影片、Scratch作品錄影..." required>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="filecollect_desc_label">說明或任務提示：</label>
+          <textarea id="filecollect-edit-desc" class="input-control" rows="3" placeholder="填寫提供給學生的說明或作業指示..."></textarea>
+        </div>
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; color: var(--text-main); margin-bottom: 5px;" data-i18n="filecollect_ext_label">限制副檔名 (選填，以逗號隔開，例如 mp4, mp3, png；留空代表不限)：</label>
+          <input type="text" id="filecollect-edit-extensions" class="input-control" placeholder="例如：mp4, mov, webm, mp3, wav, m4a, png, jpg">
+        </div>
+        <div style="padding: 10px 14px; background: var(--input-bg); border-radius: var(--radius-sm); border: 1px solid var(--card-border);">
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 0.88rem; font-weight: 700; cursor: pointer; color: var(--text-main);">
+            <input type="checkbox" id="filecollect-edit-allow-upload" checked>
+            <span data-i18n="filecollect_allow_label">立即開放學生上傳</span>
+          </label>
+          <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; padding-left: 24px;">
+            💡 關閉後，學生端將停止上傳，並禁止重新命名或刪除已繳交的檔案。
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 8px;">
+          <button type="button" class="btn btn-secondary close-modal" data-i18n="common_cancel">取消</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-filecollect" data-i18n="common_confirm">確定儲存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/api.js?v=3.1"></script>
   <script src="/static/js/i18n.js?v=3.1"></script>
@@ -2730,6 +2860,7 @@
   <script src="/static/js/app.js?v=3.0"></script>
   <script src="/static/js/point-cards.js?v=1.1"></script>
   <script src="/static/js/rewards.js?v=1.3"></script>
+  <script src="/static/js/file-collect.js?v=1.0"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>
 </body>
 </html>

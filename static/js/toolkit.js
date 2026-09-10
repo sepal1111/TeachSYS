@@ -2100,6 +2100,7 @@
 
   const LiveWall = {
     currentSession: null,
+    heartbeatTimer: null,
 
     init() {
       document.getElementById('btn-livewall-start')?.addEventListener('click', () => this.start());
@@ -2110,6 +2111,67 @@
 
     onEnterLiveWallTab() {
       this.refresh();
+    },
+
+    // 教師離開互動牆分頁或關閉視窗時自動結束進行中的場次
+    async onLeaveLiveWallTab(options = {}) {
+      this.stopHeartbeat();
+      if (!this.currentSession || !this.currentSession.id) return;
+      const sessionId = this.currentSession.id;
+      this.currentSession = null;
+
+      const token = localStorage.getItem('auth_token') || '';
+      const closeUrl = `/api/live-wall/sessions/${sessionId}/close?token=${encodeURIComponent(token)}`;
+
+      if (options.isUnload) {
+        try {
+          if (navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+            navigator.sendBeacon(closeUrl, blob);
+          } else {
+            fetch(closeUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              },
+              body: JSON.stringify({}),
+              keepalive: true,
+              credentials: 'same-origin'
+            }).catch(() => {});
+          }
+        } catch (e) {
+          console.warn('[LiveWall] Unload close failed:', e);
+        }
+      } else {
+        try {
+          await API.post(closeUrl, {});
+          window.showToast && window.showToast(livewallT('livewall_toast_auto_ended') || '已離開互動牆，場次已自動結束', 'info');
+          await this.refresh();
+        } catch (err) {
+          console.warn('[LiveWall] Auto close on leave failed:', err);
+        }
+      }
+    },
+
+    startHeartbeat() {
+      this.stopHeartbeat();
+      if (!this.currentSession?.id) return;
+      const sendPing = () => {
+        if (!this.currentSession?.id) {
+          this.stopHeartbeat();
+          return;
+        }
+        API.post(`/api/live-wall/sessions/${this.currentSession.id}/heartbeat`, {}).catch(() => {});
+      };
+      this.heartbeatTimer = setInterval(sendPing, 15000);
+    },
+
+    stopHeartbeat() {
+      if (this.heartbeatTimer) {
+        clearInterval(this.heartbeatTimer);
+        this.heartbeatTimer = null;
+      }
     },
 
     async refresh() {
@@ -2129,7 +2191,11 @@
       const activeView = document.getElementById('livewall-active-view');
       if (startForm) startForm.style.display = session ? 'none' : 'block';
       if (activeView) activeView.style.display = session ? 'block' : 'none';
-      if (!session) return;
+      if (!session) {
+        this.stopHeartbeat();
+        return;
+      }
+      this.startHeartbeat();
 
       const statusMeta = document.getElementById('livewall-status-meta');
       if (statusMeta) {
@@ -2204,8 +2270,11 @@
     async end() {
       if (!this.currentSession) return;
       if (!confirm(livewallT('livewall_end_confirm'))) return;
+      const sessionId = this.currentSession.id;
+      this.stopHeartbeat();
+      this.currentSession = null;
       try {
-        await API.post(`/api/live-wall/sessions/${this.currentSession.id}/close`);
+        await API.post(`/api/live-wall/sessions/${sessionId}/close`);
         window.showToast && window.showToast(livewallT('livewall_toast_ended'), 'success');
         await this.refresh();
       } catch (err) {
@@ -2875,10 +2944,15 @@
       }
       if (subtab === 'liveWall') {
         this.liveWall.onEnterLiveWallTab();
+      } else {
+        this.liveWall.onLeaveLiveWallTab();
       }
     },
 
     onCourseLoaded(courseId, students, groups) {
+      if (this.liveWall && this.liveWall.currentSession && this.liveWall.currentSession.course_id !== courseId) {
+        this.liveWall.onLeaveLiveWallTab();
+      }
       this.setCourseAvailability(true);
       this.bulletin.loadCourse(courseId);
       this.luckyDraw.setStudents(students);
@@ -2913,11 +2987,17 @@
     if (TeachingToolkit?.timer) {
       TeachingToolkit.timer.onLeaveTimerTab();
     }
+    if (TeachingToolkit?.liveWall) {
+      TeachingToolkit.liveWall.onLeaveLiveWallTab({ isUnload: true });
+    }
   });
 
   window.addEventListener('pagehide', () => {
     if (TeachingToolkit?.timer) {
       TeachingToolkit.timer.onLeaveTimerTab();
+    }
+    if (TeachingToolkit?.liveWall) {
+      TeachingToolkit.liveWall.onLeaveLiveWallTab({ isUnload: true });
     }
   });
 

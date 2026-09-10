@@ -13,6 +13,35 @@ export const liveWallRouter = autoCatch(Router());
 
 const VALID_MODES = new Set(["text", "drawing", "photo"]);
 
+// 記錄各活躍場次最後一次收到教師心跳的時間戳 (sessionId -> timestamp)
+const sessionHeartbeats = new Map<number, number>();
+const HEARTBEAT_TIMEOUT_MS = 40 * 1000; // 40 秒未收到心跳即判定教師已離開或關閉視窗
+
+// 定期檢查超時未收到心跳的場次，自動結束並廣播通知學生與大螢幕
+setInterval(async () => {
+  try {
+    const activeSessions = await prisma.liveSession.findMany({
+      where: { isActive: 1 },
+      select: { id: true, courseId: true },
+    });
+    const now = Date.now();
+    for (const session of activeSessions) {
+      const lastPing = sessionHeartbeats.get(session.id);
+      if (lastPing && now - lastPing > HEARTBEAT_TIMEOUT_MS) {
+        sessionHeartbeats.delete(session.id);
+        await prisma.liveSession.update({
+          where: { id: session.id },
+          data: { isActive: 0 },
+        });
+        broadcastToCourse(session.courseId, "live_wall_updated");
+        console.log(`[LiveWall] 場次 #${session.id} 因教師已離開頁面（超過 40 秒無心跳）已自動結束。`);
+      }
+    }
+  } catch (err) {
+    // 忽略檢查錯誤
+  }
+}, 10 * 1000);
+
 /** image_url 一律是 "/uploads/..." 的公開路徑，換算回磁碟實際檔案路徑好刪除。
  *  找不到檔案（例如已被手動搬走）也不擋刪除，best-effort。 */
 function deleteUploadedFile(imageUrl: string | null): void {
@@ -61,6 +90,7 @@ liveWallRouter.post("/courses/:courseId/start", async (req, res) => {
     data: { courseId, mode, title, showNames, isActive: 1, createdAt: getNowStrTaipei() },
   });
 
+  sessionHeartbeats.set(session.id, Date.now());
   broadcastToCourse(courseId, "live_wall_updated");
   res.json(serializeSession(session));
 });
@@ -73,6 +103,9 @@ liveWallRouter.get("/courses/:courseId/active", async (req, res) => {
     res.json({ session: null, posts: [] });
     return;
   }
+  // 教師或大螢幕正在檢視此場次，刷新心跳基線
+  sessionHeartbeats.set(session.id, Date.now());
+
   const posts = await prisma.liveWallPost.findMany({
     where: { sessionId: session.id },
     orderBy: { id: "asc" },
@@ -131,9 +164,17 @@ liveWallRouter.delete("/posts/:postId", async (req, res) => {
   res.json({ message: "紀錄已刪除" });
 });
 
-// 結束場次：與「清空」是獨立動作，結束後學生端恢復成沒有進行中場次的畫面。
+// 教師端互動牆心跳回報（確保教師仍停留在互動牆頁面）
+liveWallRouter.post("/sessions/:sessionId/heartbeat", async (req, res) => {
+  const sessionId = Number(req.params.sessionId);
+  sessionHeartbeats.set(sessionId, Date.now());
+  res.json({ ok: true });
+});
+
+// 結束特定場次：與「清空」是獨立動作，結束後學生端恢復成沒有進行中場次的畫面。
 liveWallRouter.post("/sessions/:sessionId/close", async (req, res) => {
   const sessionId = Number(req.params.sessionId);
+  sessionHeartbeats.delete(sessionId);
   const session = await prisma.liveSession.findUnique({ where: { id: sessionId } });
   if (!session) {
     res.status(404).json({ detail: "場次不存在" });
@@ -142,4 +183,24 @@ liveWallRouter.post("/sessions/:sessionId/close", async (req, res) => {
   await prisma.liveSession.update({ where: { id: sessionId }, data: { isActive: 0 } });
   broadcastToCourse(session.courseId, "live_wall_updated");
   res.json({ message: "場次已結束" });
+});
+
+// 結束該課程所有進行中場次（教師離開分頁、離開視窗或切換班級時呼叫）
+liveWallRouter.post("/courses/:courseId/close_active", async (req, res) => {
+  const courseId = Number(req.params.courseId);
+  const activeSessions = await prisma.liveSession.findMany({
+    where: { courseId, isActive: 1 },
+    select: { id: true },
+  });
+  if (activeSessions.length > 0) {
+    for (const s of activeSessions) {
+      sessionHeartbeats.delete(s.id);
+    }
+    await prisma.liveSession.updateMany({
+      where: { courseId, isActive: 1 },
+      data: { isActive: 0 },
+    });
+    broadcastToCourse(courseId, "live_wall_updated");
+  }
+  res.json({ message: "進行中場次已結束" });
 });
