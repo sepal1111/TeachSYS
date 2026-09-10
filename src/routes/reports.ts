@@ -1,13 +1,16 @@
-// Port of app/routers/reports.py
+import fs from "fs";
+import path from "path";
 import ExcelJS from "exceljs";
 import { Router } from "express";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../db";
+import { getBinDir } from "../paths";
 import { getTodayStrTaipei, getTodayTaipei } from "../timezone";
 import { autoCatch } from "../asyncRoute";
 import { getLeaveLabelZh } from "./paperQuizzes";
 
 export const reportsRouter = autoCatch(Router());
+const photoDir = path.join(getBinDir(), "photo");
 
 function isoDate(year: number, month: number, day: number): string {
   return `${year.toString().padStart(4, "0")}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -120,6 +123,7 @@ reportsRouter.get("/:courseId/dashboard", async (req, res) => {
       score: scoreMap.get(s.id) ?? 0,
       today_attendance: status,
       is_absent: ["absent", "sick_leave", "personal_leave", "official_leave", "bereavement_leave"].includes(status),
+      has_photo: Boolean(s.studentCode && fs.existsSync(path.join(photoDir, `${s.studentCode}.jpg`))),
     };
   });
 

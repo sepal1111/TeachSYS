@@ -143,9 +143,86 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('nameDisplayModeChanged', () => {
     if (window.I18n) window.I18n.updateDOMTranslations();
-    refreshActiveTab(getActiveTabName(), true);
+    const activeTab = getActiveTabName();
+    // 優先原位更新畫面上已有學生卡片的顯示姓名，避免重新發起 API 請求與清空 DOM 造成的畫面重繪閃爍
+    const updatedCount = updateRenderedStudentNames();
+    if (updatedCount === 0 || ['students', 'dashboard', 'reports'].includes(activeTab)) {
+      refreshActiveTab(activeTab, true);
+    }
   });
 });
+
+function updateRenderedStudentNames() {
+  if (!AppState || !AppState.students || AppState.students.length === 0) return 0;
+  let count = 0;
+  const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+
+  // 1. 計分板學生卡片 (Scoring Student Grid)
+  document.querySelectorAll('#scoring-student-grid .student-card').forEach(card => {
+    const sid = Number(card.dataset.studentId || card.querySelector('[data-student-id]')?.dataset?.studentId || card.querySelector('[id^="score-badge-"]')?.id.replace('score-badge-', ''));
+    if (sid) {
+      const s = AppState.students.find(item => item.id === sid);
+      if (s) {
+        const nameEl = card.querySelector('.student-name');
+        if (nameEl) {
+          const newName = getStudentDisplayName(s);
+          nameEl.textContent = newName;
+          nameEl.title = newName;
+          count++;
+        }
+        const numEl = card.querySelector('.student-number');
+        if (numEl) {
+          numEl.textContent = isEn ? `No. ${s.student_number}` : `${s.student_number} 號`;
+        }
+      }
+    }
+  });
+
+  // 2. 計分板座次卡片 (Scoring Seating Grid)
+  document.querySelectorAll('#scoring-seating-grid .scoring-seat-cell').forEach(cell => {
+    const sid = Number(cell.dataset.studentId || cell.querySelector('[data-student-id]')?.dataset?.studentId || cell.querySelector('[id^="score-badge-"]')?.id.replace('score-badge-', ''));
+    if (sid) {
+      const s = AppState.students.find(item => item.id === sid);
+      if (s) {
+        const nameEl = cell.querySelector('.student-name');
+        if (nameEl) {
+          const newName = getStudentDisplayName(s);
+          nameEl.textContent = newName;
+          nameEl.title = newName;
+          count++;
+        }
+        const numEl = cell.querySelector('.student-number');
+        if (numEl) {
+          numEl.textContent = isEn ? `No. ${s.student_number}` : `${s.student_number}號`;
+        }
+      }
+    }
+  });
+
+  // 3. 點名卡片 (Attendance Student Grid)
+  document.querySelectorAll('#attendance-student-grid .student-card').forEach(card => {
+    const sid = Number(card.dataset.studentId);
+    if (sid) {
+      const s = AppState.students.find(item => item.id === sid);
+      if (s) {
+        const nameEl = card.querySelector('.student-name');
+        if (nameEl) {
+          const newName = getStudentDisplayName(s);
+          nameEl.textContent = newName;
+          nameEl.title = newName;
+          count++;
+        }
+      }
+    }
+  });
+
+  // 4. 小工具 (Teaching Toolkit 如抽籤展示)
+  if (window.TeachingToolkit && typeof window.TeachingToolkit.updateDisplayNames === 'function') {
+    window.TeachingToolkit.updateDisplayNames();
+  }
+
+  return count;
+}
 
 // --- Security & Auth System ---
 let gAuthTodayStr = '';
@@ -379,6 +456,11 @@ async function logout() {
 
 
 // --- UI Theme & Avatar Helpers ---
+window.StudentPhotoCache = window.StudentPhotoCache || {
+  missing: new Set(),
+  loaded: new Set()
+};
+
 function getStudentAvatarImgHtml(student, sizeStyle = 'width: 100%; height: 100%; object-fit: cover;') {
   if (!student) {
     return `<img src="/static/avatars/boy.png" alt="avatar" style="${sizeStyle}">`;
@@ -394,11 +476,27 @@ function getStudentAvatarImgHtml(student, sizeStyle = 'width: 100%; height: 100%
   const isFemale = gender === 'female' || gender === 'F' || gender === '女';
   const fallbackGenderSrc = isFemale ? '/static/avatars/girl.png' : '/static/avatars/boy.png';
 
-  const code = realStudent.student_code || student.student_code;
-  const primarySrc = code ? `/photo/${code}.jpg` : fallbackGenderSrc;
-  const onerrorChain = `this.onerror=null;this.src='${fallbackGenderSrc}';`;
+  // 1. 若後端已告知無照片，直接顯示預設男女頭像，完全避免發送 404 與 onerror 閃爍
+  if (realStudent.has_photo === false || student.has_photo === false) {
+    return `<img src="${fallbackGenderSrc}" alt="avatar" style="${sizeStyle}">`;
+  }
 
-  return `<img src="${primarySrc}" alt="avatar" style="${sizeStyle}" onerror="${onerrorChain}">`;
+  const code = realStudent.student_code || student.student_code;
+  if (!code) {
+    return `<img src="${fallbackGenderSrc}" alt="avatar" style="${sizeStyle}">`;
+  }
+
+  const codeStr = String(code).trim();
+  // 2. 若快取中已知此學號在 bin/photo 中無照片，直接返回預設頭像
+  if (window.StudentPhotoCache && window.StudentPhotoCache.missing.has(codeStr)) {
+    return `<img src="${fallbackGenderSrc}" alt="avatar" style="${sizeStyle}">`;
+  }
+
+  const primarySrc = `/photo/${encodeURIComponent(codeStr)}.jpg`;
+  const onerrorChain = `if(window.StudentPhotoCache)window.StudentPhotoCache.missing.add('${codeStr}');this.onerror=null;this.src='${fallbackGenderSrc}';`;
+  const onloadChain = `if(window.StudentPhotoCache)window.StudentPhotoCache.loaded.add('${codeStr}');`;
+
+  return `<img src="${primarySrc}" alt="avatar" style="${sizeStyle}" onload="${onloadChain}" onerror="${onerrorChain}">`;
 }
 
 const ANIMAL_ICONS_LIST = [
@@ -1527,6 +1625,7 @@ function renderScoringStudentGrid() {
 
     const card = document.createElement('div');
     card.className = `student-card ${isSelected ? 'selected' : ''} ${isAbsent ? 'absent' : ''} ${isAbsent ? `att-${attStatus}` : ''} ${cardFlashClass}`;
+    card.dataset.studentId = student.id;
     if (isAbsent) {
       card.setAttribute('data-att-label', attLabels[attStatus] || '未出席');
     }
