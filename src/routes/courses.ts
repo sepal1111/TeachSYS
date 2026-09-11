@@ -10,6 +10,7 @@ import { parseCsvStudents, parseXlsxStudents } from "../utils/fileImport";
 import { autoCatch } from "../asyncRoute";
 import { defaultStudentAccount, defaultStudentPassword, hashPassword } from "../utils/studentPassword";
 import crypto from "crypto";
+import { getTodayMMDDTaipei } from "../timezone";
 
 export const coursesRouter = autoCatch(Router());
 const photoDir = path.join(getBinDir(), "photo");
@@ -93,8 +94,27 @@ coursesRouter.get("/:courseId", async (req, res) => {
 });
 
 coursesRouter.delete("/:courseId", async (req, res) => {
-  await prisma.course.delete({ where: { id: Number(req.params.courseId) } }).catch(() => undefined);
-  res.json({ message: "Course deleted successfully" });
+  const courseId = Number(req.params.courseId);
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) {
+    res.status(404).json({ detail: "找不到該班級，可能已被刪除" });
+    return;
+  }
+
+  const password = String(req.body?.password ?? req.query?.password ?? "");
+  const settingRow = await prisma.systemSetting.findUnique({ where: { key: "password_prefix" } });
+  const prefix = settingRow?.value || "Admin";
+  const todayMmdd = getTodayMMDDTaipei();
+  const expected = `${prefix}${todayMmdd}`;
+
+  if (!password || password.trim() !== expected) {
+    res.status(400).json({ detail: "系統密碼錯誤，無法刪除班級！" });
+    return;
+  }
+
+  await prisma.$executeRawUnsafe("PRAGMA foreign_keys = ON;");
+  await prisma.course.delete({ where: { id: courseId } });
+  res.json({ success: true, message: `班級「${course.name}」已成功刪除！` });
 });
 
 // --- Evaluation Rules ---

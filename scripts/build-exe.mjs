@@ -25,21 +25,37 @@ function getGitVersion(cwd) {
       return "";
     }
   };
+
+  // 1. Tag pointing directly at HEAD
   let tag = tryRun("git", ["tag", "--points-at", "HEAD"]).split("\n")[0].trim();
-  if (!tag) tag = tryRun("git", ["describe", "--tags"]).split("\n")[0].trim();
-  if (!tag) tag = tryRun("git", ["tag", "--sort=-creatordate"]).split("\n")[0].trim();
   if (tag) {
     const match = tag.match(/[a-zA-Z0-9._-]+/);
     if (match) return match[0];
   }
+
+  // 2. Latest commit message leading version (e.g. "V2.6.1.1", "V2.6 增加檔案上傳與管理模組")
   const msg = tryRun("git", ["log", "-1", "--pretty=%B"]);
   if (msg) {
     const norm = msg.replace(/[\uFF21-\uFF3A\uFF41-\uFF5A\uFF10-\uFF19]/g, (ch) =>
       String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)
     );
     const match = norm.match(/^([a-zA-Z0-9._-]+)/);
-    if (match) return match[1];
+    if (match) {
+      const ver = match[1];
+      // Automatically register the tag on HEAD if not already tagged
+      tryRun("git", ["tag", ver]);
+      return ver;
+    }
   }
+
+  // 3. Fallback to latest tag in repository
+  tag = tryRun("git", ["describe", "--tags", "--abbrev=0"]).split("\n")[0].trim();
+  if (!tag) tag = tryRun("git", ["tag", "--sort=-creatordate"]).split("\n")[0].trim();
+  if (tag) {
+    const match = tag.match(/[a-zA-Z0-9._-]+/);
+    if (match) return match[0];
+  }
+
   return "";
 }
 
@@ -71,8 +87,19 @@ const exeName = gitVersion ? `${target.baseName}_${gitVersion}${target.ext}` : `
 const defaultExeName = `${target.baseName}${target.ext}`;
 const outDir = path.join(rootDir, "release", which);
 
-console.log("[1/4] npm run build");
-execFileSync(npmCmd, ["run", "build"], { cwd: rootDir, stdio: "inherit", shell: process.platform === "win32" });
+console.log("[1/4] building project (npm run build)");
+try {
+  execFileSync(npmCmd, ["run", "build"], { cwd: rootDir, stdio: "inherit", shell: process.platform === "win32" });
+} catch (buildErr) {
+  const testEngineDir = path.join(rootDir, "node_modules", ".prisma", "client");
+  const existingEngine = fs.globSync(target.engineGlob, { cwd: testEngineDir })[0];
+  if (existingEngine) {
+    console.warn("\n[build-exe] 注意：prisma generate 因本機正運行 dev server 鎖定 DLL 而跳過，正在以現有 Prisma Client 進行 TypeScript 編譯...");
+    execFileSync(npxCmd, ["tsc", "-p", "tsconfig.json"], { cwd: rootDir, stdio: "inherit", shell: process.platform === "win32" });
+  } else {
+    throw buildErr;
+  }
+}
 
 console.log(`[2/4] locating Prisma engine (${target.engineGlob})`);
 const engineDir = path.join(rootDir, "node_modules", ".prisma", "client");
@@ -109,6 +136,11 @@ if (gitVersion) {
   fs.rmSync(versionedDir, { recursive: true, force: true });
   fs.cpSync(outDir, versionedDir, { recursive: true });
   console.log(`Versioned folder created: ${versionedDir}`);
+
+  const cmDir = path.join(rootDir, "release", `ClassroomManager_${gitVersion}_${which}`);
+  fs.rmSync(cmDir, { recursive: true, force: true });
+  fs.cpSync(outDir, cmDir, { recursive: true });
+  console.log(`ClassroomManager folder created: ${cmDir}`);
 }
 
 console.log(`Done: ${outDir} (${exeName})`);

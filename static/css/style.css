@@ -2332,6 +2332,134 @@ body::before {
   box-shadow: 0 2px 10px rgba(123, 152, 224, 0.4);
 }
 
+/* 即時評分介面時段切換按鈕 */
+.scoring-period-btn {
+  border-radius: var(--radius-sm);
+  font-size: 0.82rem;
+  padding: 4px 10px;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.scoring-period-btn.active {
+  background: linear-gradient(135deg, #7b98e0, #5b7cd6) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px rgba(123, 152, 224, 0.35);
+}
+
+/* 即時評分指定日期區間工具列 - 符合網站配色與字體比例 */
+.scoring-range-bar {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 16px 0;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, rgba(91, 124, 214, 0.04) 0%, rgba(123, 152, 224, 0.08) 100%);
+  border: 1px solid rgba(123, 152, 224, 0.28);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+  animation: projRangeBarIn 0.25s ease;
+}
+
+.scoring-range-label {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+}
+
+.scoring-range-dates-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card-bg);
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-md);
+  padding: 3px 10px;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.scoring-range-dates-wrap:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(91, 124, 214, 0.15);
+}
+
+.scoring-date-input {
+  width: 130px !important;
+  height: 32px !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-main) !important;
+  font-size: 0.92rem !important;
+  font-weight: 700 !important;
+  font-family: inherit !important;
+  outline: none !important;
+  cursor: pointer;
+  padding: 0 !important;
+}
+
+.scoring-date-sep {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.scoring-range-presets {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.scoring-preset-pill {
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  padding: 5px 12px !important;
+  border-radius: var(--radius-full) !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--card-border) !important;
+  color: var(--text-muted) !important;
+  cursor: pointer;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.scoring-preset-pill:hover {
+  background: rgba(91, 124, 214, 0.1) !important;
+  border-color: var(--primary-light) !important;
+  color: var(--primary) !important;
+  transform: translateY(-1px);
+}
+
+.btn-apply-scoring {
+  background: linear-gradient(135deg, #5b7cd6 0%, #7b98e0 100%) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  font-size: 0.88rem !important;
+  font-weight: 700 !important;
+  padding: 6px 16px !important;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 6px rgba(91, 124, 214, 0.28) !important;
+  transition: all var(--transition-fast);
+}
+
+.btn-apply-scoring:hover {
+  background: linear-gradient(135deg, #4a67ba 0%, #5b7cd6 100%) !important;
+  box-shadow: 0 4px 10px rgba(91, 124, 214, 0.38) !important;
+  transform: translateY(-1px);
+}
+
 /* ==========================================================================
    Students Score Grid (全班座號得分一覽表 - 一般儀表板 & 大螢幕投影)
    ========================================================================== */

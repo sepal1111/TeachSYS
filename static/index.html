@@ -53,6 +53,7 @@
       </select>
       <button id="btn-mobile-remote" class="btn-icon" title="遙控教室大螢幕" style="display: none;">🎮</button>
       <button id="btn-add-course" class="btn-icon" title="新增課程" data-i18n-title="btn_add_course">➕</button>
+      <button id="btn-delete-course" class="btn-icon danger-icon" title="刪除目前班級" data-i18n-title="btn_delete_course" style="color: var(--accent-negative);">🗑️</button>
       <button id="btn-qr-modal" class="btn-icon" title="手機評分連線 QR Code" data-i18n-title="btn_qr_code">📱</button>
       <button id="btn-toggle-lang" class="btn btn-secondary btn-lang-toggle" title="切換語系 / Switch Language" style="font-size: 0.85rem; padding: 6px 10px; gap: 4px;">🌐 繁中 / EN</button>
       <button id="btn-toggle-name-mode" class="btn btn-secondary btn-name-mode-toggle" title="切換姓名顯示 (中文/英文)" style="font-size: 0.85rem; padding: 6px 10px; gap: 4px;">👤 姓名: 中文</button>
@@ -175,8 +176,20 @@
       <div class="glass-card">
         <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
           <div>
-            <div class="glass-card-title">👥 課堂即時評分</div>
-            <div id="scoring-mode-hint" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;">💡 點擊學生卡片跳出選單評分</div>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <div class="glass-card-title" data-i18n="scoring_title">👥 課堂即時評分</div>
+              <!-- 時段統計按鈕群 -->
+              <div class="scoring-period-buttons" style="display: inline-flex; gap: 4px; background: var(--input-bg); padding: 3px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+                <button type="button" class="btn btn-sm scoring-period-btn active" data-period="today" style="font-size: 0.82rem; padding: 4px 10px;" data-i18n="dash_period_today">當天</button>
+                <button type="button" class="btn btn-sm btn-secondary scoring-period-btn" data-period="week" style="font-size: 0.82rem; padding: 4px 10px;" data-i18n="dash_period_week">當週</button>
+                <button type="button" class="btn btn-sm btn-secondary scoring-period-btn" data-period="month" style="font-size: 0.82rem; padding: 4px 10px;" data-i18n="dash_period_month">當月</button>
+                <button type="button" class="btn btn-sm btn-secondary scoring-period-btn" data-period="range" style="font-size: 0.82rem; padding: 4px 10px;" data-i18n="dash_period_range">指定期間</button>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 5px; flex-wrap: wrap;">
+              <span id="scoring-mode-hint" style="font-size: 0.85rem; color: var(--text-muted);" data-i18n="scoring_hint">💡 點擊學生卡片跳出選單評分</span>
+              <span id="scoring-period-badge" class="badge" style="font-size: 0.82rem; padding: 3px 10px; background: rgba(91, 124, 214, 0.1); color: var(--primary); border: 1px solid rgba(91, 124, 214, 0.25); border-radius: var(--radius-full); font-weight: 700;">📅 分數統計：當天</span>
+            </div>
           </div>
           <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
             <!-- View Mode Switcher: Grid vs Seating -->
@@ -190,6 +203,22 @@
               <span id="quick-score-toggle-text">快速加減分：關閉</span>
             </button>
           </div>
+        </div>
+
+        <!-- Custom Range Input Bar for Scoring (當選擇指定期間時展開) -->
+        <div id="scoring-range-inputs" class="scoring-range-bar">
+          <label class="scoring-range-label" data-i18n="dash_range_label">📅 選擇日期範圍：</label>
+          <div class="scoring-range-dates-wrap">
+            <input type="date" id="scoring-start-date" class="scoring-date-input">
+            <span class="scoring-date-sep" data-i18n="range_to">至</span>
+            <input type="date" id="scoring-end-date" class="scoring-date-input">
+          </div>
+          <div class="scoring-range-presets" role="group" aria-label="快捷日期範圍">
+            <button type="button" class="proj-range-preset-pill scoring-preset-pill" data-target="scoring" data-days="7" data-i18n="proj_preset_7d">近 7 天</button>
+            <button type="button" class="proj-range-preset-pill scoring-preset-pill" data-target="scoring" data-days="30" data-i18n="proj_preset_30d">近 30 天</button>
+            <button type="button" class="proj-range-preset-pill scoring-preset-pill" data-target="scoring" data-preset="month" data-i18n="proj_preset_this_month">本月</button>
+          </div>
+          <button type="button" id="btn-apply-scoring-range" class="btn-apply-scoring" data-i18n="dash_btn_apply_range">⚡ 套用範圍</button>
         </div>
         <!-- 1A. Roster Grid View -->
         <div id="scoring-student-grid" class="student-grid">
@@ -945,6 +974,17 @@
             <span style="color: var(--text-muted); font-size: 0.85rem;">💡 若系統未找到該學號對應之照片，將自動顯示預設的 <code>boy.png</code> / <code>girl.png</code> 性別頭像。</span>
           </div>
         </div>
+
+        <!-- Danger Zone: Delete Course Card -->
+        <div class="glass-card" style="border-color: rgba(239, 68, 68, 0.35); background: linear-gradient(135deg, rgba(239, 68, 68, 0.05), transparent);">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title" style="color: var(--accent-negative);" data-i18n="admin_course_danger_title">⚠️ 危險區域：班級刪除操作</div>
+            <button id="btn-pane-delete-course" class="btn btn-danger" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="btn_delete_course">🗑️ 刪除目前班級</button>
+          </div>
+          <div style="font-size: 0.88rem; line-height: 1.6; color: var(--text-muted);" data-i18n="admin_course_danger_desc">
+            若本學期已結束或不再需要此班級資料，可執行刪除。此動作將一併清除該班級之所有學生名冊、加扣分紀錄、點名紀錄與分組資料。系統將要求雙重確認與系統管理密碼。
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1470,6 +1510,66 @@
           <option value="subject" data-i18n="add_course_type_subject">🎨 科任課程</option>
         </select>
         <button id="btn-confirm-add-course" class="btn" style="margin-top: 10px;" data-i18n="add_course_confirm_btn">確認建立</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Course Modal - Step 1/2 Confirmation -->
+  <div id="modal-delete-course-step1" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title" style="color: var(--accent-negative); font-weight: 800;" data-i18n="delete_course_step1_title">⚠️ 刪除班級確認（第 1 / 2 步）</div>
+        <button class="btn-icon close-modal">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="padding: 12px; background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--accent-negative); border-radius: var(--radius-sm);">
+          <div style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin-bottom: 4px;" data-i18n="delete_course_target_label">您即將刪除班級：</div>
+          <div id="delete-course-target-name" style="font-size: 1.15rem; font-weight: 800; color: #ef4444;"></div>
+        </div>
+
+        <div style="font-size: 0.9rem; line-height: 1.6; color: var(--text-main);">
+          <strong style="color: #ef4444;" data-i18n="delete_course_warning_bold">此操作為永久刪除且無法復原！</strong>
+          <span data-i18n="delete_course_warning_desc">刪除後，該班級之下列所有資料將被立即抹除：</span>
+          <ul style="margin: 8px 0 0 18px; padding: 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.7;">
+            <li data-i18n="delete_course_item_students">學生名冊、學生登入帳號與密碼</li>
+            <li data-i18n="delete_course_item_scores">所有加扣分、課堂即時記錄與評分日誌</li>
+            <li data-i18n="delete_course_item_attendance">出缺席點名與請假記錄</li>
+            <li data-i18n="delete_course_item_groups">座位表編排與彈性分組方案</li>
+            <li data-i18n="delete_course_item_materials">課程素材、作業繳交、測驗與互動牆紀錄</li>
+          </ul>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_cancel">取消</button>
+          <button type="button" id="btn-delete-course-next" class="btn btn-danger" data-i18n="delete_course_btn_next">下一步：輸入系統密碼 ➔</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Course Modal - Step 2/2 Password Verification -->
+  <div id="modal-delete-course-step2" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <div class="modal-title" style="color: var(--accent-negative); font-weight: 800;" data-i18n="delete_course_step2_title">🔐 系統密碼驗證（第 2 / 2 步）</div>
+        <button class="btn-icon close-modal">✕</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="font-size: 0.9rem; color: var(--text-main); line-height: 1.5;">
+          <span data-i18n="delete_course_confirm_prompt">為防止誤刪班級，請輸入今日之</span><strong style="color: var(--accent-primary);" data-i18n="delete_course_sys_pwd_label">「系統管理密碼」</strong><span data-i18n="delete_course_confirm_prompt_tail">以確認刪除：</span>
+          <div style="margin-top: 4px; font-size: 0.82rem; color: var(--text-muted);" data-i18n="delete_course_pwd_hint">💡 公式為：[字頭] + [當天月日 MMDD]（預設為 Admin + 今日月日）</div>
+        </div>
+
+        <div>
+          <label for="delete-course-password-input" style="font-size: 0.88rem; font-weight: 700; margin-bottom: 6px; display: block;" data-i18n="delete_course_input_label">系統管理密碼：</label>
+          <input type="password" id="delete-course-password-input" class="input-control" style="width: 100%; box-sizing: border-box;" placeholder="請輸入系統密碼" data-i18n-placeholder="delete_course_input_placeholder" autocomplete="current-password">
+          <div id="delete-course-error-msg" style="color: #ef4444; font-size: 0.85rem; margin-top: 6px; display: none;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_cancel">取消</button>
+          <button type="button" id="btn-confirm-delete-course" class="btn btn-danger" data-i18n="delete_course_btn_confirm">🗑️ 確認永久刪除班級</button>
+        </div>
       </div>
     </div>
   </div>

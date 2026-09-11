@@ -16,6 +16,9 @@ const AppState = {
   attendanceRecords: {},
   dashboardPeriod: 'today',
   dashboardViewMode: 'individual',
+  scoringPeriod: localStorage.getItem('scoring_period') || 'today',
+  scoringStartDate: null,
+  scoringEndDate: null,
   projectionViewMode: 'individual',
   quickScoringMode: localStorage.getItem('quick_scoring_mode') === 'true',
   pendingQuickScores: {},
@@ -126,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderCourseSelectOptions();
     updateQuickScoringToggleUI();
     updateScoringViewModeUI();
+    updateScoringPeriodUI();
     document.querySelectorAll('.custom-file-wrap').forEach(wrap => {
       const input = wrap.querySelector('input[type="file"]');
       const nameSpan = wrap.querySelector('.custom-file-name');
@@ -1053,9 +1057,14 @@ function renderActiveTabEmptyNotice() {
 
 function renderCourseSelectOptions() {
   const select = document.getElementById('course-select');
+  const btnDelete = document.getElementById('btn-delete-course');
+  const btnPaneDelete = document.getElementById('btn-pane-delete-course');
   if (!select) return;
   const isEn = window.I18n && window.I18n.getLanguage() === 'en';
   const courses = AppState.courses || [];
+
+  if (btnDelete) btnDelete.disabled = courses.length === 0;
+  if (btnPaneDelete) btnPaneDelete.disabled = courses.length === 0;
 
   if (courses.length === 0) {
     select.innerHTML = `<option value="">${isEn ? '(No class, click ➕ to add)' : '(無課程，請按 ➕ 新增)'}</option>`;
@@ -1114,9 +1123,19 @@ async function loadScoringData() {
     return;
   }
   try {
+    const period = AppState.scoringPeriod || 'today';
+    let dashUrl = `/api/reports/${AppState.currentCourseId}/dashboard?period=${period}`;
+    if (period === 'range') {
+      const s = AppState.scoringStartDate || document.getElementById('scoring-start-date')?.value;
+      const e = AppState.scoringEndDate || document.getElementById('scoring-end-date')?.value;
+      if (s && e) {
+        dashUrl += `&start_date=${encodeURIComponent(s)}&end_date=${encodeURIComponent(e)}`;
+      }
+    }
+
     const [rules, dashData, groupsData, seatingData] = await Promise.all([
       API.get(`/api/scores/${AppState.currentCourseId}/rules`),
-      API.get(`/api/reports/${AppState.currentCourseId}/dashboard?period=today`),
+      API.get(dashUrl),
       API.get(`/api/groups/${AppState.currentCourseId}`),
       API.get(`/api/seating/${AppState.currentCourseId}`).catch(err => {
         console.warn('Seating chart fetch failed:', err);
@@ -1146,11 +1165,51 @@ async function loadScoringData() {
     renderRulesBar();
     renderQuickGroupBar();
     renderScoringView();
+    updateScoringPeriodUI();
     if (window.TeachingToolkit && window.TeachingToolkit.floatingDock) {
       window.TeachingToolkit.floatingDock.updatePoolBadge();
     }
   } catch (err) {
     console.error('Scoring data load error:', err);
+  }
+}
+
+function updateScoringPeriodUI() {
+  const period = AppState.scoringPeriod || 'today';
+  document.querySelectorAll('.scoring-period-btn').forEach(b => {
+    if (b.dataset.period === period) {
+      b.classList.add('active');
+      b.classList.remove('btn-secondary');
+    } else {
+      b.classList.remove('active');
+      b.classList.add('btn-secondary');
+    }
+  });
+
+  const rangeInputs = document.getElementById('scoring-range-inputs');
+  if (rangeInputs) {
+    rangeInputs.style.display = period === 'range' ? 'flex' : 'none';
+  }
+
+  const badge = document.getElementById('scoring-period-badge');
+  if (badge) {
+    const isEn = window.I18n && window.I18n.getLanguage() === 'en';
+    const prefix = window.I18n ? window.I18n.t('scoring_period_badge_prefix', '分數統計：') : '分數統計：';
+    let label = isEn ? 'Today' : '當天';
+    if (period === 'week') {
+      label = isEn ? 'This Week' : '當週';
+    } else if (period === 'month') {
+      label = isEn ? 'This Month' : '當月';
+    } else if (period === 'range') {
+      const s = document.getElementById('scoring-start-date')?.value || AppState.scoringStartDate;
+      const e = document.getElementById('scoring-end-date')?.value || AppState.scoringEndDate;
+      if (s && e) {
+        label = `${s} ~ ${e}`;
+      } else {
+        label = isEn ? 'Custom Range (Select Dates)' : '指定期間 (請選擇日期)';
+      }
+    }
+    badge.textContent = `📅 ${prefix}${label}`;
   }
 }
 
@@ -5858,6 +5917,8 @@ function initEventListeners() {
 
   // Header & Mode buttons
   document.getElementById('btn-add-course').addEventListener('click', () => openModal('modal-add-course'));
+  document.getElementById('btn-delete-course')?.addEventListener('click', startDeleteCourseFlow);
+  document.getElementById('btn-pane-delete-course')?.addEventListener('click', startDeleteCourseFlow);
   document.getElementById('btn-qr-modal').addEventListener('click', showQRModal);
 
   const btnToggleLang = document.getElementById('btn-toggle-lang');
@@ -5967,6 +6028,87 @@ function initEventListeners() {
       openModal('modal-import-students');
     } catch (err) {
       alert(`新增課程失敗：${err.message}`);
+    }
+  });
+
+  // --- Delete Course Double Confirmation Flow ---
+  function startDeleteCourseFlow() {
+    const currentCourse = (AppState.courses || []).find(c => c.id === AppState.currentCourseId);
+    if (!currentCourse) {
+      alert(window.I18n ? window.I18n.t('delete_course_no_selection') : '目前沒有選中的班級可刪除！');
+      return;
+    }
+    const targetNameEl = document.getElementById('delete-course-target-name');
+    if (targetNameEl) {
+      const icon = currentCourse.teacher_type === 'homeroom' ? '🏫' : '🎨';
+      const count = currentCourse.student_count || 0;
+      targetNameEl.textContent = `${icon} ${currentCourse.name} (${count} 人 / students)`;
+    }
+    openModal('modal-delete-course-step1');
+  }
+
+  document.getElementById('btn-delete-course-next')?.addEventListener('click', () => {
+    closeModal('modal-delete-course-step1');
+    const pwdInput = document.getElementById('delete-course-password-input');
+    const errEl = document.getElementById('delete-course-error-msg');
+    if (pwdInput) pwdInput.value = '';
+    if (errEl) {
+      errEl.style.display = 'none';
+      errEl.textContent = '';
+    }
+    openModal('modal-delete-course-step2');
+    setTimeout(() => {
+      if (pwdInput) pwdInput.focus();
+    }, 120);
+  });
+
+  async function executeDeleteCourse() {
+    const pwdInput = document.getElementById('delete-course-password-input');
+    const errEl = document.getElementById('delete-course-error-msg');
+    const password = pwdInput ? pwdInput.value.trim() : '';
+
+    if (!password) {
+      if (errEl) {
+        errEl.textContent = window.I18n ? window.I18n.t('delete_course_pwd_required') : '請輸入系統管理密碼！';
+        errEl.style.display = 'block';
+      }
+      if (pwdInput) pwdInput.focus();
+      return;
+    }
+
+    const btn = document.getElementById('btn-confirm-delete-course');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = window.I18n ? window.I18n.t('delete_course_deleting') : '正在刪除...';
+    }
+
+    try {
+      const res = await API.delete(`/api/courses/${AppState.currentCourseId}`, { password });
+      closeModal('modal-delete-course-step2');
+      const succMsg = res?.message || (window.I18n ? window.I18n.t('delete_course_success') : '班級已成功刪除！');
+      alert(succMsg);
+      AppState.currentCourseId = null;
+      await loadCourses();
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = err.message || '刪除失敗';
+        errEl.style.display = 'block';
+      }
+      if (pwdInput) pwdInput.focus();
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+      }
+    }
+  }
+
+  document.getElementById('btn-confirm-delete-course')?.addEventListener('click', executeDeleteCourse);
+  document.getElementById('delete-course-password-input')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeDeleteCourse();
     }
   });
 
@@ -6192,13 +6334,75 @@ function initEventListeners() {
     });
   }
 
-  // Handle date range preset pills (近 7 天, 近 30 天, 本月) for both dashboard & projection
+  // Scoring period buttons (即時評分時段切換：當天、當週、當月、指定期間)
+  document.querySelectorAll('.scoring-period-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const p = btn.dataset.period;
+      AppState.scoringPeriod = p;
+      localStorage.setItem('scoring_period', p);
+
+      const rangeInputs = document.getElementById('scoring-range-inputs');
+      if (p === 'range') {
+        if (rangeInputs) rangeInputs.style.display = 'flex';
+        const startInput = document.getElementById('scoring-start-date');
+        const endInput = document.getElementById('scoring-end-date');
+        if (startInput && endInput && (!startInput.value || !endInput.value)) {
+          const now = new Date();
+          const pad = n => String(n).padStart(2, '0');
+          const toYMD = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+          const past = new Date();
+          past.setDate(past.getDate() - 6);
+          startInput.value = toYMD(past);
+          endInput.value = toYMD(now);
+          AppState.scoringStartDate = startInput.value;
+          AppState.scoringEndDate = endInput.value;
+        }
+      } else {
+        if (rangeInputs) rangeInputs.style.display = 'none';
+      }
+
+      updateScoringPeriodUI();
+      await loadScoringData();
+    });
+  });
+
+  ['scoring-start-date', 'scoring-end-date'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('change', () => {
+        const s = document.getElementById('scoring-start-date')?.value;
+        const e = document.getElementById('scoring-end-date')?.value;
+        if (s && e) {
+          AppState.scoringStartDate = s;
+          AppState.scoringEndDate = e;
+          updateScoringPeriodUI();
+          loadScoringData();
+        }
+      });
+    }
+  });
+
+  document.getElementById('btn-apply-scoring-range')?.addEventListener('click', () => {
+    const s = document.getElementById('scoring-start-date')?.value;
+    const e = document.getElementById('scoring-end-date')?.value;
+    if (!s || !e) {
+      alert(window.I18n && window.I18n.getLanguage() === 'en' ? 'Please select both start and end dates!' : '請選擇開始與結束日期！');
+      return;
+    }
+    AppState.scoringStartDate = s;
+    AppState.scoringEndDate = e;
+    updateScoringPeriodUI();
+    loadScoringData();
+  });
+
+  // Handle date range preset pills (近 7 天, 近 30 天, 本月) for dashboard, projection & scoring
   document.querySelectorAll('.proj-range-preset-pill').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
+      const isScoring = btn.dataset.target === 'scoring' || btn.closest('#scoring-range-inputs');
       const isDash = btn.dataset.target === 'dash' || btn.closest('#dashboard-range-inputs');
-      const startInput = document.getElementById(isDash ? 'dash-start-date' : 'proj-start-date');
-      const endInput = document.getElementById(isDash ? 'dash-end-date' : 'proj-end-date');
+      const startInput = document.getElementById(isScoring ? 'scoring-start-date' : (isDash ? 'dash-start-date' : 'proj-start-date'));
+      const endInput = document.getElementById(isScoring ? 'scoring-end-date' : (isDash ? 'dash-end-date' : 'proj-end-date'));
       if (!startInput || !endInput) return;
 
       const now = new Date();
@@ -6219,17 +6423,24 @@ function initEventListeners() {
         startInput.value = toYMD(sDate);
         endInput.value = toYMD(eDate);
 
-        // Synchronize between dash and proj
-        const otherStart = document.getElementById(isDash ? 'proj-start-date' : 'dash-start-date');
-        const otherEnd = document.getElementById(isDash ? 'proj-end-date' : 'dash-end-date');
-        if (otherStart) otherStart.value = startInput.value;
-        if (otherEnd) otherEnd.value = endInput.value;
+        if (isScoring) {
+          AppState.scoringStartDate = startInput.value;
+          AppState.scoringEndDate = endInput.value;
+          const applyBtn = document.getElementById('btn-apply-scoring-range');
+          if (applyBtn) applyBtn.click();
+        } else {
+          // Synchronize between dash and proj
+          const otherStart = document.getElementById(isDash ? 'proj-start-date' : 'dash-start-date');
+          const otherEnd = document.getElementById(isDash ? 'proj-end-date' : 'dash-end-date');
+          if (otherStart) otherStart.value = startInput.value;
+          if (otherEnd) otherEnd.value = endInput.value;
 
-        startInput.dispatchEvent(new Event('change', { bubbles: true }));
-        endInput.dispatchEvent(new Event('change', { bubbles: true }));
+          startInput.dispatchEvent(new Event('change', { bubbles: true }));
+          endInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-        const applyBtn = document.getElementById(isDash ? 'btn-apply-dash-range' : 'btn-apply-proj-range');
-        if (applyBtn) applyBtn.click();
+          const applyBtn = document.getElementById(isDash ? 'btn-apply-dash-range' : 'btn-apply-proj-range');
+          if (applyBtn) applyBtn.click();
+        }
       }
     });
   });

@@ -17,6 +17,7 @@
       'loading': '載入中...',
       'no_courses': '尚無課程',
       'btn_add_course': '➕ 新增課程',
+      'btn_delete_course': '🗑️ 刪除目前班級',
       'btn_batch_import': '📥 批次匯入名冊',
       'btn_qr_code': '📱 手機評分連線 QR Code',
       'btn_guide': '📖 操作說明',
@@ -273,6 +274,9 @@
       // Modals
       'modal_close': '關閉',
       'modal_cancel': '取消',
+      'modal_btn_cancel': '取消',
+      'scoring_period_badge_prefix': '分數統計：',
+      'range_to': '至',
       'modal_confirm': '確定',
       'modal_save': '💾 儲存',
       'modal_save_student': '💾 儲存學生資料',
@@ -301,6 +305,32 @@
       'add_course_type_homeroom': '🏫 導師班級',
       'add_course_type_subject': '🎨 科任課程',
       'add_course_confirm_btn': '確認建立',
+
+      // Delete Course Modals
+      'admin_course_danger_title': '⚠️ 危險區域：班級刪除操作',
+      'admin_course_danger_desc': '若本學期已結束或不再需要此班級資料，可執行刪除。此動作將一併清除該班級之所有學生名冊、加扣分紀錄、點名紀錄與分組資料。系統將要求雙重確認與系統管理密碼。',
+      'delete_course_step1_title': '⚠️ 刪除班級確認（第 1 / 2 步）',
+      'delete_course_target_label': '您即將刪除班級：',
+      'delete_course_warning_bold': '此操作為永久刪除且無法復原！',
+      'delete_course_warning_desc': '刪除後，該班級之下列所有資料將被立即抹除：',
+      'delete_course_item_students': '學生名冊、學生登入帳號與密碼',
+      'delete_course_item_scores': '所有加扣分、課堂即時記錄與評分日誌',
+      'delete_course_item_attendance': '出缺席點名與請假記錄',
+      'delete_course_item_groups': '座位表編排與彈性分組方案',
+      'delete_course_item_materials': '課程素材、作業繳交、測驗與互動牆紀錄',
+      'delete_course_btn_next': '下一步：輸入系統密碼 ➔',
+      'delete_course_step2_title': '🔐 系統密碼驗證（第 2 / 2 步）',
+      'delete_course_confirm_prompt': '為防止誤刪班級，請輸入今日之',
+      'delete_course_sys_pwd_label': '「系統管理密碼」',
+      'delete_course_confirm_prompt_tail': '以確認刪除：',
+      'delete_course_pwd_hint': '💡 公式為：[字頭] + [當天月日 MMDD]（預設為 Admin + 今日月日）',
+      'delete_course_input_label': '系統管理密碼：',
+      'delete_course_input_placeholder': '請輸入系統密碼',
+      'delete_course_btn_confirm': '🗑️ 確認永久刪除班級',
+      'delete_course_no_selection': '目前沒有選中的班級可刪除！',
+      'delete_course_pwd_required': '請輸入系統管理密碼！',
+      'delete_course_deleting': '正在刪除班級資料...',
+      'delete_course_success': '班級已成功刪除！',
 
       // Add/Edit Rule Modal
       'rule_modal_title_add': '➕ 新增自訂評分項目',
@@ -784,6 +814,7 @@
       'loading': 'Loading...',
       'no_courses': 'No Courses',
       'btn_add_course': '➕ Add Course',
+      'btn_delete_course': '🗑️ Delete Current Class',
       'btn_batch_import': '📥 Batch Import',
       'btn_qr_code': '📱 Mobile Scoring QR',
       'btn_guide': '📖 User Guide',
@@ -1040,6 +1071,9 @@
       // Modals
       'modal_close': 'Close',
       'modal_cancel': 'Cancel',
+      'modal_btn_cancel': 'Cancel',
+      'scoring_period_badge_prefix': 'Score Period: ',
+      'range_to': 'to',
       'modal_confirm': 'Confirm',
       'modal_save': '💾 Save',
       'modal_save_student': '💾 Save Student Info',
@@ -1068,6 +1102,32 @@
       'add_course_type_homeroom': '🏫 Homeroom Class',
       'add_course_type_subject': '🎨 Subject Course',
       'add_course_confirm_btn': 'Create Course',
+
+      // Delete Course Modals
+      'admin_course_danger_title': '⚠️ Danger Zone: Delete Class',
+      'admin_course_danger_desc': 'Delete this class if no longer needed. All students, scores, attendance logs, and groups will be permanently removed. Requires two confirmations and system admin password.',
+      'delete_course_step1_title': '⚠️ Delete Class Confirmation (Step 1 of 2)',
+      'delete_course_target_label': 'You are about to delete class:',
+      'delete_course_warning_bold': 'This action is PERMANENT and CANNOT be undone!',
+      'delete_course_warning_desc': 'All associated data will be immediately erased:',
+      'delete_course_item_students': 'Student rosters, accounts, and passwords',
+      'delete_course_item_scores': 'All score logs, points, and real-time records',
+      'delete_course_item_attendance': 'Attendance and leave records',
+      'delete_course_item_groups': 'Seating charts and group plans',
+      'delete_course_item_materials': 'LMS materials, submissions, quizzes, and live wall logs',
+      'delete_course_btn_next': 'Next: Verify System Password ➔',
+      'delete_course_step2_title': '🔐 System Password Verification (Step 2 of 2)',
+      'delete_course_confirm_prompt': 'To prevent accidental deletion, enter today\'s ',
+      'delete_course_sys_pwd_label': 'System Admin Password',
+      'delete_course_confirm_prompt_tail': ' to confirm deletion:',
+      'delete_course_pwd_hint': '💡 Formula: [Prefix] + [Today MMDD] (default: Admin + MMDD)',
+      'delete_course_input_label': 'System Password:',
+      'delete_course_input_placeholder': 'Enter system password',
+      'delete_course_btn_confirm': '🗑️ Confirm Permanent Deletion',
+      'delete_course_no_selection': 'No class currently selected to delete!',
+      'delete_course_pwd_required': 'Please enter the system password!',
+      'delete_course_deleting': 'Deleting class data...',
+      'delete_course_success': 'Class deleted successfully!',
 
       // Add/Edit Rule Modal
       'rule_modal_title_add': '➕ Add Custom Rule',
@@ -1879,7 +1939,7 @@
       'semester': 'dash_period_semester'
     };
 
-    document.querySelectorAll('.dashboard-period-btn, .proj-period-btn').forEach(btn => {
+    document.querySelectorAll('.dashboard-period-btn, .proj-period-btn, .scoring-period-btn').forEach(btn => {
       const period = btn.getAttribute('data-period');
       if (period && periodButtonsMap[period]) {
         btn.textContent = t(periodButtonsMap[period]);

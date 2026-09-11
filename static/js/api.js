@@ -124,10 +124,12 @@ const API = {
     return res.json();
   },
 
-  async delete(url) {
+  async delete(url, data = null) {
+    const headers = this.getHeaders(data ? { 'Content-Type': 'application/json' } : {});
     const res = await fetch(url, {
       method: 'DELETE',
-      headers: this.getHeaders(),
+      headers,
+      body: data ? JSON.stringify(data) : undefined,
       credentials: 'same-origin'
     });
     if (res.status === 401) {
