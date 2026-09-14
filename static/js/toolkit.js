@@ -2262,7 +2262,7 @@
 
     async clear() {
       if (!this.currentSession) return;
-      if (!confirm(livewallT('livewall_clear_confirm'))) return;
+      if (!(await window.showConfirmModal(livewallT('livewall_clear_confirm')))) return;
       try {
         await API.post(`/api/live-wall/sessions/${this.currentSession.id}/clear`);
         window.showToast && window.showToast(livewallT('livewall_toast_cleared'), 'success');
@@ -2274,7 +2274,7 @@
 
     async end() {
       if (!this.currentSession) return;
-      if (!confirm(livewallT('livewall_end_confirm'))) return;
+      if (!(await window.showConfirmModal(livewallT('livewall_end_confirm')))) return;
       const sessionId = this.currentSession.id;
       this.stopHeartbeat();
       this.currentSession = null;
@@ -2385,7 +2385,7 @@
     // 刪除單筆上傳紀錄（教師端專用，從「歷史紀錄」彈窗操作）：後端會連同伺服器上的手繪/拍照
     // 檔案一併刪除，此動作無法復原。若該筆同時也還在進行中場次的看板上，一併重新整理看板。
     async deletePost(postId) {
-      if (!confirm(livewallT('livewall_delete_confirm'))) return;
+      if (!(await window.showConfirmModal(livewallT('livewall_delete_confirm')))) return;
       try {
         await API.delete(`/api/live-wall/posts/${postId}`);
         window.showToast && window.showToast(livewallT('livewall_toast_deleted'), 'success');

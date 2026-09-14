@@ -62,6 +62,123 @@
     return data;
   }
 
+  /** 美化版 window.confirm() 取代方案：回傳 Promise<boolean>，語意與原生 confirm() 一致 */
+  function showConfirmModal(options) {
+    let opts = {};
+    if (typeof options === 'string' || typeof options === 'number') {
+      const lines = String(options).split('\n');
+      opts = { title: lines[0] || '', desc: lines.slice(1).join('\n') };
+    } else {
+      opts = Object.assign({}, options);
+    }
+
+    let icon = opts.icon || '❓';
+    let iconBg = 'rgba(123, 152, 224, 0.15)';
+    let iconBorder = 'rgba(123, 152, 224, 0.4)';
+    let okGradient = 'linear-gradient(135deg, #7b98e0, #4a67ba)';
+    const textToCheck = (opts.title + ' ' + (opts.desc || '')).toLowerCase();
+    if (opts.danger || textToCheck.includes('刪除') || textToCheck.includes('delete')) {
+      icon = opts.icon || '🗑️';
+      iconBg = 'rgba(217, 128, 126, 0.15)';
+      iconBorder = 'rgba(217, 128, 126, 0.4)';
+      okGradient = 'linear-gradient(135deg, #d9807e, #dc2626)';
+    }
+
+    const overlay = document.getElementById('modalStudentGenericConfirm');
+    if (!overlay) return Promise.resolve(window.confirm(opts.title + (opts.desc ? '\n' + opts.desc : '')));
+
+    const iconWrap = document.getElementById('studentGenericConfirmIconWrap');
+    const iconEl = document.getElementById('studentGenericConfirmIcon');
+    const titleEl = document.getElementById('studentGenericConfirmTitle');
+    const descEl = document.getElementById('studentGenericConfirmDesc');
+    const btnCancel = document.getElementById('btnStudentGenericConfirmCancel');
+    const btnOk = document.getElementById('btnStudentGenericConfirmOk');
+
+    iconWrap.style.background = iconBg;
+    iconWrap.style.border = `2px solid ${iconBorder}`;
+    iconEl.textContent = icon;
+    titleEl.textContent = opts.title || '';
+    if (opts.desc) {
+      descEl.textContent = opts.desc;
+      descEl.style.display = 'block';
+    } else {
+      descEl.style.display = 'none';
+    }
+    btnCancel.textContent = opts.cancelText || '取消';
+    btnOk.textContent = opts.confirmText || '確定';
+    btnOk.style.background = okGradient;
+
+    return new Promise((resolve) => {
+      let settled = false;
+      function cleanup(result) {
+        if (settled) return;
+        settled = true;
+        overlay.style.display = 'none';
+        btnCancel.removeEventListener('click', onCancel);
+        btnOk.removeEventListener('click', onOk);
+        resolve(result);
+      }
+      function onCancel() { cleanup(false); }
+      function onOk() { cleanup(true); }
+      btnCancel.addEventListener('click', onCancel);
+      btnOk.addEventListener('click', onOk);
+      overlay.style.display = 'flex';
+    });
+  }
+
+  /** 美化版 window.prompt() 取代方案：回傳 Promise<string|null>，語意與原生 prompt() 一致 */
+  function showPromptModal(options) {
+    let opts = typeof options === 'string' ? { title: options } : Object.assign({}, options);
+    opts.defaultValue = opts.defaultValue !== undefined ? String(opts.defaultValue) : '';
+
+    const overlay = document.getElementById('modalStudentGenericPrompt');
+    if (!overlay) return Promise.resolve(window.prompt(opts.title || '', opts.defaultValue));
+
+    const iconEl = document.getElementById('studentGenericPromptIcon');
+    const titleEl = document.getElementById('studentGenericPromptTitle');
+    const descEl = document.getElementById('studentGenericPromptDesc');
+    const inputEl = document.getElementById('studentGenericPromptInput');
+    const btnCancel = document.getElementById('btnStudentGenericPromptCancel');
+    const btnOk = document.getElementById('btnStudentGenericPromptOk');
+
+    iconEl.textContent = opts.icon || '✏️';
+    titleEl.textContent = opts.title || '';
+    if (opts.desc) {
+      descEl.textContent = opts.desc;
+      descEl.style.display = 'block';
+    } else {
+      descEl.style.display = 'none';
+    }
+    inputEl.value = opts.defaultValue;
+    inputEl.placeholder = opts.placeholder || '';
+    btnCancel.textContent = opts.cancelText || '取消';
+    btnOk.textContent = opts.confirmText || '確定';
+
+    return new Promise((resolve) => {
+      let settled = false;
+      function cleanup(result) {
+        if (settled) return;
+        settled = true;
+        overlay.style.display = 'none';
+        btnCancel.removeEventListener('click', onCancel);
+        btnOk.removeEventListener('click', onOk);
+        inputEl.removeEventListener('keydown', onKeydown);
+        resolve(result);
+      }
+      function onCancel() { cleanup(null); }
+      function onOk() { cleanup(inputEl.value); }
+      function onKeydown(e) {
+        if (e.key === 'Enter') { e.preventDefault(); onOk(); }
+        else if (e.key === 'Escape') { onCancel(); }
+      }
+      btnCancel.addEventListener('click', onCancel);
+      btnOk.addEventListener('click', onOk);
+      inputEl.addEventListener('keydown', onKeydown);
+      overlay.style.display = 'flex';
+      setTimeout(() => { inputEl.focus(); inputEl.select(); }, 50);
+    });
+  }
+
   function showToast(message, type) {
     const stack = document.getElementById('toastStack');
     if (!stack) return;
@@ -2646,7 +2763,7 @@
       `;
 
       card.querySelector('.btn-del-disc').addEventListener('click', async () => {
-        if (!confirm('確定要刪除這筆小組討論紀錄嗎？')) return;
+        if (!(await showConfirmModal({ icon: '🗑️', title: '確定要刪除這筆小組討論紀錄嗎？', danger: true }))) return;
         try {
           await api(`/api/student/leader/discussions/${d.id}`, { method: 'DELETE' });
           showToast('討論紀錄已刪除', 'positive');
@@ -2987,7 +3104,7 @@
             btn.addEventListener('click', async () => {
               const fileId = btn.dataset.fileId;
               const currentName = btn.dataset.fileName;
-              const newName = prompt('請輸入新的檔案名稱：', currentName);
+              const newName = await showPromptModal({ icon: '✏️', title: '請輸入新的檔案名稱：', defaultValue: currentName });
               if (!newName || newName.trim() === '' || newName === currentName) return;
 
               try {
@@ -3008,7 +3125,7 @@
             btn.addEventListener('click', async () => {
               const fileId = btn.dataset.fileId;
               const currentName = btn.dataset.fileName;
-              if (!confirm(`確定要刪除檔案「${currentName}」嗎？`)) return;
+              if (!(await showConfirmModal({ icon: '🗑️', title: `確定要刪除檔案「${currentName}」嗎？`, danger: true }))) return;
 
               try {
                 const res = await api(`/api/student/file-collections/${topic.id}/items/${fileId}`, {

@@ -349,7 +349,7 @@
   }
 
   async function deleteTopic(topicId, title) {
-    if (!confirm(`確定要刪除「${title}」蒐集主題嗎？\n該主題內所有學生上傳之檔案與影片也將一併從伺服器永久刪除，無法復原！`)) {
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除「${title}」蒐集主題嗎？`, desc: '該主題內所有學生上傳之檔案與影片也將一併從伺服器永久刪除，無法復原！', danger: true }))) {
       return;
     }
 
@@ -373,7 +373,7 @@
   }
 
   async function deleteFile(itemId, displayName) {
-    if (!confirm(`確定要刪除檔案「${displayName}」嗎？`)) {
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除檔案「${displayName}」嗎？`, danger: true }))) {
       return;
     }
 

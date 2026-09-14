@@ -447,7 +447,7 @@
     const courseId = getActiveCourseId();
     if (!courseId) return;
 
-    if (!confirm('確定要刪除或下架此獎勵品項嗎？')) return;
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: '確定要刪除或下架此獎勵品項嗎？', danger: true }))) return;
 
     try {
       const res = await API.delete(`/api/rewards/${courseId}/${id}`);
@@ -463,7 +463,7 @@
     const courseId = getActiveCourseId();
     if (!courseId) return;
 
-    if (!confirm('確定要「核准」此學生的實體獎品兌換申請嗎？\n核准後將會暫時預扣學生相應點數，並保留 1 個庫存。')) return;
+    if (!(await window.showConfirmModal({ icon: '✅', title: '確定要「核准」此學生的實體獎品兌換申請嗎？', desc: '核准後將會暫時預扣學生相應點數，並保留 1 個庫存。' }))) return;
 
     try {
       const res = await API.post(`/api/rewards/${courseId}/redemptions/${redemptionId}/approve`, {});
@@ -479,7 +479,7 @@
     const courseId = getActiveCourseId();
     if (!courseId) return;
 
-    if (!confirm('【確認發放完成】\n學生是否已經順利拿到實體獎品？\n按下確定後，系統將正式在學生成績日誌中「真實扣除點數」並結案！')) return;
+    if (!(await window.showConfirmModal({ icon: '🎁', title: '確認發放完成：學生是否已經順利拿到實體獎品？', desc: '按下確定後，系統將正式在學生成績日誌中「真實扣除點數」並結案！' }))) return;
 
     try {
       const res = await API.post(`/api/rewards/${courseId}/redemptions/${redemptionId}/fulfill`, {});
@@ -495,7 +495,7 @@
     const courseId = getActiveCourseId();
     if (!courseId) return;
 
-    const reason = prompt('請輸入駁回此申請的原因（選填）：', '暫時無庫存或無法兌換');
+    const reason = await window.showPromptModal({ icon: '✏️', title: '請輸入駁回此申請的原因（選填）：', defaultValue: '暫時無庫存或無法兌換', multiline: true });
     if (reason === null) return;
 
     try {
@@ -514,7 +514,7 @@
     const courseId = getActiveCourseId();
     if (!courseId) return;
 
-    if (!confirm('確定要取消此筆發放嗎？\n取消後，預扣的點數將會即時釋放歸還給學生，庫存也會自動還原。')) return;
+    if (!(await window.showConfirmModal({ icon: '↩️', title: '確定要取消此筆發放嗎？', desc: '取消後，預扣的點數將會即時釋放歸還給學生，庫存也會自動還原。' }))) return;
 
     try {
       const res = await API.post(`/api/rewards/${courseId}/redemptions/${redemptionId}/cancel`, {});

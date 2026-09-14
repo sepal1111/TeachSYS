@@ -226,7 +226,7 @@
         ? '未分類'
         : (currentSeries.find((s) => s.id === Number(targetSeriesId))?.name || '指定系列');
 
-    if (!confirm(`確定要將選取的 ${cardIds.length} 張點數卡移動到系列「${targetName}」嗎？`)) return;
+    if (!(await window.showConfirmModal({ icon: '📦', title: `確定要將選取的 ${cardIds.length} 張點數卡移動到系列「${targetName}」嗎？` }))) return;
 
     try {
       await API.post(`/api/point-cards/${courseId}/batch-move`, {
@@ -249,7 +249,7 @@
       .map(Number);
     if (!courseId || cardIds.length === 0) return;
 
-    if (!confirm(`確定要永久刪除選取的 ${cardIds.length} 張點數卡嗎？被刪除的卡片將無法再被學生掃描加分。`)) return;
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要永久刪除選取的 ${cardIds.length} 張點數卡嗎？`, desc: '被刪除的卡片將無法再被學生掃描加分。', danger: true }))) return;
 
     try {
       await API.post(`/api/point-cards/${courseId}/batch-delete`, {
@@ -681,12 +681,12 @@
   }
 
   // 12-4. 處理新增指定分數卡槽
-  function handleAddCustomScoreSlot() {
+  async function handleAddCustomScoreSlot() {
     const inputEl = document.getElementById('input-ptcard-custom-score-val');
     let val = inputEl ? inputEl.value.trim() : '';
 
     if (!val) {
-      const p = prompt('請輸入要指定圖卡的點數分數（例如：3、20、50 或 -1 等）：');
+      const p = await window.showPromptModal({ icon: '🔢', title: '請輸入要指定圖卡的點數分數：', placeholder: '例如：3、20、50 或 -1 等' });
       if (p === null) return;
       val = p.trim();
     }
@@ -959,7 +959,7 @@
         if (delBtn) {
           const sid = Number(delBtn.getAttribute('data-id'));
           const sobj = currentSeries.find((s) => s.id === sid);
-          if (!confirm(`確定要刪除系列「${sobj?.name || ''}」嗎？該系列旗下的卡片將轉為未分類卡片。`)) return;
+          if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除系列「${sobj?.name || ''}」嗎？`, desc: '該系列旗下的卡片將轉為未分類卡片。', danger: true }))) return;
           const courseId = getActiveCourseId();
           try {
             await API.delete(`/api/point-cards/${courseId}/series/${sid}`);
@@ -984,7 +984,7 @@
     if (btnClearAll) {
       btnClearAll.addEventListener('click', async () => {
         const courseId = getActiveCourseId();
-        if (!confirm('警告：確定要清空本班級的所有點數卡嗎？此操作無法復原！')) return;
+        if (!(await window.showConfirmModal({ icon: '⚠️', title: '警告：確定要清空本班級的所有點數卡嗎？', desc: '此操作無法復原！', danger: true }))) return;
         try {
           await API.delete(`/api/point-cards/${courseId}/clear`);
           await loadPointCardsData();

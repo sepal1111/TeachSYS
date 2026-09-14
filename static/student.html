@@ -1005,6 +1005,37 @@
     </div>
   </div>
 
+  <!-- Generic Beautified Confirm Modal (取代原生 window.confirm()) -->
+  <div id="modalStudentGenericConfirm" class="student-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); z-index: 100060; align-items: center; justify-content: center; padding: 20px;">
+    <div class="student-card" style="width: 100%; max-width: 380px; margin: 0; padding: 28px 22px; text-align: center; position: relative; border: 2px solid var(--primary-light); box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);">
+      <div id="studentGenericConfirmIconWrap" style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 14px; background: rgba(123, 152, 224, 0.15); border: 2px solid rgba(123, 152, 224, 0.4);">
+        <span id="studentGenericConfirmIcon">❓</span>
+      </div>
+      <div id="studentGenericConfirmTitle" style="font-size: 1.1rem; font-weight: 900; color: var(--text-main); margin-bottom: 6px;"></div>
+      <div id="studentGenericConfirmDesc" style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 18px; display: none; white-space: pre-line;"></div>
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" id="btnStudentGenericConfirmCancel" class="btn btn-secondary" style="flex: 1; padding: 10px;">取消</button>
+        <button type="button" id="btnStudentGenericConfirmOk" class="btn" style="flex: 1; padding: 10px; font-weight: 800;">確定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic Beautified Prompt Modal (取代原生 window.prompt()) -->
+  <div id="modalStudentGenericPrompt" class="student-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(16px); z-index: 100060; align-items: center; justify-content: center; padding: 20px;">
+    <div class="student-card" style="width: 100%; max-width: 380px; margin: 0; padding: 28px 22px; text-align: center; position: relative; border: 2px solid var(--primary-light); box-shadow: 0 20px 50px rgba(0,0,0,0.5); animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);">
+      <div id="studentGenericPromptIconWrap" style="width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 14px; background: rgba(123, 152, 224, 0.15); border: 2px solid rgba(123, 152, 224, 0.4);">
+        <span id="studentGenericPromptIcon">✏️</span>
+      </div>
+      <div id="studentGenericPromptTitle" style="font-size: 1.1rem; font-weight: 900; color: var(--text-main); margin-bottom: 6px;"></div>
+      <div id="studentGenericPromptDesc" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 12px; display: none;"></div>
+      <input type="text" id="studentGenericPromptInput" class="input-control" style="width: 100%; box-sizing: border-box; padding: 9px 12px; margin-bottom: 18px; text-align: center; font-size: 0.95rem;">
+      <div style="display: flex; gap: 10px; justify-content: center;">
+        <button type="button" id="btnStudentGenericPromptCancel" class="btn btn-secondary" style="flex: 1; padding: 10px;">取消</button>
+        <button type="button" id="btnStudentGenericPromptOk" class="btn" style="flex: 1; padding: 10px; font-weight: 800;">確定</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/vendor/html5-qrcode.min.js"></script>
   <script src="/static/js/realtime.js?v=1.0"></script>

@@ -14,18 +14,8 @@
     canvas_height: 1200,
     background_theme: "custom",
     custom_background_url: null,
-    rectangle: {
-      enabled: false,
-      x: 30,
-      y: 620,
-      width: 154,
-      height: 154,
-      radius: 12,
-      fill_color: "#FFFFFF",
-      fill_opacity: 0.9,
-      border_color: "#CBD5E1",
-      border_width: 2
-    },
+    // 可自由新增多個裝飾形狀（矩形／圓形／正三角形），每個形狀邊緣皆具備毛玻璃霧化效果
+    shapes: [],
     qr_code: {
       enabled: true,
       x: 39,
@@ -78,6 +68,76 @@
       }
     }
   };
+
+  // 各形狀類型的預設樣式參數
+  const SHAPE_TYPE_LABELS = {
+    rectangle: "⬛ 矩形",
+    circle: "⚪ 圓形",
+    triangle: "🔺 正三角形"
+  };
+
+  let shapeIdCounter = 0;
+  function generateShapeId() {
+    shapeIdCounter += 1;
+    return `shape_${Date.now()}_${shapeIdCounter}`;
+  }
+
+  /** 建立一個新形狀的預設設定值 */
+  function createDefaultShape(type) {
+    const base = {
+      id: generateShapeId(),
+      type: type === "circle" || type === "triangle" ? type : "rectangle",
+      enabled: true,
+      x: 30,
+      y: 620,
+      width: 154,
+      height: 154,
+      radius: 12,
+      fill_color: "#FFFFFF",
+      fill_opacity: 0.85,
+      border_color: "#CBD5E1",
+      border_width: 2,
+      edge_blur: 10 // 邊緣霧化（毛玻璃）強度，單位 px
+    };
+    if (base.type === "triangle") {
+      // 正三角形以寬度做為邊長，高度依等邊三角形比例自動換算
+      base.height = Math.round(base.width * (Math.sqrt(3) / 2));
+    }
+    return base;
+  }
+
+  /** 相容舊版單一圓角矩形（layout.rectangle）資料，遷移為 shapes 陣列 */
+  function migrateLayoutShapes(layout) {
+    if (!layout) return layout;
+    if (!Array.isArray(layout.shapes)) {
+      layout.shapes = [];
+    }
+    if (layout.rectangle && typeof layout.rectangle === "object") {
+      const r = layout.rectangle;
+      layout.shapes.push({
+        id: generateShapeId(),
+        type: "rectangle",
+        enabled: r.enabled !== false,
+        x: r.x !== undefined ? r.x : 30,
+        y: r.y !== undefined ? r.y : 620,
+        width: r.width !== undefined ? r.width : 154,
+        height: r.height !== undefined ? r.height : 154,
+        radius: r.radius !== undefined ? r.radius : 12,
+        fill_color: r.fill_color || "#FFFFFF",
+        fill_opacity: r.fill_opacity !== undefined ? r.fill_opacity : 0.9,
+        border_color: r.border_color || "#CBD5E1",
+        border_width: r.border_width !== undefined ? r.border_width : 2,
+        edge_blur: 10
+      });
+      delete layout.rectangle;
+    }
+    layout.shapes.forEach((s) => {
+      if (!s.id) s.id = generateShapeId();
+      if (!s.type) s.type = "rectangle";
+      if (s.edge_blur === undefined) s.edge_blur = 0;
+    });
+    return layout;
+  }
 
   // 迷你 CRC32 與 Store 模式 Zip 生成器 (零依賴、純 JS、離線可執行)
   class SimpleZip {
@@ -208,7 +268,7 @@
     canvas: null,
     ctx: null,
     zoomScale: 0.5, // 顯示縮放比
-    activeElementKey: "qr_code", // "qr_code" | "card_no" | "card_value" | "card_label" | "card_code_text"
+    activeElementKey: "qr_code", // "qr_code" | "card_no" | "card_value" | "card_label" | "card_code_text" | "shape:<id>"
     isDragging: false,
     dragStartX: 0,
     dragStartY: 0,
@@ -352,6 +412,7 @@
 
       this.currentIndex = 0;
       this.updatePagerUI();
+      this.renderShapeTabs();
       this.syncInspectorFromLayout();
       this.render();
     },
@@ -368,11 +429,14 @@
             this.layout = JSON.parse(saved);
           } catch {
             this.layout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
+            this.layout.background_theme = "custom";
           }
+        } else {
           this.layout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
           this.layout.background_theme = "custom";
         }
       }
+      migrateLayoutShapes(this.layout);
     },
 
     /** 儲存版面設定至伺服器資料庫與本機快取 */
@@ -412,10 +476,15 @@
     },
 
     /** 重設回預設版面 */
-    resetLayout() {
-      if (!confirm("確定要重設目前系列的卡片版面為系統預設值嗎？")) return;
+    async resetLayout() {
+      const confirmed = window.showConfirmModal
+        ? await window.showConfirmModal({ icon: "🔄", title: "確定要重設目前系列的卡片版面為系統預設值嗎？" })
+        : confirm("確定要重設目前系列的卡片版面為系統預設值嗎？");
+      if (!confirmed) return;
       this.layout = JSON.parse(JSON.stringify(DEFAULT_LAYOUT));
       this.layout.background_theme = "custom";
+      this.activeElementKey = "qr_code";
+      this.renderShapeTabs();
       this.syncInspectorFromLayout();
       this.render();
       if (window.showToast) window.showToast("已還原預設版面設定", "info");
@@ -581,10 +650,14 @@
         ctx.restore();
       }
 
-      // 1.5. 繪製圓角矩形裝飾/底塊
-      const rectConf = this.layout.rectangle;
-      if (rectConf && rectConf.enabled) {
-        this.drawRoundedRect(ctx, rectConf);
+      // 1.5. 繪製自訂裝飾形狀（矩形／圓形／正三角形，具毛玻璃霧化邊緣）
+      const shapesConf = this.layout.shapes;
+      if (Array.isArray(shapesConf)) {
+        for (const shapeConf of shapesConf) {
+          if (shapeConf && shapeConf.enabled) {
+            this.drawShape(ctx, shapeConf, this.canvas);
+          }
+        }
       }
 
       // 2. 繪製 QR Code
@@ -643,48 +716,133 @@
       this.drawActiveElementHighlight(ctx);
     },
 
-    drawRoundedRect(ctx, conf) {
+    /** 依形狀類型建立繪製路徑：矩形（可圓角）／圓形／正三角形 */
+    buildShapePath(type, x, y, w, h, radius) {
+      const path = new Path2D();
+      const width = Math.max(0, w || 0);
+      const height = Math.max(0, h || 0);
+
+      if (type === "circle") {
+        const cx = x + width / 2;
+        const cy = y + height / 2;
+        path.ellipse(cx, cy, width / 2, height / 2, 0, 0, Math.PI * 2);
+        path.closePath();
+      } else if (type === "triangle") {
+        // 正三角形：頂點朝上，底邊寬度即為畫布上之外框寬度
+        const topX = x + width / 2;
+        path.moveTo(topX, y);
+        path.lineTo(x + width, y + height);
+        path.lineTo(x, y + height);
+        path.closePath();
+      } else {
+        const r = Math.max(0, Math.min(radius !== undefined ? radius : 12, width / 2, height / 2));
+        if (typeof path.roundRect === "function") {
+          path.roundRect(x, y, width, height, r);
+        } else {
+          path.moveTo(x + r, y);
+          path.lineTo(x + width - r, y);
+          path.quadraticCurveTo(x + width, y, x + width, y + r);
+          path.lineTo(x + width, y + height - r);
+          path.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+          path.lineTo(x + r, y + height);
+          path.quadraticCurveTo(x, y + height, x, y + height - r);
+          path.lineTo(x, y + r);
+          path.quadraticCurveTo(x, y, x + r, y);
+          path.closePath();
+        }
+      }
+      return path;
+    },
+
+    /** 繪製單一裝飾形狀（矩形／圓形／正三角形），並套用毛玻璃霧化邊緣效果 */
+    drawShape(ctx, conf, sourceCanvas) {
+      if (!conf) return;
+      const type = conf.type === "circle" || conf.type === "triangle" ? conf.type : "rectangle";
       const x = conf.x || 0;
       const y = conf.y || 0;
       const w = conf.width || 100;
       const h = conf.height || 100;
-      const r = Math.max(0, Math.min(conf.radius !== undefined ? conf.radius : 12, w / 2, h / 2));
       const fillOpacity = conf.fill_opacity !== undefined ? Math.max(0, Math.min(1, conf.fill_opacity)) : 1;
       const fillColor = conf.fill_color || "#FFFFFF";
       const borderWidth = conf.border_width !== undefined ? conf.border_width : 0;
       const borderColor = conf.border_color || "#CBD5E1";
+      const edgeBlur = Math.max(0, conf.edge_blur !== undefined ? conf.edge_blur : 0);
 
-      ctx.save();
-      ctx.beginPath();
-      if (typeof ctx.roundRect === "function") {
-        ctx.roundRect(x, y, w, h, r);
-      } else {
-        ctx.moveTo(x + r, y);
-        ctx.lineTo(x + w - r, y);
-        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-        ctx.lineTo(x + w, y + h - r);
-        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-        ctx.lineTo(x + r, y + h);
-        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-        ctx.lineTo(x, y + r);
-        ctx.quadraticCurveTo(x, y, x + r, y);
-        ctx.closePath();
-      }
+      const path = this.buildShapePath(type, x, y, w, h, conf.radius);
 
+      // 1. 半透明填色（形狀內部基礎玻璃色調）
       if (fillColor && fillColor !== "none" && fillOpacity > 0) {
+        ctx.save();
         ctx.globalAlpha = fillOpacity;
         ctx.fillStyle = fillColor;
-        ctx.fill();
+        ctx.fill(path);
+        ctx.restore();
       }
 
+      // 2. 邊框（先繪製一圈實邊界定形狀輪廓）
       if (borderWidth > 0 && borderColor && borderColor !== "none") {
-        ctx.globalAlpha = 1;
+        ctx.save();
         ctx.lineWidth = borderWidth;
         ctx.strokeStyle = borderColor;
-        ctx.stroke();
+        ctx.stroke(path);
+        ctx.restore();
       }
 
-      ctx.restore();
+      // 3. 邊緣霧化：沿形狀邊界（跨越邊框內外側）擷取既有畫面內容模糊化後疊加，
+      //    使邊框/邊界呈現真正的毛玻璃霧化質感，而非僅剩一條清晰邊線
+      if (edgeBlur > 0 && sourceCanvas) {
+        this.drawFrostedEdgeRing(ctx, path, sourceCanvas, x, y, w, h, borderWidth, borderColor, edgeBlur);
+      }
+    },
+
+    /**
+     * 沿形狀邊界建立一圈毛玻璃霧化環：擷取邊界周圍（跨越邊框內外側）既有畫面內容、
+     * 模糊化後僅保留貼齊邊界的環狀範圍並疊加回畫布，讓邊框本身呈現霧化質感。
+     */
+    drawFrostedEdgeRing(ctx, path, sourceCanvas, x, y, w, h, borderWidth, borderColor, edgeBlur) {
+      const pad = edgeBlur + borderWidth + 4;
+      const sx = Math.max(0, Math.floor(x - pad));
+      const sy = Math.max(0, Math.floor(y - pad));
+      const ex = Math.min(sourceCanvas.width, Math.ceil(x + w + pad));
+      const ey = Math.min(sourceCanvas.height, Math.ceil(y + h + pad));
+      const sw = ex - sx;
+      const sh = ey - sy;
+      if (sw <= 0 || sh <= 0) return;
+
+      const off = document.createElement("canvas");
+      off.width = sw;
+      off.height = sh;
+      const octx = off.getContext("2d");
+
+      try {
+        // 3a. 擷取形狀邊界周圍畫面內容並模糊化
+        octx.filter = `blur(${edgeBlur}px)`;
+        octx.drawImage(sourceCanvas, sx, sy, sw, sh, 0, 0, sw, sh);
+        octx.filter = "none";
+
+        // 3b. 僅保留貼齊形狀邊界、跨越邊框內外側的環狀範圍（其餘裁除為透明）
+        octx.globalCompositeOperation = "destination-in";
+        octx.translate(-sx, -sy);
+        octx.lineWidth = Math.max(borderWidth, 2) + edgeBlur;
+        octx.strokeStyle = "#000";
+        octx.stroke(path);
+        octx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // 3c. 以邊框顏色淡淡染色，使霧化環與使用者設定之邊框顏色協調一致
+        if (borderColor && borderColor !== "none") {
+          octx.globalCompositeOperation = "source-atop";
+          octx.globalAlpha = 0.35;
+          octx.fillStyle = borderColor;
+          octx.fillRect(0, 0, sw, sh);
+        }
+
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.drawImage(off, sx, sy);
+        ctx.restore();
+      } catch (e) {
+        // 部分舊版瀏覽器不支援 canvas filter，靜默略過毛玻璃霧化邊緣效果即可
+      }
     },
 
     drawTextElement(ctx, conf, text) {
@@ -745,10 +903,11 @@
         return { x: qr.x, y: qr.y, width: qr.width, height: qr.height };
       }
 
-      if (key === "rectangle") {
-        const rect = this.layout.rectangle;
-        if (!rect || !rect.enabled) return null;
-        return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+      if (typeof key === "string" && key.indexOf("shape:") === 0) {
+        const shapeId = key.slice(6);
+        const shape = (this.layout.shapes || []).find((s) => s.id === shapeId);
+        if (!shape || !shape.enabled) return null;
+        return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
       }
 
       const txtConf = this.layout.text_elements?.[key];
@@ -805,8 +964,9 @@
       container.addEventListener("mousedown", (e) => {
         const pos = getCanvasPos(e);
 
-        // 偵測點擊到了哪個元素（由前景至後景）
-        const keys = ["card_no", "card_value", "card_label", "card_code_text", "qr_code", "rectangle"];
+        // 偵測點擊到了哪個元素（由前景至後景；形狀彼此間則後繪製者優先，即由上層往下層偵測）
+        const shapeKeys = (this.layout.shapes || []).map((s) => `shape:${s.id}`).reverse();
+        const keys = ["card_no", "card_value", "card_label", "card_code_text", "qr_code", ...shapeKeys];
         let hitKey = null;
 
         for (const k of keys) {
@@ -952,72 +1112,151 @@
         });
       }
 
-      // 矩形寬度、高度、圓角半徑、透明度、邊框粗細
-      this.bindStepInput("studio-rect-w", (val) => {
-        if (!this.layout.rectangle) this.layout.rectangle = {};
-        this.layout.rectangle.width = val;
-        this.render();
-      });
-      this.bindStepInput("studio-rect-h", (val) => {
-        if (!this.layout.rectangle) this.layout.rectangle = {};
-        this.layout.rectangle.height = val;
-        this.render();
-      });
-      this.bindStepInput("studio-rect-radius", (val) => {
-        if (!this.layout.rectangle) this.layout.rectangle = {};
-        this.layout.rectangle.radius = val;
-        this.render();
-      });
-      this.bindStepInput("studio-rect-opacity", (val) => {
-        if (!this.layout.rectangle) this.layout.rectangle = {};
-        this.layout.rectangle.fill_opacity = val / 100;
-        this.render();
-      });
-      this.bindStepInput("studio-rect-border-width", (val) => {
-        if (!this.layout.rectangle) this.layout.rectangle = {};
-        this.layout.rectangle.border_width = val;
-        this.render();
-      });
-
-      // 矩形填滿顏色
-      const rectFillColor = document.getElementById("studio-rect-fill-color");
-      const rectFillText = document.getElementById("studio-rect-fill-color-hex");
-      if (rectFillColor && rectFillText) {
-        rectFillColor.addEventListener("input", (e) => {
-          rectFillText.value = e.target.value.toUpperCase();
-          if (!this.layout.rectangle) this.layout.rectangle = {};
-          this.layout.rectangle.fill_color = e.target.value;
-          this.render();
-        });
-        rectFillText.addEventListener("input", (e) => {
-          const val = e.target.value.trim();
-          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-            rectFillColor.value = val;
-            if (!this.layout.rectangle) this.layout.rectangle = {};
-            this.layout.rectangle.fill_color = val;
+      // 形狀類型切換（矩形／圓形／正三角形互相轉換）
+      const shapeTypeSelect = document.getElementById("studio-shape-type");
+      if (shapeTypeSelect) {
+        shapeTypeSelect.addEventListener("change", (e) => {
+          const shape = this.getActiveShape();
+          if (shape) {
+            shape.type = e.target.value;
+            if (shape.type === "triangle") {
+              shape.height = Math.round((shape.width || 100) * (Math.sqrt(3) / 2));
+            }
+            this.renderShapeTabs();
+            this.syncInspectorFromLayout();
             this.render();
           }
         });
       }
 
-      // 矩形邊框顏色
-      const rectBorderColor = document.getElementById("studio-rect-border-color");
-      const rectBorderText = document.getElementById("studio-rect-border-color-hex");
-      if (rectBorderColor && rectBorderText) {
-        rectBorderColor.addEventListener("input", (e) => {
-          rectBorderText.value = e.target.value.toUpperCase();
-          if (!this.layout.rectangle) this.layout.rectangle = {};
-          this.layout.rectangle.border_color = e.target.value;
+      // 形狀寬度、高度、圓角半徑、透明度、邊框粗細、邊緣霧化強度
+      this.bindStepInput("studio-shape-w", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.width = val;
+          if (shape.type === "triangle") {
+            shape.height = Math.round(val * (Math.sqrt(3) / 2));
+          }
           this.render();
-        });
-        rectBorderText.addEventListener("input", (e) => {
-          const val = e.target.value.trim();
-          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
-            rectBorderColor.value = val;
-            if (!this.layout.rectangle) this.layout.rectangle = {};
-            this.layout.rectangle.border_color = val;
+        }
+      });
+      this.bindStepInput("studio-shape-h", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.height = val;
+          this.render();
+        }
+      });
+      this.bindStepInput("studio-shape-radius", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.radius = val;
+          this.render();
+        }
+      });
+      this.bindStepInput("studio-shape-opacity", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.fill_opacity = val / 100;
+          this.render();
+        }
+      });
+      this.bindStepInput("studio-shape-border-width", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.border_width = val;
+          this.render();
+        }
+      });
+      this.bindStepInput("studio-shape-blur", (val) => {
+        const shape = this.getActiveShape();
+        if (shape) {
+          shape.edge_blur = val;
+          this.render();
+        }
+      });
+
+      // 形狀填滿顏色
+      const shapeFillColor = document.getElementById("studio-shape-fill-color");
+      const shapeFillText = document.getElementById("studio-shape-fill-color-hex");
+      if (shapeFillColor && shapeFillText) {
+        shapeFillColor.addEventListener("input", (e) => {
+          shapeFillText.value = e.target.value.toUpperCase();
+          const shape = this.getActiveShape();
+          if (shape) {
+            shape.fill_color = e.target.value;
             this.render();
           }
+        });
+        shapeFillText.addEventListener("input", (e) => {
+          const val = e.target.value.trim();
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            shapeFillColor.value = val;
+            const shape = this.getActiveShape();
+            if (shape) {
+              shape.fill_color = val;
+              this.render();
+            }
+          }
+        });
+      }
+
+      // 形狀邊框顏色
+      const shapeBorderColor = document.getElementById("studio-shape-border-color");
+      const shapeBorderText = document.getElementById("studio-shape-border-color-hex");
+      if (shapeBorderColor && shapeBorderText) {
+        shapeBorderColor.addEventListener("input", (e) => {
+          shapeBorderText.value = e.target.value.toUpperCase();
+          const shape = this.getActiveShape();
+          if (shape) {
+            shape.border_color = e.target.value;
+            this.render();
+          }
+        });
+        shapeBorderText.addEventListener("input", (e) => {
+          const val = e.target.value.trim();
+          if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+            shapeBorderColor.value = val;
+            const shape = this.getActiveShape();
+            if (shape) {
+              shape.border_color = val;
+              this.render();
+            }
+          }
+        });
+      }
+
+      // 新增形狀（矩形／圓形／正三角形）
+      document.querySelectorAll(".shape-add-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const type = btn.getAttribute("data-shape-type");
+          if (!Array.isArray(this.layout.shapes)) this.layout.shapes = [];
+          const newShape = createDefaultShape(type);
+          this.layout.shapes.push(newShape);
+          this.activeElementKey = `shape:${newShape.id}`;
+          this.renderShapeTabs();
+          this.syncElementTab();
+          this.syncInspectorFromLayout();
+          this.render();
+        });
+      });
+
+      // 刪除目前選取中的形狀
+      const btnDeleteShape = document.getElementById("btn-studio-shape-delete");
+      if (btnDeleteShape) {
+        btnDeleteShape.addEventListener("click", async () => {
+          const shape = this.getActiveShape();
+          if (!shape) return;
+          const confirmed = window.showConfirmModal
+            ? await window.showConfirmModal({ icon: "🗑️", title: "確定要刪除此形狀嗎？", danger: true })
+            : confirm("確定要刪除此形狀嗎？");
+          if (!confirmed) return;
+          this.layout.shapes = (this.layout.shapes || []).filter((s) => s.id !== shape.id);
+          this.activeElementKey = "qr_code";
+          this.renderShapeTabs();
+          this.syncElementTab();
+          this.syncInspectorFromLayout();
+          this.render();
         });
       }
 
@@ -1025,8 +1264,8 @@
       const prefixInput = document.getElementById("studio-text-prefix");
       if (prefixInput) {
         prefixInput.addEventListener("input", (e) => {
-          const elem = this.getActiveElementConfig();
-          if (elem && elem !== this.layout.qr_code && elem !== this.layout.rectangle) {
+          if (this.isActiveElementTextKey()) {
+            const elem = this.getActiveElementConfig();
             elem.prefix = e.target.value;
             this.render();
           }
@@ -1039,8 +1278,8 @@
           document.querySelectorAll(".align-btn").forEach((b) => b.classList.remove("active"));
           btn.classList.add("active");
           const align = btn.getAttribute("data-align");
-          const elem = this.getActiveElementConfig();
-          if (elem && elem !== this.layout.qr_code && elem !== this.layout.rectangle) {
+          if (this.isActiveElementTextKey()) {
+            const elem = this.getActiveElementConfig();
             elem.anchor = align;
             this.render();
           }
@@ -1212,24 +1451,55 @@
       if (this.activeElementKey === "qr_code") {
         return this.layout.qr_code;
       }
-      if (this.activeElementKey === "rectangle") {
-        if (!this.layout.rectangle) {
-          this.layout.rectangle = {
-            enabled: true,
-            x: 30,
-            y: 620,
-            width: 154,
-            height: 154,
-            radius: 12,
-            fill_color: "#FFFFFF",
-            fill_opacity: 0.9,
-            border_color: "#CBD5E1",
-            border_width: 2
-          };
-        }
-        return this.layout.rectangle;
+      if (typeof this.activeElementKey === "string" && this.activeElementKey.indexOf("shape:") === 0) {
+        const shapeId = this.activeElementKey.slice(6);
+        return (this.layout.shapes || []).find((s) => s.id === shapeId) || null;
       }
       return this.layout.text_elements?.[this.activeElementKey] || null;
+    },
+
+    /** 僅在目前選取項目為形狀時回傳其設定，否則回傳 null */
+    getActiveShape() {
+      if (typeof this.activeElementKey === "string" && this.activeElementKey.indexOf("shape:") === 0) {
+        return this.getActiveElementConfig();
+      }
+      return null;
+    },
+
+    /** 判斷目前選取項目是否為文字類元素（卡號／點數分數／卡片名稱／代碼文字） */
+    isActiveElementTextKey() {
+      return !!(this.layout.text_elements && this.layout.text_elements[this.activeElementKey]);
+    },
+
+    /** 依目前 layout.shapes 動態重建右側「自訂形狀」標籤按鈕列表 */
+    renderShapeTabs() {
+      const container = document.getElementById("shape-tabs-list");
+      if (!container) return;
+      container.innerHTML = "";
+      const shapes = this.layout.shapes || [];
+      if (shapes.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "shape-tabs-empty";
+        empty.textContent = "尚未新增任何形狀，請點擊上方按鈕新增矩形／圓形／正三角形裝飾";
+        container.appendChild(empty);
+        return;
+      }
+      shapes.forEach((shape, idx) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "element-tab-btn shape-tab-btn";
+        btn.setAttribute("data-element", `shape:${shape.id}`);
+        const label = SHAPE_TYPE_LABELS[shape.type] || SHAPE_TYPE_LABELS.rectangle;
+        btn.innerHTML = `<span>${label} ${idx + 1}</span>`;
+        btn.addEventListener("click", () => {
+          this.activeElementKey = `shape:${shape.id}`;
+          this.syncElementTab();
+          this.syncInspectorFromLayout();
+          this.render();
+        });
+        container.appendChild(btn);
+      });
+      this.syncElementTab();
     },
 
     syncElementTab() {
@@ -1263,38 +1533,51 @@
       // 2. 座標
       this.syncPositionInputs();
 
-      // 3. 元素專屬面板 (QR Code vs. 矩形 vs. 文字)
+      // 3. 元素專屬面板 (QR Code vs. 自訂形狀 vs. 文字)
       const qrSection = document.getElementById("inspector-qr-section");
-      const rectSection = document.getElementById("inspector-rect-section");
+      const shapeSection = document.getElementById("inspector-shape-section");
       const textSection = document.getElementById("inspector-text-section");
+      const isShape = typeof this.activeElementKey === "string" && this.activeElementKey.indexOf("shape:") === 0;
 
       if (this.activeElementKey === "qr_code") {
         if (qrSection) qrSection.style.display = "block";
-        if (rectSection) rectSection.style.display = "none";
+        if (shapeSection) shapeSection.style.display = "none";
         if (textSection) textSection.style.display = "none";
 
         const inpSize = document.getElementById("studio-qr-size");
         if (inpSize) inpSize.value = elem.width || 136;
-      } else if (this.activeElementKey === "rectangle") {
+      } else if (isShape) {
         if (qrSection) qrSection.style.display = "none";
-        if (rectSection) rectSection.style.display = "block";
+        if (shapeSection) shapeSection.style.display = "block";
         if (textSection) textSection.style.display = "none";
 
-        const inpW = document.getElementById("studio-rect-w");
-        const inpH = document.getElementById("studio-rect-h");
-        const inpR = document.getElementById("studio-rect-radius");
-        const inpOp = document.getElementById("studio-rect-opacity");
-        const inpBw = document.getElementById("studio-rect-border-width");
-        const colFill = document.getElementById("studio-rect-fill-color");
-        const hexFill = document.getElementById("studio-rect-fill-color-hex");
-        const colBrd = document.getElementById("studio-rect-border-color");
-        const hexBrd = document.getElementById("studio-rect-border-color-hex");
+        const shapeType = elem.type === "circle" || elem.type === "triangle" ? elem.type : "rectangle";
 
+        const typeSelect = document.getElementById("studio-shape-type");
+        const inpW = document.getElementById("studio-shape-w");
+        const inpH = document.getElementById("studio-shape-h");
+        const inpR = document.getElementById("studio-shape-radius");
+        const inpOp = document.getElementById("studio-shape-opacity");
+        const inpBw = document.getElementById("studio-shape-border-width");
+        const inpBlur = document.getElementById("studio-shape-blur");
+        const colFill = document.getElementById("studio-shape-fill-color");
+        const hexFill = document.getElementById("studio-shape-fill-color-hex");
+        const colBrd = document.getElementById("studio-shape-border-color");
+        const hexBrd = document.getElementById("studio-shape-border-color-hex");
+        const rowRadius = document.getElementById("studio-shape-radius-row");
+        const rowHeight = document.getElementById("studio-shape-h-row");
+
+        if (typeSelect) typeSelect.value = shapeType;
         if (inpW) inpW.value = elem.width || 154;
         if (inpH) inpH.value = elem.height || 154;
         if (inpR) inpR.value = elem.radius !== undefined ? elem.radius : 12;
         if (inpOp) inpOp.value = Math.round((elem.fill_opacity !== undefined ? elem.fill_opacity : 0.9) * 100);
         if (inpBw) inpBw.value = elem.border_width !== undefined ? elem.border_width : 2;
+        if (inpBlur) inpBlur.value = elem.edge_blur !== undefined ? elem.edge_blur : 10;
+
+        // 圓角半徑僅矩形適用；正三角形以等邊比例自動換算高度，故隱藏高度欄位
+        if (rowRadius) rowRadius.style.display = shapeType === "rectangle" ? "flex" : "none";
+        if (rowHeight) rowHeight.style.display = shapeType === "triangle" ? "none" : "flex";
 
         const fColor = elem.fill_color || "#FFFFFF";
         if (colFill) colFill.value = fColor;
@@ -1305,7 +1588,7 @@
         if (hexBrd) hexBrd.value = bColor.toUpperCase();
       } else {
         if (qrSection) qrSection.style.display = "none";
-        if (rectSection) rectSection.style.display = "none";
+        if (shapeSection) shapeSection.style.display = "none";
         if (textSection) textSection.style.display = "block";
 
         const inpFontSize = document.getElementById("studio-font-size");
@@ -1642,10 +1925,14 @@
         ctx.fillRect(0, 0, cw, ch);
       }
 
-      // 1.5. 圓角矩形裝飾/底塊
-      const rectConf = this.layout.rectangle;
-      if (rectConf && rectConf.enabled) {
-        this.drawRoundedRect(ctx, rectConf);
+      // 1.5. 自訂裝飾形狀（矩形／圓形／正三角形，具毛玻璃霧化邊緣）
+      const shapesConf = this.layout.shapes;
+      if (Array.isArray(shapesConf)) {
+        for (const shapeConf of shapesConf) {
+          if (shapeConf && shapeConf.enabled) {
+            this.drawShape(ctx, shapeConf, offCanvas);
+          }
+        }
       }
 
       // 2. QR Code

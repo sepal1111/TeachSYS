@@ -283,6 +283,61 @@
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
 }
 
+/* 自訂形狀：新增按鈕列與動態標籤區 */
+.shape-tabs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.shape-tabs-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text-main, #0f172a);
+}
+
+.shape-type-add-group {
+  display: flex;
+  gap: 4px;
+}
+
+.shape-type-add-group .btn-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 0.9rem;
+  border: 1.5px solid var(--card-border, #e2e8f0);
+  border-radius: 6px;
+}
+
+.shape-tabs-empty {
+  grid-column: 1 / -1;
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+  padding: 8px 2px;
+  line-height: 1.5;
+}
+
+.shape-type-select {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1.5px solid var(--card-border, #cbd5e1);
+  border-radius: 8px;
+  background: var(--input-bg, #ffffff);
+  color: var(--text-main, #0f172a);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-shape-delete {
+  width: 100%;
+  margin-top: 12px;
+  font-size: 0.82rem;
+  padding: 8px;
+  color: var(--accent-negative, #dc2626);
+}
+
 /* 步進數字控制器 (X, Y, 尺寸, 字級) */
 .step-control-group {
   display: flex;

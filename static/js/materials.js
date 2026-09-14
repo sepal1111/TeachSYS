@@ -141,7 +141,7 @@
       dropdown.style.display = 'none';
       const cid = courseId();
       if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
-      const newTitle = prompt('新的章節名稱', u.title);
+      const newTitle = await window.showPromptModal({ icon: '✏️', title: '請輸入新的章節名稱：', defaultValue: u.title });
       if (!newTitle || !newTitle.trim() || newTitle.trim() === u.title) return;
       try {
         await API.put(`/api/units/${cid}/${u.id}`, { title: newTitle.trim() });
@@ -488,7 +488,7 @@
   }
 
   async function deleteUnit(u) {
-    if (!confirm(`確定要刪除單元「${u.title}」嗎？其下所有小單元與教材將一併刪除，此動作無法復原！`)) return;
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除單元「${u.title}」嗎？`, desc: '其下所有小單元與教材將一併刪除，此動作無法復原！', danger: true }))) return;
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
     try {
@@ -880,7 +880,7 @@
       showToast('找不到可匯入的題目，請確認檔案格式是否符合範本', 'error');
       return;
     }
-    if (quizQuestionsDraft.length && !confirm(`匯入將會覆蓋目前已編輯的 ${quizQuestionsDraft.length} 道題目，確定要繼續嗎？`)) return;
+    if (quizQuestionsDraft.length && !(await window.showConfirmModal({ icon: '⚠️', title: `匯入將會覆蓋目前已編輯的 ${quizQuestionsDraft.length} 道題目，確定要繼續嗎？` }))) return;
     quizQuestionsDraft = imported;
     renderQuizQuestionsList();
     showToast(`已成功匯入 ${imported.length} 道題目，請檢查每一題內容與正確答案是否正確無誤！`, 'success');
@@ -1002,7 +1002,7 @@
       delBtn.textContent = '✕';
       delBtn.title = '刪除教材';
       delBtn.addEventListener('click', async () => {
-        if (!confirm(`確定要刪除教材「${m.title}」嗎？`)) return;
+        if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除教材「${m.title}」嗎？`, danger: true }))) return;
         const cid = courseId();
         if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
         try {
@@ -1152,7 +1152,7 @@
   }
 
   async function deleteSubUnit(su) {
-    if (!confirm(`確定要刪除小單元「${su.title}」嗎？其下所有教材將一併刪除，此動作無法復原！`)) return;
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除小單元「${su.title}」嗎？`, desc: '其下所有教材將一併刪除，此動作無法復原！', danger: true }))) return;
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
     try {
@@ -1169,7 +1169,7 @@
   // 這裡只留刪除既有教材項目的功能。
 
   async function deleteMaterial(su, m) {
-    if (!confirm(`確定要刪除教材「${m.title}」嗎？`)) return;
+    if (!(await window.showConfirmModal({ icon: '🗑️', title: `確定要刪除教材「${m.title}」嗎？`, danger: true }))) return;
     const cid = courseId();
     if (!cid) { window.ensureCourseSelected && window.ensureCourseSelected(); return; }
     try {
@@ -1418,7 +1418,7 @@
         showToast('目前沒有已繳交的作業', 'error');
         return;
       }
-      if (!confirm(`確定要將 ${studentIds.length} 份已繳交的作業退回，要求學生重新繳交嗎？`)) return;
+      if (!(await window.showConfirmModal({ icon: '↩️', title: `確定要將 ${studentIds.length} 份已繳交的作業退回，要求學生重新繳交嗎？` }))) return;
       await API.post(`/api/units/${cid}/${gradingSubUnit.unitId}/subunits/${gradingSubUnit.id}/submissions/batch_request_resubmit`, {
         student_ids: studentIds,
       });

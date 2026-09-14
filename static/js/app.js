@@ -4440,7 +4440,7 @@ async function loadStudentScoreLogs() {
           const confirmMsg = isEn 
             ? `Are you sure you want to delete score record 【${displayTitle} (${scoreText})】${groupContext}?` 
             : `確定要刪除/撤銷【${log.rule_title} (${scoreText})】${groupContext}這筆紀錄嗎？\n該筆分數將自學生與小組成績中扣除。`;
-          if (confirm(confirmMsg)) {
+          if (await showConfirmModal(confirmMsg)) {
             try {
               await API.delete(`/api/scores/${AppState.currentCourseId}/logs/${log.id}`);
               await loadStudentScoreLogs();
@@ -4460,7 +4460,7 @@ async function loadStudentScoreLogs() {
           const confirmMsg = isEn
             ? `Restore score record 【${displayTitle} (${scoreText})】${groupContext}?`
             : `確定要回復【${log.rule_title} (${scoreText})】${groupContext}這筆紀錄嗎？\n該筆分數將重新計入學生與小組成績。`;
-          if (confirm(confirmMsg)) {
+          if (await showConfirmModal(confirmMsg)) {
             try {
               await API.post(`/api/scores/${AppState.currentCourseId}/logs/${log.id}/restore`);
               showToast(t('score_log_restored_toast'), 'positive');
@@ -4687,8 +4687,98 @@ function showConfirmModal(options) {
   });
 }
 
+/**
+ * Beautified stand-in for window.prompt() — uses the shared #modal-generic-prompt
+ * glassmorphism markup. Resolves to the entered string (possibly empty) on 確定,
+ * or null on 取消/Escape, matching native prompt() semantics so existing
+ * `if (result === null) return;` call sites keep working unchanged.
+ */
+function showPromptModal(options) {
+  let opts = {};
+  if (typeof options === 'string' || typeof options === 'number') {
+    opts = { title: String(options) };
+  } else {
+    opts = Object.assign({}, options);
+  }
+  opts.icon = opts.icon || '✏️';
+  opts.defaultValue = opts.defaultValue !== undefined ? String(opts.defaultValue) : '';
+  opts.confirmText = opts.confirmText || '確定';
+  opts.cancelText = opts.cancelText || '取消';
+
+  const overlay = document.getElementById('modal-generic-prompt');
+  if (!overlay) {
+    return Promise.resolve(window.prompt(opts.title + (opts.desc ? '\n' + opts.desc : ''), opts.defaultValue));
+  }
+
+  const iconEl = document.getElementById('generic-prompt-icon');
+  const titleEl = document.getElementById('generic-prompt-title');
+  const descEl = document.getElementById('generic-prompt-desc');
+  const inputEl = document.getElementById('generic-prompt-input');
+  const textareaEl = document.getElementById('generic-prompt-textarea');
+  const btnCancel = document.getElementById('btn-generic-prompt-cancel');
+  const btnOk = document.getElementById('btn-generic-prompt-ok');
+
+  iconEl.textContent = opts.icon;
+  titleEl.textContent = opts.title || '';
+  if (opts.desc) {
+    descEl.textContent = opts.desc;
+    descEl.style.display = 'block';
+  } else {
+    descEl.style.display = 'none';
+  }
+
+  const field = opts.multiline ? textareaEl : inputEl;
+  const otherField = opts.multiline ? inputEl : textareaEl;
+  otherField.style.display = 'none';
+  field.style.display = 'block';
+  field.value = opts.defaultValue;
+  field.placeholder = opts.placeholder || '';
+
+  btnCancel.textContent = opts.cancelText;
+  btnOk.textContent = opts.confirmText;
+
+  return new Promise((resolve) => {
+    let settled = false;
+    function cleanup(result) {
+      if (settled) return;
+      settled = true;
+      overlay.classList.remove('open');
+      btnCancel.removeEventListener('click', onCancel);
+      btnOk.removeEventListener('click', onOk);
+      field.removeEventListener('keydown', onKeydown);
+      resolve(result);
+    }
+    function onCancel() { cleanup(null); }
+    function onOk() {
+      if (opts.required && !field.value.trim()) {
+        field.focus();
+        return;
+      }
+      cleanup(field.value);
+    }
+    function onKeydown(e) {
+      if (!opts.multiline && e.key === 'Enter') {
+        e.preventDefault();
+        onOk();
+      } else if (e.key === 'Escape') {
+        onCancel();
+      }
+    }
+
+    btnCancel.addEventListener('click', onCancel);
+    btnOk.addEventListener('click', onOk);
+    field.addEventListener('keydown', onKeydown);
+    overlay.classList.add('open');
+    setTimeout(() => {
+      field.focus();
+      field.select();
+    }, 50);
+  });
+}
+
 window.showAlertModal = showAlertModal;
 window.showConfirmModal = showConfirmModal;
+window.showPromptModal = showPromptModal;
 window.alert = showAlertModal;
 
 function resetCustomFileInput(inputEl) {

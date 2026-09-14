@@ -2148,6 +2148,23 @@
     </div>
   </div>
 
+  <!-- Generic Beautified Prompt Modal (取代原生 window.prompt()) -->
+  <div id="modal-generic-prompt" class="modal-overlay" style="z-index: 100021;">
+    <div class="modal-content glass-card" style="max-width: 440px; text-align: center; padding: 32px 28px; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div id="generic-prompt-icon-wrap" style="width: 68px; height: 68px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto 16px; background: rgba(123, 152, 224, 0.15); border: 2px solid rgba(123, 152, 224, 0.4);">
+        <span id="generic-prompt-icon">✏️</span>
+      </div>
+      <h3 id="generic-prompt-title" style="margin-bottom: 8px; font-weight: 800; font-size: 1.25rem; color: var(--text-main);"></h3>
+      <p id="generic-prompt-desc" style="color: var(--text-muted); font-size: 0.88rem; line-height: 1.6; margin-bottom: 14px; display: none;"></p>
+      <input type="text" id="generic-prompt-input" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1.5px solid var(--card-border, #cbd5e1); border-radius: 8px; font-size: 0.95rem; margin-bottom: 22px; text-align: center; background: var(--input-bg, #ffffff); color: var(--text-main);">
+      <textarea id="generic-prompt-textarea" rows="3" style="width: 100%; box-sizing: border-box; padding: 10px 14px; border: 1.5px solid var(--card-border, #cbd5e1); border-radius: 8px; font-size: 0.95rem; margin-bottom: 22px; display: none; resize: vertical; background: var(--input-bg, #ffffff); color: var(--text-main); font-family: inherit;"></textarea>
+      <div style="display: flex; gap: 12px; justify-content: center;">
+        <button type="button" id="btn-generic-prompt-cancel" class="btn btn-secondary" style="flex: 1; padding: 11px 0; font-weight: 700; font-size: 1rem;">取消</button>
+        <button type="button" id="btn-generic-prompt-ok" class="btn" style="flex: 1; padding: 11px 0; font-weight: 800; font-size: 1rem;">確定</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Lucky Draw Result Modal (抽籤結果慶祝彈窗) -->
   <div id="modal-lucky-draw-result" class="modal-overlay" style="z-index: 100010;">
     <div class="modal-content" style="max-width: 520px; max-height: 85vh; display: flex; flex-direction: column; text-align: center; padding: 32px 28px; border: 2px solid rgba(211, 162, 76, 0.45); box-shadow: 0 24px 60px rgba(0,0,0,0.5);">
@@ -2576,10 +2593,20 @@
               <button type="button" class="element-tab-btn" data-element="card_code_text">
                 <span>🔤 代碼文字</span>
               </button>
-              <button type="button" class="element-tab-btn" data-element="rectangle">
-                <span>⬛ 圓角矩形</span>
-              </button>
             </div>
+
+            <div class="shape-tabs-header">
+              <span class="shape-tabs-title">🔷 自訂形狀（可新增多個）</span>
+              <div class="shape-type-add-group">
+                <button type="button" class="btn-icon shape-add-btn" data-shape-type="rectangle" title="新增矩形">⬛</button>
+                <button type="button" class="btn-icon shape-add-btn" data-shape-type="circle" title="新增圓形">⚪</button>
+                <button type="button" class="btn-icon shape-add-btn" data-shape-type="triangle" title="新增正三角形">🔺</button>
+              </div>
+            </div>
+            <div class="element-tabs" id="shape-tabs-list">
+              <!-- 動態形狀標籤由 JS 依 layout.shapes 產生 -->
+            </div>
+
             <div class="toggle-row">
               <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);" data-i18n="studio_elem_visible">顯示此元素</span>
               <label class="toggle-switch">
@@ -2635,71 +2662,92 @@
             </div>
           </div>
 
-          <!-- 3.1 圓角矩形樣式微調面板 (rectangle 選中時顯示) -->
-          <div id="inspector-rect-section" class="inspector-section" style="display: none;">
+          <!-- 3.1 自訂形狀樣式微調面板 (shape:<id> 選中時顯示) -->
+          <div id="inspector-shape-section" class="inspector-section" style="display: none;">
             <div class="inspector-section-header">
-              <span>⬛</span>
-              <span>圓角矩形樣式與尺寸</span>
+              <span>🔷</span>
+              <span>形狀樣式與尺寸</span>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">形狀類型：</span>
+              <select id="studio-shape-type" class="shape-type-select">
+                <option value="rectangle">⬛ 矩形</option>
+                <option value="circle">⚪ 圓形</option>
+                <option value="triangle">🔺 正三角形</option>
+              </select>
             </div>
             <div class="step-control-group">
               <span class="step-control-label">寬度 (W)：</span>
               <div class="step-control-box">
-                <button type="button" id="studio-rect-w-minus" class="step-btn">-</button>
-                <input type="number" id="studio-rect-w" class="step-input" min="10" max="800" value="154" data-step="5">
+                <button type="button" id="studio-shape-w-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-w" class="step-input" min="10" max="800" value="154" data-step="5">
                 <span class="step-suffix">px</span>
-                <button type="button" id="studio-rect-w-plus" class="step-btn">+</button>
+                <button type="button" id="studio-shape-w-plus" class="step-btn">+</button>
               </div>
             </div>
-            <div class="step-control-group">
+            <div class="step-control-group" id="studio-shape-h-row">
               <span class="step-control-label">高度 (H)：</span>
               <div class="step-control-box">
-                <button type="button" id="studio-rect-h-minus" class="step-btn">-</button>
-                <input type="number" id="studio-rect-h" class="step-input" min="10" max="1200" value="154" data-step="5">
+                <button type="button" id="studio-shape-h-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-h" class="step-input" min="10" max="1200" value="154" data-step="5">
                 <span class="step-suffix">px</span>
-                <button type="button" id="studio-rect-h-plus" class="step-btn">+</button>
+                <button type="button" id="studio-shape-h-plus" class="step-btn">+</button>
               </div>
             </div>
-            <div class="step-control-group">
+            <div class="step-control-group" id="studio-shape-radius-row">
               <span class="step-control-label">圓角半徑：</span>
               <div class="step-control-box">
-                <button type="button" id="studio-rect-radius-minus" class="step-btn">-</button>
-                <input type="number" id="studio-rect-radius" class="step-input" min="0" max="200" value="12" data-step="2">
+                <button type="button" id="studio-shape-radius-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-radius" class="step-input" min="0" max="200" value="12" data-step="2">
                 <span class="step-suffix">px</span>
-                <button type="button" id="studio-rect-radius-plus" class="step-btn">+</button>
+                <button type="button" id="studio-shape-radius-plus" class="step-btn">+</button>
               </div>
             </div>
             <div class="step-control-group">
               <span class="step-control-label">填滿顏色：</span>
               <div class="color-picker-group">
-                <input type="color" id="studio-rect-fill-color" class="color-swatch-input" value="#FFFFFF">
-                <input type="text" id="studio-rect-fill-color-hex" class="color-text-input" value="#FFFFFF">
+                <input type="color" id="studio-shape-fill-color" class="color-swatch-input" value="#FFFFFF">
+                <input type="text" id="studio-shape-fill-color-hex" class="color-text-input" value="#FFFFFF">
               </div>
             </div>
             <div class="step-control-group">
               <span class="step-control-label">透明度：</span>
               <div class="step-control-box">
-                <button type="button" id="studio-rect-opacity-minus" class="step-btn">-</button>
-                <input type="number" id="studio-rect-opacity" class="step-input" min="0" max="100" value="90" data-step="5">
+                <button type="button" id="studio-shape-opacity-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-opacity" class="step-input" min="0" max="100" value="85" data-step="5">
                 <span class="step-suffix">%</span>
-                <button type="button" id="studio-rect-opacity-plus" class="step-btn">+</button>
+                <button type="button" id="studio-shape-opacity-plus" class="step-btn">+</button>
               </div>
             </div>
             <div class="step-control-group">
               <span class="step-control-label">邊框顏色：</span>
               <div class="color-picker-group">
-                <input type="color" id="studio-rect-border-color" class="color-swatch-input" value="#CBD5E1">
-                <input type="text" id="studio-rect-border-color-hex" class="color-text-input" value="#CBD5E1">
+                <input type="color" id="studio-shape-border-color" class="color-swatch-input" value="#CBD5E1">
+                <input type="text" id="studio-shape-border-color-hex" class="color-text-input" value="#CBD5E1">
               </div>
             </div>
             <div class="step-control-group">
               <span class="step-control-label">邊框粗細：</span>
               <div class="step-control-box">
-                <button type="button" id="studio-rect-border-width-minus" class="step-btn">-</button>
-                <input type="number" id="studio-rect-border-width" class="step-input" min="0" max="30" value="2" data-step="1">
+                <button type="button" id="studio-shape-border-width-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-border-width" class="step-input" min="0" max="30" value="2" data-step="1">
                 <span class="step-suffix">px</span>
-                <button type="button" id="studio-rect-border-width-plus" class="step-btn">+</button>
+                <button type="button" id="studio-shape-border-width-plus" class="step-btn">+</button>
               </div>
             </div>
+            <div class="step-control-group">
+              <span class="step-control-label">邊緣霧化：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-shape-blur-minus" class="step-btn">-</button>
+                <input type="number" id="studio-shape-blur" class="step-input" min="0" max="40" value="10" data-step="2">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-shape-blur-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="studio-hint-box">
+              💡 提示：邊緣霧化會將形狀邊界周圍的底圖模糊化，呈現毛玻璃質感，數值愈大霧化範圍愈廣。
+            </div>
+            <button type="button" id="btn-studio-shape-delete" class="btn btn-secondary btn-shape-delete">🗑️ 刪除此形狀</button>
           </div>
 
           <!-- 4. 文字樣式微調面板 (文字類元素選中時顯示) -->
