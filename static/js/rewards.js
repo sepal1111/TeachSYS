@@ -145,7 +145,7 @@
           <div class="glass-card" style="margin-bottom:0; padding:14px; display:flex; flex-direction:column; justify-content:space-between; border:1.5px solid var(--card-border); transition:transform 0.15s ease, box-shadow 0.15s ease;">
             <div>
               <div style="width:100%; aspect-ratio:1; background:var(--input-bg); border-radius:12px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:10px; position:relative;">
-                <img src="${item.imageUrl}" alt="${escapeHtml(item.name)}" style="width:85%; height:85%; ${imgStyle}" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                <img src="${item.imageUrl || DEFAULT_REWARD_SVG}" alt="${escapeHtml(item.name)}" style="width:85%; height:85%; ${imgStyle}" onerror="this.onerror=null; this.src='${DEFAULT_REWARD_SVG}'">
                 <div style="position:absolute; top:8px; right:8px;">
                   ${activeStatusBadge}
                 </div>
@@ -202,7 +202,7 @@
           .map((r) => {
             const studentName = r.student ? `${r.student.studentNumber}號 ${escapeHtml(r.student.name)}` : '未知學生';
             const rewardName = r.reward ? escapeHtml(r.reward.name) : '未知獎勵品項';
-            const rewardImg = r.reward ? r.reward.imageUrl : '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+            const rewardImg = (r.reward && r.reward.imageUrl) ? r.reward.imageUrl : DEFAULT_REWARD_SVG;
             const cost = r.pointsSpent || 0;
             const noteText = r.requestNote ? `<div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">${t('reward_student_note_prefix', '💬 學生備註：')}${escapeHtml(r.requestNote)}</div>` : '';
             const teacherNoteText = r.teacherNote ? `<div style="font-size:0.82rem; color:var(--primary); margin-top:2px;">${t('reward_teacher_note_prefix', '📝 教師備註：')}${escapeHtml(r.teacherNote)}</div>` : '';
@@ -244,7 +244,7 @@
               };">
                 <div style="display:flex; align-items:center; gap:14px; min-width:240px; flex:1;">
                   <div style="width:52px; height:52px; border-radius:10px; background:var(--input-bg); overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                    <img src="${rewardImg}" alt="${rewardName}" style="width:100%; height:100%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                    <img src="${rewardImg}" alt="${rewardName}" style="width:100%; height:100%; object-fit:contain;" onerror="this.onerror=null; this.src='${DEFAULT_REWARD_SVG}'">
                   </div>
                   <div>
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:3px;">

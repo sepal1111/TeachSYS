@@ -66,13 +66,13 @@ const TARGETS = {
   win: {
     pkgTarget: "node22-win-x64",
     engineGlob: "query_engine-windows.dll.node",
-    baseName: "TeachSYS",
+    baseName: "ClassManager",
     ext: ".exe",
   },
   "mac-smoketest": {
     pkgTarget: `node22-macos-${process.arch}`,
     engineGlob: "libquery_engine-darwin-*.node",
-    baseName: "TeachSYS",
+    baseName: "ClassManager",
     ext: "",
   },
 };
@@ -83,9 +83,14 @@ if (!which || !TARGETS[which]) {
   process.exit(1);
 }
 const target = TARGETS[which];
-const exeName = gitVersion ? `${target.baseName}_${gitVersion}${target.ext}` : `${target.baseName}${target.ext}`;
-const defaultExeName = `${target.baseName}${target.ext}`;
-const outDir = path.join(rootDir, "release", which);
+const normVersion = gitVersion
+  ? gitVersion.startsWith("V") || gitVersion.startsWith("v")
+    ? `V${gitVersion.slice(1)}`
+    : `V${gitVersion}`
+  : "";
+const exeName = normVersion ? `${target.baseName}${normVersion}${target.ext}` : `${target.baseName}${target.ext}`;
+const folderName = normVersion ? `${target.baseName}${normVersion}` : target.baseName;
+const outDir = path.join(rootDir, "release", folderName);
 
 console.log("[1/4] building project (npm run build)");
 try {
@@ -121,26 +126,12 @@ execFileSync(
   { cwd: rootDir, stdio: "inherit", shell: process.platform === "win32" }
 );
 
-if (exeName !== defaultExeName) {
-  fs.copyFileSync(path.join(outDir, exeName), path.join(outDir, defaultExeName));
-}
-
 console.log("[4/4] copying static/ and engine/ into system/ next to the exe");
 const systemDir = path.join(outDir, "system");
 fs.cpSync(path.join(rootDir, "static"), path.join(systemDir, "static"), { recursive: true });
 fs.mkdirSync(path.join(systemDir, "engine"), { recursive: true });
 fs.copyFileSync(path.join(engineDir, engineFile), path.join(systemDir, "engine", engineFile));
 
-if (gitVersion) {
-  const versionedDir = path.join(rootDir, "release", `${target.baseName}_${gitVersion}_${which}`);
-  fs.rmSync(versionedDir, { recursive: true, force: true });
-  fs.cpSync(outDir, versionedDir, { recursive: true });
-  console.log(`Versioned folder created: ${versionedDir}`);
+console.log(`\n[build-exe] Done! Single package created at: ${outDir}`);
+console.log(`[build-exe] Executable: ${exeName}`);
 
-  const cmDir = path.join(rootDir, "release", `ClassroomManager_${gitVersion}_${which}`);
-  fs.rmSync(cmDir, { recursive: true, force: true });
-  fs.cpSync(outDir, cmDir, { recursive: true });
-  console.log(`ClassroomManager folder created: ${cmDir}`);
-}
-
-console.log(`Done: ${outDir} (${exeName})`);

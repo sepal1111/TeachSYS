@@ -29,6 +29,23 @@
     return fallback;
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function showToastSuccess(msg) {
+    if (typeof showToast === 'function') {
+      showToast(msg);
+    } else {
+      console.log(msg);
+    }
+  }
+
   // 1. 載入點數卡與系列資料
   async function loadPointCardsData() {
     const courseId = getActiveCourseId();
@@ -266,7 +283,7 @@
     const file = fileInput.files[0];
     const seriesVal = seriesSelect ? seriesSelect.value : '';
     const newName = newSeriesInput ? newSeriesInput.value.trim() : '';
-    const themeVal = themeSelect ? themeSelect.value : 'score_card_A';
+    const themeVal = 'custom';
 
     const formData = new FormData();
     formData.append('file', file);
@@ -313,6 +330,56 @@
     openModal('modal-manage-series');
   }
 
+  let editingCustomImagesMap = {};
+  let pendingUploadScoreKey = null;
+
+  function renderCustomImagesGrid() {
+    const grid = document.getElementById('ptcard-series-custom-cards-grid');
+    if (!grid) return;
+
+    // 確保預設的 1, 2, 5, 10, default 等鍵位存在
+    const baseKeys = ['1', '2', '5', '10', 'default'];
+    baseKeys.forEach((k) => {
+      if (editingCustomImagesMap[k] === undefined) {
+        editingCustomImagesMap[k] = '';
+      }
+    });
+
+    const allKeys = Object.keys(editingCustomImagesMap).sort((a, b) => {
+      if (a === 'default') return 1;
+      if (b === 'default') return -1;
+      const na = Number(a);
+      const nb = Number(b);
+      if (!isNaN(na) && !isNaN(nb)) return na - nb;
+      return a.localeCompare(b);
+    });
+
+    grid.innerHTML = allKeys
+      .map((k) => {
+        const url = editingCustomImagesMap[k];
+        const isDefault = k === 'default';
+        const label = isDefault ? '🌟 通用預設圖' : `⚡ ${Number(k) >= 0 ? '+' : ''}${k} 分`;
+
+        return `
+          <div style="background:var(--card-bg); border:1.5px solid ${url ? 'var(--primary)' : 'var(--card-border)'}; border-radius:var(--radius-md); padding:8px; display:flex; flex-direction:column; align-items:center; position:relative; box-shadow:0 2px 5px rgba(0,0,0,0.03);">
+            <div style="font-size:0.8rem; font-weight:800; color:var(--text-main); margin-bottom:6px; width:100%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              ${label}
+            </div>
+            <div style="width:100%; height:110px; border-radius:var(--radius-sm); overflow:hidden; margin-bottom:8px; background:rgba(0,0,0,0.02); display:flex; align-items:center; justify-content:center; border:1px dashed ${url ? 'transparent' : 'var(--card-border)'};">
+              ${url ? `<img src="${url}" style="width:100%; height:100%; object-fit:cover; display:block;">` : `<span style="font-size:0.75rem; color:var(--text-muted); text-align:center; padding:4px;">未上傳底圖</span>`}
+            </div>
+            <div style="display:flex; gap:4px; width:100%;">
+              <button type="button" class="btn btn-secondary btn-upload-score-img" data-key="${k}" style="flex:1; font-size:0.72rem; padding:3px 6px;">
+                ${url ? '更換' : '📤 上傳'}
+              </button>
+              ${url ? `<button type="button" class="btn btn-secondary btn-clear-score-img" data-key="${k}" style="font-size:0.72rem; padding:3px 6px; color:var(--accent-negative);" title="清除底圖">✕</button>` : (!baseKeys.includes(k) ? `<button type="button" class="btn btn-secondary btn-delete-score-slot" data-key="${k}" style="font-size:0.72rem; padding:3px 6px; color:var(--accent-negative);" title="刪除此分數">🗑️</button>` : '')}
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
   function renderSeriesListModal() {
     const listEl = document.getElementById('ptcard-series-modal-list');
     if (!listEl) return;
@@ -324,7 +391,8 @@
 
     listEl.innerHTML = currentSeries
       .map((s) => {
-        const themeLabel = s.card_theme === 'score_card_B' ? '🌄 台灣之美 (風格 B)' : '🏛️ 竹塹風情 (風格 A)';
+        const count = s.custom_images ? Object.keys(s.custom_images).filter((k) => !!s.custom_images[k]).length : 0;
+        const themeLabel = count > 0 ? `🎨 自訂圖卡 (${count} 款風格底圖)` : '🎨 自訂圖卡 (尚未上傳底圖)';
         const allowedCount = s.allowed_course_ids && s.allowed_course_ids.length > 0 ? `${s.allowed_course_ids.length} 個班級` : '全班級共用';
 
         return `
@@ -339,9 +407,10 @@
                 <span>授權：<b>${allowedCount}</b></span>
               </div>
             </div>
-            <div style="display:flex; gap:8px;">
-              <button type="button" class="btn btn-secondary btn-edit-series" data-id="${s.id}" style="font-size:0.82rem; padding:6px 12px;">✏️ 編輯</button>
-              <button type="button" class="btn btn-secondary btn-delete-series" data-id="${s.id}" style="font-size:0.82rem; padding:6px 10px; color:var(--accent-negative); border-color:var(--accent-negative-border);">🗑️</button>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-design-series" data-id="${s.id}" style="font-size:0.82rem; padding:6px 10px; color:#4f46e5; border-color:#cbd5e1; font-weight:700;">🎨 製作卡片</button>
+              <button type="button" class="btn btn-secondary btn-edit-series" data-id="${s.id}" style="font-size:0.82rem; padding:6px 10px;">✏️ 編輯</button>
+              <button type="button" class="btn btn-secondary btn-delete-series" data-id="${s.id}" style="font-size:0.82rem; padding:6px 8px; color:var(--accent-negative); border-color:var(--accent-negative-border);">🗑️</button>
             </div>
           </div>
         `;
@@ -356,17 +425,25 @@
     const nameInput = document.getElementById('ptcard-series-edit-name');
     const themeSelect = document.getElementById('ptcard-series-edit-theme');
     const coursesWrap = document.getElementById('ptcard-series-allowed-courses-wrap');
+    const customSection = document.getElementById('ptcard-series-custom-images-section');
 
     if (!formSection) return;
 
     if (seriesObj) {
       if (idInput) idInput.value = seriesObj.id;
       if (nameInput) nameInput.value = seriesObj.name;
-      if (themeSelect) themeSelect.value = seriesObj.card_theme || 'score_card_A';
+      if (themeSelect) themeSelect.value = 'custom';
+      editingCustomImagesMap = seriesObj.custom_images ? { ...seriesObj.custom_images } : {};
     } else {
       if (idInput) idInput.value = '';
       if (nameInput) nameInput.value = '';
-      if (themeSelect) themeSelect.value = 'score_card_A';
+      if (themeSelect) themeSelect.value = 'custom';
+      editingCustomImagesMap = {};
+    }
+
+    if (customSection) {
+      customSection.style.display = 'block';
+      renderCustomImagesGrid();
     }
 
     // 授權班級勾選
@@ -412,15 +489,24 @@
 
     const seriesId = idInput && idInput.value ? Number(idInput.value) : null;
     const name = nameInput.value.trim();
-    const cardTheme = themeSelect ? themeSelect.value : 'score_card_A';
+    const cardTheme = 'custom';
     const allowedCourseIds = Array.from(courseCbs).map((cb) => Number(cb.value));
+
+    // 過濾乾淨 custom_images (只儲存有 URL 的映射)
+    const cleanCustomImages = {};
+    Object.entries(editingCustomImagesMap).forEach(([k, v]) => {
+      if (v && typeof v === 'string' && v.trim()) {
+        cleanCustomImages[k] = v.trim();
+      }
+    });
 
     try {
       await API.post(`/api/point-cards/${courseId}/series`, {
         id: seriesId,
         name,
-        card_theme: cardTheme,
+        card_theme: 'custom',
         allowed_course_ids: allowedCourseIds,
+        custom_images: cleanCustomImages,
       });
 
       const formSection = document.getElementById('ptcard-series-form-section');
@@ -442,39 +528,43 @@
     try {
       const stats = await API.get(`/api/point-cards/${courseId}/stats`);
       const totalCardsEl = document.getElementById('ptcard-modal-stats-total');
-      const totalScansEl = document.getElementById('ptcard-modal-stats-scans');
-      const topCardsList = document.getElementById('ptcard-modal-top-cards');
-      const topStudentsList = document.getElementById('ptcard-modal-top-students');
+      const totalRedeemedEl = document.getElementById('ptcard-modal-stats-scans');
+      const topCardsEl = document.getElementById('ptcard-modal-top-cards');
+      const topStudentsEl = document.getElementById('ptcard-modal-top-students');
 
       if (totalCardsEl) totalCardsEl.textContent = stats.total_cards || 0;
-      if (totalScansEl) totalScansEl.textContent = stats.total_redemptions || 0;
+      if (totalRedeemedEl) totalRedeemedEl.textContent = stats.total_redeemed || 0;
 
-      if (topCardsList) {
+      if (topCardsEl) {
         if (!stats.top_cards || stats.top_cards.length === 0) {
-          topCardsList.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">尚無使用紀錄</div>';
+          topCardsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; text-align:center;">尚無兌換紀錄</div>';
         } else {
-          topCardsList.innerHTML = stats.top_cards
-            .map((c, idx) => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--card-border); font-size:0.88rem;">
-                <span><b>${idx + 1}.</b> ${escapeHtml(c.label)} (${c.score >= 0 ? '+' : ''}${c.score}分)</span>
-                <span class="badge" style="background:rgba(91, 124, 214, 0.12); color:var(--primary); font-weight:700; padding:2px 8px; border-radius:12px;">已刷 ${c.count} 次</span>
+          topCardsEl.innerHTML = stats.top_cards
+            .map(
+              (c, i) => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;">
+                <span>${i + 1}. <b>${escapeHtml(c.label)}</b> (${c.score >= 0 ? '+' : ''}${c.score} 分)</span>
+                <span style="font-weight:700; color:var(--primary);">${c.count} 次</span>
               </div>
-            `)
+            `
+            )
             .join('');
         }
       }
 
-      if (topStudentsList) {
+      if (topStudentsEl) {
         if (!stats.top_students || stats.top_students.length === 0) {
-          topStudentsList.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem;">尚無學生刷卡紀錄</div>';
+          topStudentsEl.innerHTML = '<div style="color:var(--text-muted); font-size:0.85rem; text-align:center;">尚無學生兌換紀錄</div>';
         } else {
-          topStudentsList.innerHTML = stats.top_students
-            .map((s, idx) => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dashed var(--card-border); font-size:0.88rem;">
-                <span><b>${idx + 1}.</b> ${s.number}號 ${escapeHtml(s.name)} (共刷 ${s.count} 次)</span>
-                <span class="badge" style="background:rgba(79, 174, 130, 0.15); color:var(--accent-positive); font-weight:800; padding:2px 8px; border-radius:12px;">+${s.totalScore} 分</span>
+          topStudentsEl.innerHTML = stats.top_students
+            .map(
+              (s, i) => `
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;">
+                <span>${i + 1}. 座號 ${s.seat_number} - <b>${escapeHtml(s.name)}</b></span>
+                <span style="font-weight:700; color:var(--accent-positive);">${s.total_score >= 0 ? '+' : ''}${s.total_score} 分</span>
               </div>
-            `)
+            `
+            )
             .join('');
         }
       }
@@ -485,172 +575,242 @@
     }
   }
 
-  // 輔助函式
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
-  function showToastSuccess(msg) {
-    if (typeof showToast === 'function') {
-      showToast(msg);
-    } else {
-      console.log(msg);
-    }
-  }
-
-  // 事件綁定
-  document.addEventListener('DOMContentLoaded', () => {
-    // 1. 監聽切換至 pointcards tab / subtab
-    document.querySelectorAll('.nav-tab[data-tab="pointcards"]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        loadPointCardsData();
-      });
-    });
-    document.querySelectorAll('.admin-subtab-btn').forEach((btn) => {
-      btn.addEventListener('click', (e) => {
-        if (btn.getAttribute('data-subtab') === 'pointcards') {
-          loadPointCardsData();
-        }
-      });
-    });
-
-    // 2. 系列篩選
-    const filterSelect = document.getElementById('ptcard-filter-series');
-    if (filterSelect) {
-      filterSelect.addEventListener('change', (e) => {
-        activeFilterSeries = e.target.value;
-        renderCardsList();
-      });
-    }
-
-    // 3. 排序切換
-    document.querySelectorAll('.btn-ptcard-sort').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const field = btn.getAttribute('data-sort');
-        if (sortBy === field) {
-          sortDesc = !sortDesc;
-        } else {
-          sortBy = field;
-          sortDesc = false;
-        }
-        document.querySelectorAll('.btn-ptcard-sort').forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        renderCardsList();
-      });
-    });
-
-    // 4. 全選 / 單選卡片
+  // 12. 批次選取與全選
+  function initBatchSelectionEvents() {
     const selectAllCb = document.getElementById('ptcard-select-all');
     if (selectAllCb) {
-      selectAllCb.addEventListener('change', (e) => {
-        const checked = e.target.checked;
-        const visibleCards = currentCards.filter((c) => {
-          if (activeFilterSeries === 'uncategorized') return !c.series_id;
-          if (activeFilterSeries === 'all') return true;
-          return String(c.series_id) === String(activeFilterSeries);
+      selectAllCb.addEventListener('change', () => {
+        const isChecked = selectAllCb.checked;
+        const currentCards = getFilteredCards();
+        currentCards.forEach((c) => {
+          selectedCardsMap[c.id] = isChecked;
         });
-        visibleCards.forEach((c) => {
-          selectedCardsMap[c.id] = checked;
+        document.querySelectorAll('.ptcard-item-cb').forEach((cb) => {
+          cb.checked = isChecked;
         });
+        updateBatchActionBar();
+      });
+    }
+
+    const cardsContainer = document.getElementById('ptcard-cards-container');
+    if (cardsContainer) {
+      cardsContainer.addEventListener('change', (e) => {
+        const target = e.target;
+        if (target.classList.contains('ptcard-item-cb')) {
+          const cardId = Number(target.getAttribute('data-id'));
+          selectedCardsMap[cardId] = target.checked;
+          updateBatchActionBar();
+        }
+      });
+    }
+
+    const btnCloseBatch = document.getElementById('btn-close-batch-bar');
+    if (btnCloseBatch) {
+      btnCloseBatch.addEventListener('click', () => {
+        selectedCardsMap = {};
+        if (selectAllCb) selectAllCb.checked = false;
+        document.querySelectorAll('.ptcard-item-cb').forEach((cb) => (cb.checked = false));
+        updateBatchActionBar();
+      });
+    }
+
+    const btnBatchMove = document.getElementById('btn-submit-batch-move');
+    if (btnBatchMove) {
+      btnBatchMove.addEventListener('click', submitBatchMove);
+    }
+
+    const btnBatchDelete = document.getElementById('btn-submit-batch-delete');
+    if (btnBatchDelete) {
+      btnBatchDelete.addEventListener('click', submitBatchDelete);
+    }
+  }
+
+  // 12-2. 開啟實體卡片排版與列印工作室
+  function openDesignerStudio(targetSeriesId = null) {
+    const courseId = getActiveCourseId();
+    if (!courseId) {
+      if (typeof window.ensureCourseSelected === 'function') {
+        window.ensureCourseSelected();
+      } else {
+        alert('請先在上方選擇班級課程！');
+      }
+      return;
+    }
+    const filterSelect = document.getElementById('ptcard-filter-series');
+    const selectedSeriesId = targetSeriesId || (filterSelect && filterSelect.value !== 'all' ? filterSelect.value : null);
+    if (window.CardDesignerStudio && typeof window.CardDesignerStudio.open === 'function') {
+      window.CardDesignerStudio.open(courseId, selectedSeriesId);
+    }
+  }
+
+  // 12-3. 批次匯入點數卡彈窗
+  async function openImportModal() {
+    const courseId = getActiveCourseId();
+    if (!courseId) {
+      if (typeof window.ensureCourseSelected === 'function') {
+        window.ensureCourseSelected();
+      } else {
+        alert('請先在上方選擇班級課程！');
+      }
+      return;
+    }
+    await loadPointCardsData();
+
+    // 填入系列選單
+    const seriesSelect = document.getElementById('ptcard-import-series-select');
+    if (seriesSelect) {
+      let opts = `<option value="none">${t('ptcard_import_series_none', '未分類 (不指定系列)')}</option>`;
+      currentSeries.forEach((s) => {
+        opts += `<option value="${s.id}">🏷️ ${escapeHtml(s.name)}</option>`;
+      });
+      opts += `<option value="create_new" selected>${t('ptcard_import_series_new', '➕ 直接建立新系列...')}</option>`;
+      seriesSelect.innerHTML = opts;
+      seriesSelect.value = 'create_new';
+    }
+
+    const newSeriesWrap = document.getElementById('ptcard-import-new-series-wrap');
+    if (newSeriesWrap) newSeriesWrap.style.display = 'block';
+
+    const fileInput = document.getElementById('ptcard-import-file-input');
+    if (fileInput) fileInput.value = '';
+
+    const newSeriesInput = document.getElementById('ptcard-import-new-series-name');
+    if (newSeriesInput) newSeriesInput.value = '';
+
+    openModal('modal-import-point-cards');
+  }
+
+  // 12-4. 處理新增指定分數卡槽
+  function handleAddCustomScoreSlot() {
+    const inputEl = document.getElementById('input-ptcard-custom-score-val');
+    let val = inputEl ? inputEl.value.trim() : '';
+
+    if (!val) {
+      const p = prompt('請輸入要指定圖卡的點數分數（例如：3、20、50 或 -1 等）：');
+      if (p === null) return;
+      val = p.trim();
+    }
+
+    if (!val || isNaN(Number(val))) {
+      alert('請輸入有效的數字分數！');
+      if (inputEl) inputEl.focus();
+      return;
+    }
+
+    const numVal = Number(val);
+    const scoreKey = String(numVal);
+
+    if (editingCustomImagesMap[scoreKey] !== undefined && editingCustomImagesMap[scoreKey]) {
+      alert(`此分數 (${scoreKey >= 0 ? '+' : ''}${scoreKey} 分) 的圖卡底圖已存在！`);
+      if (inputEl) inputEl.value = '';
+      return;
+    }
+
+    if (editingCustomImagesMap[scoreKey] === undefined) {
+      editingCustomImagesMap[scoreKey] = '';
+    }
+
+    if (inputEl) inputEl.value = '';
+    renderCustomImagesGrid();
+    showToastSuccess(`已新增 ${numVal >= 0 ? '+' : ''}${numVal} 分圖卡槽位，請點擊「📤 上傳」設定底圖！`);
+
+    const grid = document.getElementById('ptcard-series-custom-cards-grid');
+    if (grid) {
+      setTimeout(() => {
+        const newSlot = grid.querySelector(`[data-key="${scoreKey}"]`);
+        if (newSlot) newSlot.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+  }
+
+  // 13. DOM 載入後綁定各 UI 事件
+  function initPointCardsEvents() {
+    initBatchSelectionEvents();
+
+    // 1. 班級載入完成監聽
+    window.addEventListener('coursesLoaded', () => {
+      loadPointCardsData();
+    });
+
+    // 2. 班級切換監聽
+    const courseSelect = document.getElementById('course-select');
+    if (courseSelect) {
+      courseSelect.addEventListener('change', () => {
+        loadPointCardsData();
+      });
+    }
+
+    // 3. 搜尋與系列篩選監聽
+    const searchInput = document.getElementById('ptcard-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', () => {
         renderCardsList();
       });
     }
 
-    const container = document.getElementById('ptcard-items-container');
-    if (container) {
-      container.addEventListener('change', (e) => {
-        if (e.target.classList.contains('ptcard-select-cb')) {
-          const id = e.target.getAttribute('data-id');
-          selectedCardsMap[id] = e.target.checked;
-          const cardEl = e.target.closest('.ptcard-item-card');
-          if (cardEl) {
-            if (e.target.checked) cardEl.classList.add('selected');
-            else cardEl.classList.remove('selected');
-          }
-          updateBatchToolbar();
+    const filterSeries = document.getElementById('ptcard-filter-series');
+    if (filterSeries) {
+      filterSeries.addEventListener('change', () => {
+        renderCardsList();
+      });
+    }
+
+    // 4. 新增單張點數卡彈窗
+    const btnOpenAddSingle = document.getElementById('btn-open-add-ptcard-modal');
+    if (btnOpenAddSingle) {
+      btnOpenAddSingle.addEventListener('click', () => {
+        const codeInput = document.getElementById('ptcard-add-code');
+        const labelInput = document.getElementById('ptcard-add-label');
+        const scoreInput = document.getElementById('ptcard-add-score');
+        const cardNoInput = document.getElementById('ptcard-add-cardno');
+        if (codeInput) codeInput.value = '';
+        if (labelInput) labelInput.value = '';
+        if (scoreInput) scoreInput.value = '1';
+        if (cardNoInput) cardNoInput.value = '';
+        openModal('modal-add-point-card');
+      });
+    }
+
+    const btnSubmitAddSingle = document.getElementById('btn-submit-add-ptcard');
+    if (btnSubmitAddSingle) {
+      btnSubmitAddSingle.addEventListener('click', submitAddSingleCard);
+    }
+
+    // 5. 快速產生隨機卡號代碼
+    const btnGenCode = document.getElementById('btn-generate-ptcard-code');
+    if (btnGenCode) {
+      btnGenCode.addEventListener('click', () => {
+        const codeInput = document.getElementById('ptcard-add-code');
+        if (codeInput) {
+          const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
+          codeInput.value = `CARD-${rand}`;
         }
       });
-
-      // 單卡刪除
-      container.addEventListener('click', async (e) => {
-        const delBtn = e.target.closest('.btn-delete-single-card');
-        if (delBtn) {
-          const cardId = delBtn.getAttribute('data-id');
-          if (!confirm('確定要刪除這張點數卡嗎？')) return;
-          const courseId = getActiveCourseId();
-          try {
-            await API.delete(`/api/point-cards/${courseId}/${cardId}`);
-            await loadPointCardsData();
-            showToastSuccess('卡片已刪除！');
-          } catch (err) {
-            alert('刪除失敗：' + err.message);
-          }
-        }
-      });
     }
 
-    // 5. 批次操作按鈕
-    const btnBatchMove = document.getElementById('btn-ptcard-batch-move');
-    if (btnBatchMove) {
-      btnBatchMove.addEventListener('click', () => {
-        const targetSeriesSelect = document.getElementById('ptcard-batch-target-series');
-        const targetId = targetSeriesSelect ? targetSeriesSelect.value : '';
-        batchMoveCards(targetId);
-      });
-    }
-
-    const btnBatchDelete = document.getElementById('btn-ptcard-batch-delete');
-    if (btnBatchDelete) {
-      btnBatchDelete.addEventListener('click', batchDeleteCards);
-    }
-
-    // 6. 開啟批次匯入彈窗
-    const btnOpenImport = document.getElementById('btn-open-ptcard-import-modal');
+    // 6. 批次匯入點數卡彈窗按鈕
+    const btnOpenImport = document.getElementById('btn-open-ptcard-import-modal') || document.getElementById('btn-open-import-ptcard-modal');
     if (btnOpenImport) {
-      btnOpenImport.addEventListener('click', async () => {
-        const courseId = getActiveCourseId();
-        if (!courseId) {
-          alert('請先在上方選擇班級！');
-          return;
-        }
-        await loadPointCardsData();
-        // 填入系列選單
-        const seriesSelect = document.getElementById('ptcard-import-series-select');
-        if (seriesSelect) {
-          let opts = `<option value="none">${t('ptcard_import_series_none', '未分類 (不指定系列)')}</option>`;
-          currentSeries.forEach((s) => {
-            opts += `<option value="${s.id}">🏷️ ${escapeHtml(s.name)}</option>`;
-          });
-          opts += `<option value="create_new">${t('ptcard_import_series_new', '➕ 直接建立新系列...')}</option>`;
-          seriesSelect.innerHTML = opts;
-          seriesSelect.value = 'create_new';
-        }
-
-        const newSeriesWrap = document.getElementById('ptcard-import-new-series-wrap');
-        if (newSeriesWrap) newSeriesWrap.style.display = 'block';
-
-        openModal('modal-import-point-cards');
-      });
+      btnOpenImport.addEventListener('click', openImportModal);
     }
 
     const importSeriesSelect = document.getElementById('ptcard-import-series-select');
-    if (importSeriesSelect) {
-      importSeriesSelect.addEventListener('change', (e) => {
-        const newSeriesWrap = document.getElementById('ptcard-import-new-series-wrap');
-        if (newSeriesWrap) {
-          newSeriesWrap.style.display = e.target.value === 'create_new' ? 'block' : 'none';
-        }
+    const newSeriesWrap = document.getElementById('ptcard-import-new-series-wrap');
+    if (importSeriesSelect && newSeriesWrap) {
+      importSeriesSelect.addEventListener('change', () => {
+        newSeriesWrap.style.display = importSeriesSelect.value === 'create_new' ? 'block' : 'none';
       });
     }
 
     const btnSubmitImport = document.getElementById('btn-submit-ptcard-import');
     if (btnSubmitImport) {
       btnSubmitImport.addEventListener('click', submitImportPointCards);
+    }
+
+    // 6-2. 開啟實體卡片排版與列印工作室
+    const btnOpenDesigner = document.getElementById('btn-open-ptcard-designer');
+    if (btnOpenDesigner) {
+      btnOpenDesigner.addEventListener('click', () => openDesignerStudio());
     }
 
     // 7. 開啟系列管理彈窗
@@ -677,10 +837,116 @@
       btnSaveSeries.addEventListener('click', saveSeriesSubmit);
     }
 
-    // 系列列表委派事件 (編輯/刪除)
+    // 自訂系列圖卡切換與新增指定分數圖卡事件
+    const seriesEditTheme = document.getElementById('ptcard-series-edit-theme');
+    if (seriesEditTheme) {
+      seriesEditTheme.addEventListener('change', () => {
+        const customSection = document.getElementById('ptcard-series-custom-images-section');
+        if (customSection) {
+          customSection.style.display = seriesEditTheme.value === 'custom' ? 'block' : 'none';
+          if (seriesEditTheme.value === 'custom') {
+            renderCustomImagesGrid();
+          }
+        }
+      });
+    }
+
+
+
+    // 全域事件委派：支援動態產生的新增按鈕與輸入框 Enter 鍵
+    document.addEventListener('click', (e) => {
+      // 0. 點選批次匯入點數卡
+      const importBtn = e.target.closest('#btn-open-ptcard-import-modal, #btn-open-import-ptcard-modal');
+      if (importBtn) {
+        e.preventDefault();
+        openImportModal();
+        return;
+      }
+
+      // 1. 點選新增指定分數圖卡
+      const addBtn = e.target.closest('#btn-ptcard-add-custom-score-img');
+      if (addBtn) {
+        e.preventDefault();
+        handleAddCustomScoreSlot();
+        return;
+      }
+
+      // 2. 點選各分數圖卡上傳/更換
+      const uploadBtn = e.target.closest('.btn-upload-score-img');
+      if (uploadBtn) {
+        e.preventDefault();
+        pendingUploadScoreKey = uploadBtn.getAttribute('data-key');
+        const scoreFileInput = document.getElementById('ptcard-series-score-img-file-input');
+        if (scoreFileInput) {
+          scoreFileInput.value = '';
+          scoreFileInput.click();
+        }
+        return;
+      }
+
+      // 3. 點選清除圖卡底圖
+      const clearBtn = e.target.closest('.btn-clear-score-img');
+      if (clearBtn) {
+        e.preventDefault();
+        const k = clearBtn.getAttribute('data-key');
+        editingCustomImagesMap[k] = '';
+        renderCustomImagesGrid();
+        return;
+      }
+
+      // 4. 點選刪除分數槽位
+      const deleteBtn = e.target.closest('.btn-delete-score-slot');
+      if (deleteBtn) {
+        e.preventDefault();
+        const k = deleteBtn.getAttribute('data-key');
+        delete editingCustomImagesMap[k];
+        renderCustomImagesGrid();
+        return;
+      }
+    });
+
+    // 支援輸入分數後按 Enter 送出
+    document.addEventListener('keydown', (e) => {
+      if (e.target && e.target.id === 'input-ptcard-custom-score-val' && e.key === 'Enter') {
+        e.preventDefault();
+        handleAddCustomScoreSlot();
+      }
+    });
+
+    // 監聽圖卡檔案選取變更
+    const scoreFileInput = document.getElementById('ptcard-series-score-img-file-input');
+    if (scoreFileInput) {
+      scoreFileInput.addEventListener('change', async (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !pendingUploadScoreKey) return;
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+          const res = await API.postFormData('/api/point-cards/upload-card-image', formData);
+          editingCustomImagesMap[pendingUploadScoreKey] = res.url;
+          renderCustomImagesGrid();
+          showToastSuccess(`已成功設定 ${pendingUploadScoreKey === 'default' ? '通用預設' : (Number(pendingUploadScoreKey) >= 0 ? '+' : '') + pendingUploadScoreKey + ' 分'} 圖卡！`);
+        } catch (err) {
+          alert('圖卡上傳失敗：' + err.message);
+        }
+      });
+    }
+
+    // 系列列表委派事件 (製作卡片/編輯/刪除)
     const seriesModalList = document.getElementById('ptcard-series-modal-list');
     if (seriesModalList) {
       seriesModalList.addEventListener('click', async (e) => {
+        const designBtn = e.target.closest('.btn-design-series');
+        if (designBtn) {
+          const sid = Number(designBtn.getAttribute('data-id'));
+          const courseId = getActiveCourseId();
+          closeModal('modal-manage-series');
+          if (window.CardDesignerStudio && typeof window.CardDesignerStudio.open === 'function') {
+            window.CardDesignerStudio.open(courseId, sid);
+          }
+          return;
+        }
+
         const editBtn = e.target.closest('.btn-edit-series');
         if (editBtn) {
           const sid = Number(editBtn.getAttribute('data-id'));
@@ -728,12 +994,28 @@
         }
       });
     }
-  });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPointCardsEvents);
+  } else {
+    initPointCardsEvents();
+  }
 
   // 對外匯出供切換班級時重載
   window.PointCardsManager = {
     reload: loadPointCardsData,
     renderCardsList,
+    openDesigner: openDesignerStudio,
+    openImportModal,
+    addNewScoreSlot: handleAddCustomScoreSlot,
+    openSeriesManager: (seriesId = null) => {
+      openSeriesModal();
+      if (seriesId) {
+        const s = currentSeries.find((x) => x.id === seriesId);
+        if (s) showEditSeriesForm(s);
+      }
+    },
   };
   window.PointCardsModule = window.PointCardsManager;
 })();

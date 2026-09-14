@@ -80,11 +80,42 @@
   // 對應 /uploads/* 路由的 ?name= 支援（見 src/index.ts），磁碟上存的是防碰撞用的亂數檔名，
   // 不帶這個參數的話下載出來的檔案名稱會是那串亂碼。
   function fileUrlWithToken(url, filename) {
+    if (!url || typeof url !== 'string' || url.startsWith('data:')) return url || '';
     const token = localStorage.getItem(TOKEN_KEY);
     let result = url;
     if (token) result += (result.includes('?') ? '&' : '?') + 'token=' + encodeURIComponent(token);
     if (filename) result += (result.includes('?') ? '&' : '?') + 'name=' + encodeURIComponent(filename);
     return result;
+  }
+
+  function getCardPlaceholderSvg(score, label) {
+    const s = Number(score || 0);
+    const isPos = s >= 0;
+    const bgGrad1 = isPos ? '#3b82f6' : '#e11d48';
+    const bgGrad2 = isPos ? '#1d4ed8' : '#9f1239';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 560" width="400" height="560">
+      <defs>
+        <linearGradient id="cardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${bgGrad1}" />
+          <stop offset="100%" stop-color="${bgGrad2}" />
+        </linearGradient>
+      </defs>
+      <rect width="400" height="560" rx="28" fill="url(#cardBg)" />
+      <rect x="16" y="16" width="368" height="528" rx="20" fill="none" stroke="rgba(255,255,255,0.3)" stroke-width="2" stroke-dasharray="6 4" />
+      <circle cx="200" cy="220" r="72" fill="rgba(255,255,255,0.18)" />
+      <text x="200" y="242" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="900" fill="#ffffff" text-anchor="middle">${isPos ? '+' : ''}${s}</text>
+      <text x="200" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="800" fill="#ffffff" text-anchor="middle">${(label || '點數卡').substring(0, 12)}</text>
+      <text x="200" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="16" font-weight="600" fill="rgba(255,255,255,0.8)" text-anchor="middle">✨ 點數卡</text>
+    </svg>`;
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+  }
+
+  function getGiftPlaceholderSvg(emoji = '🎁') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+      <rect width="100" height="100" rx="16" fill="#f1f5f9" />
+      <text x="50" y="62" font-size="44" text-anchor="middle">${emoji}</text>
+    </svg>`;
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
   }
 
   function saveSession(token, student) {
@@ -1227,11 +1258,13 @@
                 ? `<div style="display:inline-block; font-size:0.76rem; font-weight:800; color:var(--primary); background:rgba(91, 124, 214, 0.12); padding:2px 8px; border-radius:6px; margin-bottom:4px;">卡號：${cardNoStr}</div>`
                 : '';
               const displayTitle = sanitizeCardLabel(card.label, card.series_name);
+              const cardSvg = getCardPlaceholderSvg(card.score, displayTitle);
+              const cardImageSrc = card.image ? fileUrlWithToken(card.image) : cardSvg;
 
               return `
                 <div class="my-card-tile" data-card-id="${card.id}" style="background:var(--card-bg); border:1.5px solid var(--card-border); border-radius:var(--radius-lg); padding:10px; text-align:center; box-shadow:var(--shadow-xs); transition:transform 0.15s ease, box-shadow 0.15s ease; cursor:pointer;" title="點擊放大卡片">
                   <div style="width:100%; aspect-ratio:1; border-radius:10px; overflow:hidden; background:#f1f5f9; margin-bottom:8px; display:flex; align-items:center; justify-content:center;">
-                    <img src="${card.image}" alt="${escapeHtml(displayTitle)}" style="width:100%; height:100%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                    <img src="${cardImageSrc}" alt="${escapeHtml(displayTitle)}" style="width:100%; height:100%; object-fit:contain;" onerror="this.onerror=null; this.src='${cardSvg}'">
                   </div>
                   ${cardNoBadge}
                   <div style="font-weight:800; font-size:0.88rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px;" title="${escapeHtml(displayTitle)}">
@@ -1614,22 +1647,21 @@
     }
 
     let imgSrc = cardData.card_image || cardData.image || '';
+    const scoreVal = typeof cardData.card_value === 'number' ? cardData.card_value : (cardData.score || 0);
+    const cardSvg = getCardPlaceholderSvg(scoreVal, displayTitle);
+
     if (imgSrc && !imgSrc.startsWith('/') && !imgSrc.startsWith('http')) {
-      if (imgSrc.startsWith('score_card_B_')) {
-        imgSrc = `/static/pic/score_card/score_card_B/${imgSrc}`;
-      } else {
-        imgSrc = `/static/pic/score_card/score_card_A/${imgSrc}`;
-      }
+      imgSrc = '';
     }
     if (!imgSrc) {
-      imgSrc = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+      imgSrc = cardSvg;
     }
 
     if (imgEl) {
-      imgEl.src = imgSrc;
+      imgEl.src = fileUrlWithToken(imgSrc);
       imgEl.onerror = function () {
         this.onerror = null;
-        this.src = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+        this.src = cardSvg;
       };
     }
 
@@ -1683,22 +1715,21 @@
     if (labelEl) labelEl.textContent = displayTitle;
 
     let imgSrc = cardData.card_image || cardData.image || '';
-    if (imgSrc && !imgSrc.startsWith('/') && !imgSrc.startsWith('http')) {
-      if (imgSrc.startsWith('score_card_B_')) {
-        imgSrc = `/static/pic/score_card/score_card_B/${imgSrc}`;
-      } else {
-        imgSrc = `/static/pic/score_card/score_card_A/${imgSrc}`;
-      }
+    const scoreVal = typeof cardData.card_value === 'number' ? cardData.card_value : (cardData.score || 0);
+    const cardSvg = getCardPlaceholderSvg(scoreVal, displayTitle);
+
+    if (imgSrc && !imgSrc.startsWith('/') && !imgSrc.startsWith('http') && !imgSrc.startsWith('data:')) {
+      imgSrc = '';
     }
     if (!imgSrc) {
-      imgSrc = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+      imgSrc = cardSvg;
     }
 
     if (imgEl) {
-      imgEl.src = imgSrc;
+      imgEl.src = fileUrlWithToken(imgSrc);
       imgEl.onerror = function () {
         this.onerror = null;
-        this.src = '/static/pic/score_card/score_card_A/score_card_A_1.jpg';
+        this.src = cardSvg;
       };
     }
 
@@ -1898,7 +1929,7 @@
           <div class="student-card store-item-card" style="margin-bottom:0; padding:10px; display:flex; flex-direction:column; justify-content:space-between; text-align:center; border:1px solid var(--card-border);">
             <div>
               <div style="width:100%; aspect-ratio:1; background:#f8fafc; border-radius:10px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:8px;">
-                <img src="${item.image_url}" alt="${escapeHtml(item.name)}" style="width:85%; height:85%; object-fit:contain; ${imgStyle}" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                <img src="${item.image_url || getGiftPlaceholderSvg('🎁')}" alt="${escapeHtml(item.name)}" style="width:85%; height:85%; object-fit:contain; ${imgStyle}" onerror="this.onerror=null; this.src=getGiftPlaceholderSvg('🎁')">
               </div>
               <div style="display:flex; justify-content:center; margin-bottom:4px;">
                 ${tagHtml}
@@ -1941,7 +1972,7 @@
           <div class="my-badge-item" data-badge-id="${b.id}" style="cursor:pointer; display:flex; flex-direction:column; align-items:center;" title="點擊放大徽章">
             <div style="width:68px; height:68px; border-radius:50%; background:linear-gradient(135deg, #fef08a 0%, #facc15 50%, #ca8a04 100%); padding:3px; box-shadow:0 4px 14px rgba(202, 138, 4, 0.3); margin-bottom:6px; transition:transform 0.15s ease;">
               <div style="width:100%; height:100%; border-radius:50%; background:#fff; overflow:hidden; display:flex; align-items:center; justify-content:center;">
-                <img src="${b.image_url}" alt="${escapeHtml(b.name)}" style="width:85%; height:85%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+                <img src="${b.image_url || getGiftPlaceholderSvg('🎖️')}" alt="${escapeHtml(b.name)}" style="width:85%; height:85%; object-fit:contain;" onerror="this.onerror=null; this.src=getGiftPlaceholderSvg('🎖️')">
               </div>
             </div>
             <div style="font-weight:800; font-size:0.78rem; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:85px;">
@@ -1974,7 +2005,7 @@
         return `
           <div class="my-collectible-card-item" data-card-id="${c.id}" style="background:var(--card-bg); border:1px solid var(--card-border); border-radius:var(--radius-md); padding:8px; text-align:center; cursor:pointer; box-shadow:var(--shadow-xs); transition:transform 0.15s ease;" title="點擊放大觀看圖卡">
             <div style="width:100%; aspect-ratio:1; background:#f8fafc; border-radius:6px; overflow:hidden; display:flex; align-items:center; justify-content:center; margin-bottom:6px;">
-              <img src="${c.image_url}" alt="${escapeHtml(c.name)}" style="width:90%; height:90%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_B/score_card_B_1.jpg'">
+              <img src="${c.image_url || getGiftPlaceholderSvg('🃏')}" alt="${escapeHtml(c.name)}" style="width:90%; height:90%; object-fit:contain;" onerror="this.onerror=null; this.src=getGiftPlaceholderSvg('🃏')">
             </div>
             <div style="font-size:0.7rem; color:var(--primary); background:rgba(91, 124, 214, 0.1); padding:1px 4px; border-radius:4px; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
               ${escapeHtml(c.card_series)}
@@ -2028,7 +2059,7 @@
         return `
           <div style="background:var(--nav-bg); border:1px solid var(--card-border); border-radius:var(--radius-lg); padding:10px 14px; display:flex; align-items:center; gap:12px;">
             <div style="width:48px; height:48px; border-radius:8px; overflow:hidden; background:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; border:1px solid var(--card-border);">
-              <img src="${p.image_url}" alt="${escapeHtml(p.name)}" style="width:90%; height:90%; object-fit:contain;" onerror="this.src='/static/pic/score_card/score_card_A/score_card_A_1.jpg'">
+              <img src="${p.image_url || getGiftPlaceholderSvg('🎁')}" alt="${escapeHtml(p.name)}" style="width:90%; height:90%; object-fit:contain;" onerror="this.onerror=null; this.src=getGiftPlaceholderSvg('🎁')">
             </div>
             <div style="flex:1;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">

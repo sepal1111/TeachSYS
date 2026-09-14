@@ -655,6 +655,7 @@
       'ptcard_import_theme_label': '卡片外觀風格：',
       'ptcard_theme_style_a': '🏛️ 竹塹風情 (風格 A)',
       'ptcard_theme_style_b': '🌄 台灣之美 (風格 B)',
+      'ptcard_theme_style_custom': '🌟 自訂圖卡系列 (自訂各分數圖卡)',
       'ptcard_btn_confirm_import': '📤 確認匯入卡片',
       'ptcard_series_modal_title': '🏷️ 點數卡風格系列管理',
       'ptcard_series_modal_desc': '建立風格系列可管理不同批次或主題的點數卡，並可授權指定班級使用，防止跨班級誤刷。',
@@ -801,7 +802,26 @@
       'paper_quiz_btn_overview': '📊 學生成績總覽',
       'paper_quiz_overview_title': '📊 學生成績總覽 (即時預覽)',
       'paper_quiz_count_badge_text': '顯示 {filtered} / {total} 個測驗',
-      'paper_quiz_no_match': '查無符合科目或關鍵字的測驗'
+      'paper_quiz_no_match': '查無符合科目或關鍵字的測驗',
+
+      // 實體卡片排版與批次列印工作室 (Studio)
+      'ptcard_btn_open_designer': '🎨 製作與列印實體卡',
+      'studio_title': '實體卡片排版與批次列印',
+      'studio_btn_reset': '🔄 還原預設',
+      'studio_btn_save': '💾 儲存排版',
+      'studio_btn_download_zip': '📦 打包下載 PNG',
+      'studio_btn_print_a4': '🖨️ A4 拼模列印',
+      'studio_elem_selection': '步驟 1：選擇與開關元素',
+      'studio_elem_visible': '顯示此元素',
+      'studio_pos_header': '步驟 2：位置座標 (像素)',
+      'studio_canvas_drag_hint': '💡 提示：您也可以直接在左側卡片畫布上按住滑鼠左鍵拖曳元素調整位置！',
+      'studio_qr_size_header': 'QR Code 尺寸調整',
+      'studio_text_style_header': '文字樣式調整',
+      'studio_replace_underscore': '底線自動轉為連字號 (-)',
+      'studio_bg_header': '步驟 3：卡片底圖設定',
+      'studio_bg_theme_label': '預設風格底圖 (依點數自動搭配)：',
+      'studio_custom_bg_label': '或使用自訂卡片背景：',
+      'studio_btn_upload_bg': '📤 上傳自訂底圖'
     },
 
     'en': {
@@ -1452,6 +1472,7 @@
       'ptcard_import_theme_label': 'Card Visual Style:',
       'ptcard_theme_style_a': '🏛️ Cultural Heritage (Style A)',
       'ptcard_theme_style_b': '🌄 Natural Beauty (Style B)',
+      'ptcard_theme_style_custom': '🌟 Custom Series (Score-based Card Images)',
       'ptcard_btn_confirm_import': '📤 Confirm Import',
       'ptcard_series_modal_title': '🏷️ Point Card Series Management',
       'ptcard_series_modal_desc': 'Create series to organize cards into themes and authorize specific classes to prevent unintended cross-class scanning.',
@@ -1576,7 +1597,26 @@
       'paper_quiz_btn_overview': '📊 Student Scores Overview',
       'paper_quiz_overview_title': '📊 Student Scores Overview (Live)',
       'paper_quiz_count_badge_text': '{filtered} of {total} quizzes',
-      'paper_quiz_no_match': 'No matching quizzes found'
+      'paper_quiz_no_match': 'No matching quizzes found',
+
+      // Physical Card Designer Studio
+      'ptcard_btn_open_designer': '🎨 Card Designer & Print',
+      'studio_title': 'Physical Card Designer & Print Studio',
+      'studio_btn_reset': '🔄 Reset Layout',
+      'studio_btn_save': '💾 Save Layout',
+      'studio_btn_download_zip': '📦 Download PNG ZIP',
+      'studio_btn_print_a4': '🖨️ A4 Sheet Print',
+      'studio_elem_selection': 'Step 1: Element Selection & Toggle',
+      'studio_elem_visible': 'Show This Element',
+      'studio_pos_header': 'Step 2: Coordinates (Pixels)',
+      'studio_canvas_drag_hint': '💡 Tip: You can also click and drag elements directly on the canvas!',
+      'studio_qr_size_header': 'QR Code Size',
+      'studio_text_style_header': 'Text Style & Typography',
+      'studio_replace_underscore': 'Replace underscore with hyphen (-)',
+      'studio_bg_header': 'Step 3: Background Settings',
+      'studio_bg_theme_label': 'Theme Background (auto by score):',
+      'studio_custom_bg_label': 'Or Use Custom Background:',
+      'studio_btn_upload_bg': '📤 Upload Custom Background'
     }
   };
 

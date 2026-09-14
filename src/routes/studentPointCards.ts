@@ -12,39 +12,47 @@ import { getBundleDir } from "../paths";
 export const studentPointCardsRouter = autoCatch(Router());
 studentPointCardsRouter.use(requireStudentAuth);
 
-export function resolveCardImage(theme: string, score: number, customImage?: string | null): string {
-  const validThemes = ["score_card_A", "score_card_B"];
-  const selectedTheme = validThemes.includes(theme) ? theme : "score_card_A";
+export function resolveCardImage(
+  theme: string,
+  score: number,
+  customImage?: string | null,
+  customImagesJson?: string | Record<string, string> | null
+): string {
+  // 1. 若該系列有自訂圖卡配置 (customImagesJson)，依指定分數對應
+  if (customImagesJson) {
+    try {
+      const map: Record<string, string> =
+        typeof customImagesJson === "string" ? JSON.parse(customImagesJson) : customImagesJson;
+      if (map && typeof map === "object") {
+        const scoreKey = String(score);
+        const absScoreKey = String(Math.abs(score));
+        if (map[scoreKey]) return map[scoreKey];
+        if (map[absScoreKey]) return map[absScoreKey];
+        if (map["default"]) return map["default"];
 
+        // 若無精確對應且無 default，但該系列有已上傳的圖片，使用第一張作為該系列代表底圖
+        const keys = Object.keys(map);
+        if (keys.length > 0 && map[keys[0]]) {
+          return map[keys[0]];
+        }
+      }
+    } catch {
+      /* fallback */
+    }
+  }
+
+  // 2. 檢查卡片自身是否有明確的自訂圖片網址（例如以 /uploads/、http 或 data: 開頭）
   if (customImage && customImage.trim()) {
     const trimmed = customImage.trim();
     if (trimmed.startsWith("/") || trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("data:")) {
       return trimmed;
     }
-    // 如果是像 "score_card_A_4.jpg" 的純檔名，轉為完整的靜態網址
-    if (trimmed.startsWith("score_card_B_")) {
-      return `/static/pic/score_card/score_card_B/${trimmed}`;
-    }
-    if (trimmed.startsWith("score_card_A_")) {
-      return `/static/pic/score_card/score_card_A/${trimmed}`;
-    }
-    return `/static/pic/score_card/${selectedTheme}/${trimmed}`;
   }
 
-  const staticDir = path.join(getBundleDir(), "static");
-  const absScore = Math.abs(score);
-
-  const candidateRel = `/static/pic/score_card/${selectedTheme}/${selectedTheme}_${absScore}.jpg`;
-  const candidateFull = path.join(staticDir, "pic", "score_card", selectedTheme, `${selectedTheme}_${absScore}.jpg`);
-
-  if (fs.existsSync(candidateFull)) {
-    return candidateRel;
-  }
-
-  // Fallback: 若無剛好對應的面額圖檔，尋找同系列預設圖
-  const fallbackRel = `/static/pic/score_card/${selectedTheme}/${selectedTheme}_1.jpg`;
-  return fallbackRel;
+  // 3. 全面移除內建風格，完全由使用者自訂上傳。若尚未上傳圖片，回傳空字串由前端渲染優雅佔位卡片
+  return "";
 }
+
 
 export function getSafeCardLabel(card: { label?: string | null; code?: string | null; series?: { name: string } | null; cardNo?: string | null }): string {
   const lbl = (card.label || "").trim();
@@ -123,8 +131,8 @@ studentPointCardsRouter.post("/scan", async (req, res) => {
     data: { pointCardId: card.id, studentId, scoreLogId: log.id, date: today, timestamp: now },
   });
 
-  const cardTheme = card.series?.cardTheme ?? "score_card_A";
-  const cardImage = resolveCardImage(cardTheme, card.score, card.image);
+  const cardTheme = card.series?.cardTheme ?? "custom";
+  const cardImage = resolveCardImage(cardTheme, card.score, card.image, card.series?.customImagesJson);
 
   // 透過 WebSocket 即時通知教師端與大螢幕更新
   broadcastToCourse(courseId, "score_updated");
@@ -158,8 +166,8 @@ studentPointCardsRouter.get("/my-cards", async (req, res) => {
 
   for (const r of redemptions) {
     const card = r.pointCard;
-    const theme = card.series?.cardTheme ?? "score_card_A";
-    const img = resolveCardImage(theme, card.score, card.image);
+    const theme = card.series?.cardTheme ?? "custom";
+    const img = resolveCardImage(theme, card.score, card.image, card.series?.customImagesJson);
     const safeLabel = getSafeCardLabel(card);
 
     const cardItem = {

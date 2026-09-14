@@ -120,15 +120,24 @@ app.get("/photo/*", async (req, res) => {
 });
 
 app.get("/uploads/*", async (req, res) => {
-  // 教材/作業附件同時給教師（系統 session）與學生（LMS JWT）存取，兩種驗證只要其一成立即可。
-  // 學生端也接受 ?token= query（<img src>/<a href> 無法附加 Authorization header）。
-  const token = getBearerToken(req) || (typeof req.query.token === "string" ? req.query.token : undefined);
-  const isStudent = token ? Boolean(await verifyStudentToken(token)) : false;
-  if (!isStudent && !(await isRequestAuthenticated(req))) {
-    res.status(401).json({ detail: "未登入無法讀取系統附件" });
-    return;
-  }
   const rel = (req.params as Record<string, string>)[0] ?? "";
+
+  // 點數卡底圖、獎勵圖片與組別圖示等公開卡面視覺資源，允許直接載入顯示（避免 <img> 標籤無法攜帶 Authorization header 導致 401）
+  const isPublicVisualAsset =
+    rel.startsWith("card_backgrounds/") ||
+    rel.startsWith("rewards/") ||
+    rel.startsWith("groups/");
+
+  if (!isPublicVisualAsset) {
+    // 教材/作業附件同時給教師（系統 session）與學生（LMS JWT）存取，兩種驗證只要其一成立即可。
+    // 學生端也接受 ?token= query（<img src>/<a href> 無法附加 Authorization header）。
+    const token = getBearerToken(req) || (typeof req.query.token === "string" ? req.query.token : undefined);
+    const isStudent = token ? Boolean(await verifyStudentToken(token)) : false;
+    if (!isStudent && !(await isRequestAuthenticated(req))) {
+      res.status(401).json({ detail: "未登入無法讀取系統附件" });
+      return;
+    }
+  }
   const filePath = resolveSafePath(uploadsDir, rel);
   if (filePath && fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     // 磁碟上的檔名是亂數產生的（避免碰撞），跟素材頁面顯示的標題不同；呼叫端可選擇性帶

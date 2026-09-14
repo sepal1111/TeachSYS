@@ -15,6 +15,7 @@
   <link id="app-favicon" rel="icon" type="image/png" href="/api/system/logo">
   <link id="app-shortcut-favicon" rel="shortcut icon" href="/api/system/logo">
   <link rel="stylesheet" href="/static/css/style.css?v=2.5">
+  <link rel="stylesheet" href="/static/css/card-designer.css?v=1.0">
 </head>
 <body>
 
@@ -1232,7 +1233,8 @@
           <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
             <div class="glass-card-title" data-i18n="ptcard_main_title">🎫 實體點數卡管理</div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-              <button id="btn-open-ptcard-import-modal" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_batch_import">📥 批次匯入點數卡</button>
+              <button id="btn-open-ptcard-designer" class="btn" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; font-size: 0.85rem; padding: 6px 14px;" onclick="if(window.PointCardsManager && window.PointCardsManager.openDesigner){window.PointCardsManager.openDesigner();}else if(window.CardDesignerStudio){window.CardDesignerStudio.open();}" data-i18n="ptcard_btn_open_designer">🎨 製作與列印實體卡</button>
+              <button id="btn-open-ptcard-import-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" onclick="if(window.PointCardsManager && window.PointCardsManager.openImportModal){window.PointCardsManager.openImportModal();}" data-i18n="ptcard_btn_batch_import">📥 批次匯入點數卡</button>
               <button id="btn-open-ptcard-series-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_manage_series">🏷️ 風格系列管理</button>
               <button id="btn-open-ptcard-stats-modal" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_stats">📊 統計分析</button>
               <div class="dropdown-wrapper" style="display: inline-block;">
@@ -2415,16 +2417,10 @@
 
       <!-- 若選擇建立新系列 -->
       <div id="ptcard-import-new-series-wrap" style="padding: 14px; background: var(--input-bg); border-radius: var(--radius-md); border: 1.5px dashed var(--primary-light); margin-bottom: 20px;">
-        <div style="margin-bottom: 10px;">
+        <div style="margin-bottom: 6px;">
           <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_new_series_name_label">新系列名稱：</label>
-          <input type="text" id="ptcard-import-new-series-name" class="input-control" placeholder="例如：竹塹風情、台灣之美、段考獎勵卡" data-i18n-placeholder="ptcard_import_new_series_placeholder" style="font-size: 0.9rem;">
-        </div>
-        <div>
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_theme_label">卡片外觀風格：</label>
-          <select id="ptcard-import-theme-select" class="input-control" style="font-size: 0.9rem;">
-            <option value="score_card_A" data-i18n="ptcard_theme_style_a">🏛️ 竹塹風情 (風格 A)</option>
-            <option value="score_card_B" data-i18n="ptcard_theme_style_b">🌄 台灣之美 (風格 B)</option>
-          </select>
+          <input type="text" id="ptcard-import-new-series-name" class="input-control" placeholder="例如：榮譽成就卡、閱讀達人卡、段考獎勵卡" data-i18n-placeholder="ptcard_import_new_series_placeholder" style="font-size: 0.9rem;">
+          <span style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; display: block;">💡 匯入完成後，可於系列管理或實體卡排版隨時自訂上傳專屬底圖與各分數圖卡。</span>
         </div>
       </div>
 
@@ -2437,14 +2433,14 @@
 
   <!-- Modal: 風格系列管理 -->
   <div id="modal-manage-series" class="modal-overlay" style="z-index: 100010;">
-    <div class="modal-content glass-card" style="max-width: 600px; padding: 26px; max-height: 88vh; display: flex; flex-direction: column;">
+    <div class="modal-content glass-card" style="max-width: 760px; padding: 26px; max-height: 88vh; display: flex; flex-direction: column;">
       <div class="modal-header" style="margin-bottom: 14px;">
         <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;" data-i18n="ptcard_series_modal_title">🏷️ 點數卡風格系列管理</div>
         <button type="button" class="btn-icon close-modal">✕</button>
       </div>
 
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;" data-i18n="ptcard_series_modal_desc">
-        建立風格系列可管理不同批次或主題的點數卡，並可授權指定班級使用，防止跨班級誤刷。
+        點數卡系列外觀完全由您自主上傳與管理，可為不同分數自訂專屬卡面底圖，並授權指定班級使用。
       </div>
 
       <!-- 既有系列清單 -->
@@ -2453,19 +2449,40 @@
       </div>
 
       <!-- 新增/編輯系列表單區塊 (預設收合) -->
-      <div id="ptcard-series-form-section" style="display: none; padding: 14px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1.5px solid var(--primary-light); margin-bottom: 16px;">
+      <div id="ptcard-series-form-section" style="display: none; padding: 16px; background: var(--input-bg); border-radius: var(--radius-lg); border: 1.5px solid var(--primary-light); margin-bottom: 16px;">
         <input type="hidden" id="ptcard-series-edit-id">
-        <div style="margin-bottom: 10px;">
+        <input type="hidden" id="ptcard-series-edit-theme" value="custom">
+        <div style="margin-bottom: 12px;">
           <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_new_series_name_label">系列名稱：</label>
-          <input type="text" id="ptcard-series-edit-name" class="input-control" placeholder="輸入系列名稱 (如: 竹塹風情、台灣之美)" data-i18n-placeholder="ptcard_import_new_series_placeholder">
+          <input type="text" id="ptcard-series-edit-name" class="input-control" placeholder="輸入系列名稱 (如: 榮譽成就卡、科展英雄卡、閱讀之星)" data-i18n-placeholder="ptcard_import_new_series_placeholder">
         </div>
-        <div style="margin-bottom: 10px;">
-          <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="ptcard_import_theme_label">卡面外觀風格：</label>
-          <select id="ptcard-series-edit-theme" class="input-control">
-            <option value="score_card_A" data-i18n="ptcard_theme_style_a">🏛️ 竹塹風情 (風格 A)</option>
-            <option value="score_card_B" data-i18n="ptcard_theme_style_b">🌄 台灣之美 (風格 B)</option>
-          </select>
+
+        <!-- 自訂圖卡各分數配置區塊 (始終開啟) -->
+        <div id="ptcard-series-custom-images-section" style="display: block; margin-top: 12px; margin-bottom: 12px; padding: 14px; background: var(--nav-bg); border-radius: var(--radius-md); border: 1.5px dashed var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <span style="font-size: 0.9rem; font-weight: 800; color: var(--text-main);">📸 自訂不同分數圖卡</span>
+              <span style="font-size: 0.78rem; color: var(--text-muted); margin-left: 6px;">(為各分數指定專屬卡面圖)</span>
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <div style="display: inline-flex; align-items: center; gap: 4px; background: var(--input-bg); padding: 2px 8px; border-radius: var(--radius-md); border: 1.5px solid var(--primary-light);">
+                <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-main);">指定分數：</span>
+                <input type="number" id="input-ptcard-custom-score-val" class="input-control" placeholder="如: 3" style="width: 72px; padding: 2px 6px; font-size: 0.82rem; height: 28px; text-align: center;" step="1">
+              </div>
+              <button type="button" id="btn-ptcard-add-custom-score-img" class="btn" style="font-size: 0.78rem; padding: 4px 12px; background: var(--primary); color: #fff; height: 32px; display: inline-flex; align-items: center; gap: 4px;">
+                ➕ 加入此分數圖卡
+              </button>
+            </div>
+          </div>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            💡 您可以為此系列中的不同卡片分數（例如 <b>+1分</b>、<b>+2分</b>、<b>+5分</b>、<b>+10分</b>、以及<b>未指定分數之通用預設圖</b>）分別指定並上傳獨立的圖卡底圖。學生收集冊與實體卡片列印時將自動依分數套用！
+          </div>
+          <input type="file" id="ptcard-series-score-img-file-input" accept="image/*" style="display: none;">
+          <div id="ptcard-series-custom-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; max-height: 250px; overflow-y: auto; padding: 4px;">
+            <!-- Score card items rendered by JS -->
+          </div>
         </div>
+
         <div>
           <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 6px;" data-i18n="ptcard_series_allowed_courses_label">授權使用班級（勾選可刷此系列的班級）：</label>
           <div id="ptcard-series-allowed-courses-wrap" style="display: flex; gap: 8px; flex-wrap: wrap;">
@@ -2481,6 +2498,291 @@
       <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--card-border); padding-top: 14px;">
         <button type="button" id="btn-add-new-series" class="btn" style="font-size: 0.85rem; padding: 6px 14px;" data-i18n="ptcard_btn_add_new_series">➕ 新增風格系列</button>
         <button type="button" class="btn btn-secondary close-modal" data-i18n="modal_close">關閉</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 實體卡片視覺化排版與批次列印工作室 (Studio) -->
+  <div id="modal-card-designer-studio" class="modal-overlay" style="z-index: 100015;">
+    <div class="modal-dialog-studio">
+      <!-- 頂部功能工具列 -->
+      <div class="studio-header">
+        <div class="studio-title-group">
+          <div class="studio-title">
+            <span>🎨</span>
+            <span data-i18n="studio_title">實體卡片排版與批次列印</span>
+          </div>
+          <select id="studio-series-select" class="studio-series-select">
+            <!-- Series options populated by JS -->
+          </select>
+        </div>
+
+        <!-- 輪播切換卡片 -->
+        <div class="studio-pager">
+          <button type="button" id="studio-pager-prev" class="studio-pager-btn" title="上一張">◀</button>
+          <span id="studio-pager-info" class="studio-pager-info">第 1 / 1 張</span>
+          <button type="button" id="studio-pager-next" class="studio-pager-btn" title="下一張">▶</button>
+          <span id="studio-card-details-badge" class="studio-card-badge">序號: - | 分數: -</span>
+        </div>
+
+        <!-- 操作功能按鈕 -->
+        <div class="studio-actions">
+          <button type="button" id="btn-studio-reset-layout" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 10px;" data-i18n="studio_btn_reset">🔄 還原預設</button>
+          <button type="button" id="btn-studio-save-layout" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px;" data-i18n="studio_btn_save">💾 儲存排版</button>
+          <button type="button" id="btn-studio-download-zip" class="btn btn-secondary" style="font-size: 0.82rem; padding: 6px 14px;" data-i18n="studio_btn_download_zip">📦 打包下載 PNG</button>
+          <button type="button" id="btn-studio-print-a4" class="btn" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; font-size: 0.82rem; padding: 6px 14px;" data-i18n="studio_btn_print_a4">🖨️ A4 拼模列印</button>
+          <button type="button" class="btn-icon btn-close-card-studio" style="font-size: 1.1rem; width: 32px; height: 32px; border-radius: 50%;">✕</button>
+        </div>
+      </div>
+
+      <!-- 主體編輯區 (左畫布，右檢查器) -->
+      <div class="studio-main-body">
+        <!-- 左側畫布區 -->
+        <div class="studio-canvas-stage">
+          <div class="studio-canvas-container">
+            <canvas id="card-designer-canvas"></canvas>
+          </div>
+
+          <!-- 縮放工具列 -->
+          <div class="studio-zoom-bar">
+            <button type="button" id="studio-zoom-out" class="studio-zoom-btn" title="縮小">-</button>
+            <span id="studio-zoom-text" class="studio-zoom-text">50%</span>
+            <button type="button" id="studio-zoom-in" class="studio-zoom-btn" title="放大">+</button>
+            <button type="button" id="studio-zoom-fit" class="studio-zoom-btn" style="font-size: 0.75rem; padding: 2px 6px;" title="適應視窗">自適應</button>
+          </div>
+        </div>
+
+        <!-- 右側微調面板 -->
+        <div class="studio-inspector">
+          <!-- 1. 元素切換與開關 -->
+          <div class="inspector-section">
+            <div class="inspector-section-header">
+              <span>🎯</span>
+              <span data-i18n="studio_elem_selection">步驟 1：選擇與開關元素</span>
+            </div>
+            <div class="element-tabs">
+              <button type="button" class="element-tab-btn active" data-element="qr_code">
+                <span>📱 QR Code</span>
+              </button>
+              <button type="button" class="element-tab-btn" data-element="card_no">
+                <span>🔢 卡號 No.</span>
+              </button>
+              <button type="button" class="element-tab-btn" data-element="card_value">
+                <span>⚡ 點數分數</span>
+              </button>
+              <button type="button" class="element-tab-btn" data-element="card_label">
+                <span>🏷️ 卡片名稱</span>
+              </button>
+              <button type="button" class="element-tab-btn" data-element="card_code_text">
+                <span>🔤 代碼文字</span>
+              </button>
+              <button type="button" class="element-tab-btn" data-element="rectangle">
+                <span>⬛ 圓角矩形</span>
+              </button>
+            </div>
+            <div class="toggle-row">
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);" data-i18n="studio_elem_visible">顯示此元素</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="studio-elem-enabled" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 2. 位置座標控制 (X, Y 像素) -->
+          <div class="inspector-section">
+            <div class="inspector-section-header">
+              <span>📍</span>
+              <span data-i18n="studio_pos_header">步驟 2：位置座標 (像素)</span>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">水平 X：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-pos-x-minus" class="step-btn">-</button>
+                <input type="number" id="studio-pos-x" class="step-input" min="0" max="800" value="39" data-step="5">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-pos-x-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">垂直 Y：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-pos-y-minus" class="step-btn">-</button>
+                <input type="number" id="studio-pos-y" class="step-input" min="0" max="1200" value="633" data-step="5">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-pos-y-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="studio-hint-box" data-i18n="studio_canvas_drag_hint">
+              💡 提示：您也可以直接在左側卡片畫布上按住滑鼠左鍵拖曳元素調整位置！
+            </div>
+          </div>
+
+          <!-- 3. QR Code 尺寸微調面板 (qr_code 選中時顯示) -->
+          <div id="inspector-qr-section" class="inspector-section">
+            <div class="inspector-section-header">
+              <span>📐</span>
+              <span data-i18n="studio_qr_size_header">QR Code 尺寸調整</span>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">寬高大小：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-qr-size-minus" class="step-btn">-</button>
+                <input type="number" id="studio-qr-size" class="step-input" min="40" max="600" value="136" data-step="5">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-qr-size-plus" class="step-btn">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3.1 圓角矩形樣式微調面板 (rectangle 選中時顯示) -->
+          <div id="inspector-rect-section" class="inspector-section" style="display: none;">
+            <div class="inspector-section-header">
+              <span>⬛</span>
+              <span>圓角矩形樣式與尺寸</span>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">寬度 (W)：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-rect-w-minus" class="step-btn">-</button>
+                <input type="number" id="studio-rect-w" class="step-input" min="10" max="800" value="154" data-step="5">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-rect-w-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">高度 (H)：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-rect-h-minus" class="step-btn">-</button>
+                <input type="number" id="studio-rect-h" class="step-input" min="10" max="1200" value="154" data-step="5">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-rect-h-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">圓角半徑：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-rect-radius-minus" class="step-btn">-</button>
+                <input type="number" id="studio-rect-radius" class="step-input" min="0" max="200" value="12" data-step="2">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-rect-radius-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">填滿顏色：</span>
+              <div class="color-picker-group">
+                <input type="color" id="studio-rect-fill-color" class="color-swatch-input" value="#FFFFFF">
+                <input type="text" id="studio-rect-fill-color-hex" class="color-text-input" value="#FFFFFF">
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">透明度：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-rect-opacity-minus" class="step-btn">-</button>
+                <input type="number" id="studio-rect-opacity" class="step-input" min="0" max="100" value="90" data-step="5">
+                <span class="step-suffix">%</span>
+                <button type="button" id="studio-rect-opacity-plus" class="step-btn">+</button>
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">邊框顏色：</span>
+              <div class="color-picker-group">
+                <input type="color" id="studio-rect-border-color" class="color-swatch-input" value="#CBD5E1">
+                <input type="text" id="studio-rect-border-color-hex" class="color-text-input" value="#CBD5E1">
+              </div>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">邊框粗細：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-rect-border-width-minus" class="step-btn">-</button>
+                <input type="number" id="studio-rect-border-width" class="step-input" min="0" max="30" value="2" data-step="1">
+                <span class="step-suffix">px</span>
+                <button type="button" id="studio-rect-border-width-plus" class="step-btn">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. 文字樣式微調面板 (文字類元素選中時顯示) -->
+          <div id="inspector-text-section" class="inspector-section" style="display: none;">
+            <div class="inspector-section-header">
+              <span>🔤</span>
+              <span data-i18n="studio_text_style_header">文字樣式調整</span>
+            </div>
+            <div class="step-control-group">
+              <span class="step-control-label">字型大小：</span>
+              <div class="step-control-box">
+                <button type="button" id="studio-font-size-minus" class="step-btn">-</button>
+                <input type="number" id="studio-font-size" class="step-input" min="10" max="120" value="24" data-step="1">
+                <span class="step-suffix">pt</span>
+                <button type="button" id="studio-font-size-plus" class="step-btn">+</button>
+              </div>
+            </div>
+
+            <div class="step-control-group">
+              <span class="step-control-label">文字顏色：</span>
+              <div class="color-picker-group">
+                <input type="color" id="studio-font-color" class="color-swatch-input" value="#000000">
+                <input type="text" id="studio-font-color-hex" class="color-text-input" value="#000000">
+              </div>
+            </div>
+
+            <div class="step-control-group">
+              <span class="step-control-label">前綴文字：</span>
+              <input type="text" id="studio-text-prefix" class="input-control" style="flex:1; padding: 5px 8px; font-size: 0.85rem;" placeholder="如: No. 或 點數：">
+            </div>
+
+            <div class="step-control-group">
+              <span class="step-control-label">對齊方式：</span>
+              <div class="align-btn-group">
+                <button type="button" class="align-btn active" data-align="right" title="靠右對齊">靠右</button>
+                <button type="button" class="align-btn" data-align="center" title="置中對齊">置中</button>
+                <button type="button" class="align-btn" data-align="left" title="靠左對齊">靠左</button>
+              </div>
+            </div>
+
+            <div id="studio-hyphen-row" class="toggle-row" style="margin-top: 6px;">
+              <span style="font-size: 0.82rem; color: var(--text-main);" data-i18n="studio_replace_underscore">底線自動轉為連字號 (-)</span>
+              <label class="toggle-switch">
+                <input type="checkbox" id="studio-replace-underscore" checked>
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <!-- 5. 底圖風格管理 (完全由使用者自訂上傳) -->
+          <div class="inspector-section">
+            <div class="inspector-section-header">
+              <span>🖼️</span>
+              <span data-i18n="studio_bg_header">步驟 3：卡片風格外觀 (使用者自訂上傳)</span>
+            </div>
+            <div id="studio-custom-score-box" style="margin-bottom: 12px; padding: 12px; background: var(--nav-bg); border-radius: var(--radius-md); border: 1.5px dashed var(--primary-light);">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary);">📸 當前分數風格底圖</span>
+                <span id="studio-custom-score-badge" class="badge" style="font-size: 0.75rem; padding: 2px 8px; background: rgba(91, 124, 214, 0.15); color: var(--primary);">+0 分</span>
+              </div>
+              <div id="studio-custom-score-status" style="font-size: 0.78rem; color: var(--text-muted); margin-bottom: 8px;">
+                目前底圖：尚未上傳
+              </div>
+              <input type="file" id="studio-score-img-upload-input" accept="image/*" style="display: none;">
+              <div style="display: flex; gap: 6px;">
+                <button type="button" id="btn-studio-upload-score-img" class="btn" style="flex: 1; font-size: 0.78rem; padding: 6px 8px; background: var(--primary); color: #fff;">
+                  📤 上傳此分數風格底圖
+                </button>
+                <button type="button" id="btn-studio-open-series-mgr" class="btn btn-secondary" style="font-size: 0.78rem; padding: 6px 10px;" title="開啟系列管理設定所有分數圖卡">
+                  ⚙️ 各分數底圖管理
+                </button>
+              </div>
+            </div>
+            <div>
+              <label style="font-size: 0.82rem; font-weight: 700; color: var(--text-main); display: block; margin-bottom: 4px;" data-i18n="studio_custom_bg_label">或上傳單張全域固定底圖 (套用至此版面所有卡片)：</label>
+              <div style="display: flex; gap: 8px;">
+                <input type="file" id="studio-bg-upload-input" accept="image/*" style="display: none;">
+                <button type="button" class="btn btn-secondary" style="flex:1; font-size: 0.82rem; padding: 6px;" onclick="document.getElementById('studio-bg-upload-input').click();" data-i18n="studio_btn_upload_bg">📤 上傳固定底圖</button>
+                <button type="button" id="btn-studio-clear-custom-bg" class="btn btn-secondary" style="display: none; font-size: 0.82rem; padding: 6px 10px; color: var(--accent-negative);" title="清除固定底圖">✕</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -2959,6 +3261,7 @@
   <script src="/static/js/journal.js?v=1.0"></script>
   <script src="/static/js/app.js?v=3.0"></script>
   <script src="/static/js/point-cards.js?v=1.1"></script>
+  <script src="/static/js/card-designer.js?v=1.0"></script>
   <script src="/static/js/rewards.js?v=1.3"></script>
   <script src="/static/js/file-collect.js?v=1.0"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>

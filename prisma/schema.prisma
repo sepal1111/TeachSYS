@@ -466,6 +466,8 @@ model PointCardSeries {
   name             String
   cardTheme        String      @default("score_card_A") @map("card_theme")
   allowedCourseIds String      @default("") @map("allowed_course_ids")
+  layoutConfig     String?     @map("layout_config")
+  customImagesJson String?     @map("custom_images_json")
   createdAt        String      @map("created_at")
 
   course Course?     @relation(fields: [courseId], references: [id], onDelete: Cascade)

@@ -368,6 +368,8 @@ export async function initSchema(): Promise<void> {
       name TEXT NOT NULL,
       card_theme TEXT NOT NULL DEFAULT 'score_card_A',
       allowed_course_ids TEXT NOT NULL DEFAULT '',
+      layout_config TEXT NULL,
+      custom_images_json TEXT NULL,
       created_at TEXT NOT NULL,
       FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
     );
@@ -616,6 +618,8 @@ export async function initSchema(): Promise<void> {
   await tryAlter("ALTER TABLE point_cards ADD COLUMN series_id INTEGER NULL;");
   await tryAlter("ALTER TABLE point_cards ADD COLUMN card_no TEXT NULL;");
   await tryAlter("ALTER TABLE point_cards ADD COLUMN image TEXT NULL;");
+  await tryAlter("ALTER TABLE point_card_series ADD COLUMN layout_config TEXT NULL;");
+  await tryAlter("ALTER TABLE point_card_series ADD COLUMN custom_images_json TEXT NULL;");
   await tryAlter("ALTER TABLE paper_quizzes ADD COLUMN subject TEXT DEFAULT '';");
   await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN leave_type TEXT DEFAULT '';");
   await tryAlter("ALTER TABLE paper_quiz_records ADD COLUMN allow_makeup INTEGER DEFAULT 0;");
