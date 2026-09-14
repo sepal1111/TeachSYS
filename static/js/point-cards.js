@@ -543,8 +543,8 @@
             .map(
               (c, i) => `
               <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;">
-                <span>${i + 1}. <b>${escapeHtml(c.label)}</b> (${c.score >= 0 ? '+' : ''}${c.score} 分)</span>
-                <span style="font-weight:700; color:var(--primary);">${c.count} 次</span>
+                <span>${i + 1}. <b>${escapeHtml(c.card_no || '未編號')}</b> (${c.score}分)</span>
+                <span style="font-weight:700; color:var(--primary);">${c.count}次</span>
               </div>
             `
             )
@@ -560,8 +560,8 @@
             .map(
               (s, i) => `
               <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid var(--card-border); font-size:0.85rem;">
-                <span>${i + 1}. 座號 ${s.seat_number} - <b>${escapeHtml(s.name)}</b></span>
-                <span style="font-weight:700; color:var(--accent-positive);">${s.total_score >= 0 ? '+' : ''}${s.total_score} 分</span>
+                <span>${i + 1}. <b>${escapeHtml(s.name)}</b> ${s.seat_number}號</span>
+                <span style="font-weight:700; color:var(--accent-positive);">${s.total_score >= 0 ? '+' : ''}${s.total_score}分</span>
               </div>
             `
             )

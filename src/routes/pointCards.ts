@@ -601,13 +601,14 @@ pointCardsRouter.get("/:courseId/stats", async (req, res) => {
   });
 
   const totalRedeemed = redemptions.length;
-  const cardStatsMap = new Map<number, { label: string; score: number; count: number }>();
-  const studentStatsMap = new Map<number, { name: string; number: number; totalScore: number; count: number }>();
+  const cardStatsMap = new Map<number, { label: string; card_no: string | null; score: number; count: number }>();
+  const studentStatsMap = new Map<number, { name: string; seat_number: number; total_score: number; count: number }>();
 
   for (const r of redemptions) {
     // 卡片使用次數
     const cStat = cardStatsMap.get(r.pointCardId) ?? {
       label: r.pointCard.label,
+      card_no: r.pointCard.cardNo,
       score: r.pointCard.score,
       count: 0,
     };
@@ -617,21 +618,21 @@ pointCardsRouter.get("/:courseId/stats", async (req, res) => {
     // 學生兌換排行
     const sStat = studentStatsMap.get(r.studentId) ?? {
       name: r.student.name,
-      number: r.student.studentNumber,
-      totalScore: 0,
+      seat_number: r.student.studentNumber,
+      total_score: 0,
       count: 0,
     };
     sStat.count++;
-    sStat.totalScore += r.pointCard.score;
+    sStat.total_score += r.pointCard.score;
     studentStatsMap.set(r.studentId, sStat);
   }
 
   const topCards = Array.from(cardStatsMap.values()).sort((a, b) => b.count - a.count).slice(0, 10);
-  const topStudents = Array.from(studentStatsMap.values()).sort((a, b) => b.totalScore - a.totalScore).slice(0, 10);
+  const topStudents = Array.from(studentStatsMap.values()).sort((a, b) => b.total_score - a.total_score).slice(0, 10);
 
   res.json({
     total_cards: totalCards,
-    total_redemptions: totalRedeemed,
+    total_redeemed: totalRedeemed,
     top_cards: topCards,
     top_students: topStudents,
   });
