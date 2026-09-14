@@ -74,6 +74,7 @@ const TARGETS = {
     engineGlob: "libquery_engine-darwin-*.node",
     baseName: "ClassManager",
     ext: "",
+    isMac: true,
   },
 };
 
@@ -118,19 +119,65 @@ if (!engineFile) {
 
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
+const systemDir = path.join(outDir, "system");
+fs.mkdirSync(systemDir, { recursive: true });
 
-console.log(`[3/4] pkg dist/index.js --targets ${target.pkgTarget} -> ${exeName}`);
+// On Windows the exe stays at the top level (outDir) so double-clicking it
+// in Explorer just works. On mac the exe is placed *inside* system/ instead,
+// so the only thing visible at the top level is the .command launcher below
+// — src/paths.ts:getAppRootDir() knows to step up out of a "system" parent
+// when locating bin/ and system/ at runtime.
+const exeDir = target.isMac ? systemDir : outDir;
+const exePath = path.join(exeDir, exeName);
+
+console.log(`[3/4] pkg dist/index.js --targets ${target.pkgTarget} -> ${path.relative(outDir, exePath)}`);
 execFileSync(
   npxCmd,
-  ["@yao-pkg/pkg", "dist/index.js", "--targets", target.pkgTarget, "--output", path.join(outDir, exeName)],
+  ["@yao-pkg/pkg", "dist/index.js", "--targets", target.pkgTarget, "--output", exePath],
   { cwd: rootDir, stdio: "inherit", shell: process.platform === "win32" }
 );
 
-console.log("[4/4] copying static/ and engine/ into system/ next to the exe");
-const systemDir = path.join(outDir, "system");
+console.log("[4/4] copying static/ and engine/ into system/");
 fs.cpSync(path.join(rootDir, "static"), path.join(systemDir, "static"), { recursive: true });
 fs.mkdirSync(path.join(systemDir, "engine"), { recursive: true });
 fs.copyFileSync(path.join(engineDir, engineFile), path.join(systemDir, "engine", engineFile));
+
+if (target.isMac) {
+  // A bare Mach-O binary has no registered LaunchServices handler, so
+  // double-clicking it in Finder fails silently ("no application knows how
+  // to open this file" — kLSApplicationNotFoundErr). A `.command` file *is*
+  // a recognized document type: Finder opens it in Terminal.app and Terminal
+  // executes it directly, side-stepping the missing-handler problem. It's
+  // the only thing left at the top level — the real binary lives in system/.
+  const commandName = `${exeName}.command`;
+  const commandPath = path.join(outDir, commandName);
+  fs.writeFileSync(
+    commandPath,
+    `#!/bin/bash\ncd "$(dirname "$0")"\n./system/"${exeName}"\n`,
+    { mode: 0o755 }
+  );
+  fs.chmodSync(commandPath, 0o755);
+
+  // Best-effort ad-hoc codesign so the raw binary at least has a valid local
+  // signature. This does NOT satisfy Gatekeeper on another Mac (that needs a
+  // paid Developer ID + notarization) — teachers copying this to a different
+  // machine will still need to right-click > Open the first time, or run
+  // `xattr -d com.apple.quarantine <file>`, to clear the quarantine flag
+  // that Finder/AirDrop/Zip attaches on transfer.
+  try {
+    execFileSync("codesign", ["--force", "--sign", "-", exePath], { stdio: "ignore" });
+  } catch {
+    /* codesign not available or failed — non-fatal, see note above */
+  }
+
+  console.log(`[build-exe] Top level now only has ${commandName} — the exe moved into system/.`);
+  console.log(
+    "[build-exe] NOTE: this build is unsigned (ad-hoc only). On first launch on any Mac " +
+      "(including this one, once the files are zipped/AirDropped/downloaded), Gatekeeper " +
+      "may refuse to open it. Right-click the .command file (or the exe) and choose \"Open\" " +
+      "once to allow it, or run: xattr -dr com.apple.quarantine \"" + outDir + "\""
+  );
+}
 
 console.log(`\n[build-exe] Done! Single package created at: ${outDir}`);
 console.log(`[build-exe] Executable: ${exeName}`);

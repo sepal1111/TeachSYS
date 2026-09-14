@@ -10,10 +10,17 @@ function isPackaged(): boolean {
   return Boolean((process as unknown as { pkg?: unknown }).pkg);
 }
 
-/** Absolute directory containing the running executable (or, in dev, the repo's server/ dir). */
+/** Absolute directory containing the running executable (or, in dev, the repo's server/ dir).
+ *
+ *  On Windows the exe sits directly in the release folder, so its own directory
+ *  *is* the app root. On mac the exe is placed inside `system/` instead (so the
+ *  release folder's top level only shows the `.command` launcher — see
+ *  scripts/build-exe.mjs), so when the exe's immediate parent is named `system`,
+ *  the app root is one level further up. */
 export function getExeDir(): string {
   if (isPackaged()) {
-    return path.dirname(process.execPath);
+    const dir = path.dirname(process.execPath);
+    return path.basename(dir) === "system" ? path.dirname(dir) : dir;
   }
   // Dev / `node dist/index.js`: use the project root (one level above dist/ or src/).
   return path.resolve(__dirname, "..");
