@@ -179,7 +179,12 @@
     if (openState && !e.target.closest('.custom-select-panel') && !e.target.closest('.custom-select-trigger')) closeOpen();
   });
   window.addEventListener('resize', closeOpen);
-  window.addEventListener('scroll', closeOpen, true);
+  window.addEventListener('scroll', (e) => {
+    // 面板本身（含捲軸拖曳、滾輪、方向鍵捲動）觸發的 scroll 事件不應關閉選單，
+    // 只有頁面／其他祖先元素的捲動才需要關閉。
+    if (e.target && e.target.nodeType === 1 && e.target.closest && e.target.closest('.custom-select-panel')) return;
+    closeOpen();
+  }, true);
 
   function enhanceAll(root) {
     if (!window.matchMedia(ENHANCE_MEDIA).matches) return;
