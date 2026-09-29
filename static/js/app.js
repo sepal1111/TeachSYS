@@ -637,6 +637,7 @@ const TAB_TO_CONTEXT_MAP = {
   dashboard: 'logs',
   materials: 'logs',
   filecollect: 'logs',
+  hwscan: 'logs',
   seating: 'manage',
   grouping: 'manage',
   students: 'manage',
@@ -855,6 +856,9 @@ function refreshActiveTab(tabName, force = false) {
       if (window.FileCollectManager && typeof window.FileCollectManager.load === 'function') {
         window.FileCollectManager.load();
       }
+      break;
+    case 'hwscan':
+      if (window.HomeworkScan) window.HomeworkScan.load();
       break;
     case 'pointcards':
       if (window.PointCardsManager && typeof window.PointCardsManager.reload === 'function') {

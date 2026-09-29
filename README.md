@@ -67,6 +67,10 @@ npm start        # node dist/index.js
 - `static/js/materials.js` 的「新增小單元」視窗新增完整題目編輯器（選擇題/是非題/簡答題、CSV 範本下載與匯入，範本欄位格式與 kyps 一致）
 - `static/js/student.js` 的小單元卡片新增測驗作答表單：題目與選擇題選項皆隨機排序（正解比對仍用原始索引），作答後依老師設定顯示逐題詳解或僅顯示總分
 
+### 作業掃描登記（僅限教師本機）
+
+移植自 Examscan 的「收作業」模組：`src/routes/homeworkScan.ts`（`/api/homework-scan/*`）、`static/js/homework-scan.js`、資料表 `hw_items`/`hw_plans`/`hw_records`。整組 API 掛在 `src/middleware/localOnly.ts` 之後，只接受本機連線；區網其他裝置即使有教師 session 也會收到 403，選單也不會顯示。
+
 ## 前端相容性調整
 
 `static/` 前端（`app.js`/`toolkit.js`/`api.js`/`realtime.js`）沿用原檔案，REST API 路徑/回應格式維持不變，因此絕大部分前端程式碼不需要改動。唯一例外：原本 `realtime.js` 是連到 FastAPI 的原生 WebSocket 端點 `/api/system/ws/{course_id}`；新後端改用 Socket.io（三級 Rooms，為 Phase 4 的課程/小組/個人即時互動預留架構），協議不同，因此：

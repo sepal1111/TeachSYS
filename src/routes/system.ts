@@ -11,9 +11,16 @@ import { getTodayMMDDTaipei, getTodayStrTaipei } from "../timezone";
 import { createSession, getCurrentSessionToken, isRequestAuthenticated, requireAuth } from "../middleware/auth";
 import { autoCatch } from "../asyncRoute";
 import { getLocalIp } from "../utils/network";
+import { isLocalRequest } from "../middleware/localOnly";
 
 export const systemRouter = autoCatch(Router());
 const upload = multer({ storage: multer.memoryStorage() });
+
+// 前端用來決定要不要顯示「僅限教師本機」的功能（如作業掃描登記）；真正的攔阻在伺服器端
+// （middleware/localOnly.ts），這裡只是讓其他裝置看不到多餘的選單。
+systemRouter.get("/local-access", (req, res) => {
+  res.json({ is_local: isLocalRequest(req) });
+});
 
 // --- Network & System Info ---
 

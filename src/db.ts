@@ -524,6 +524,52 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_group_discussion_logs_course ON group_discussion_logs(course_id, group_id);"
   );
 
+  // 作業掃描登記（教師本機專用，見 routes/homeworkScan.ts）
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS hw_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      archived INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      UNIQUE(course_id, name)
+    );
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS hw_plans (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      plan_date TEXT NOT NULL,
+      item_id INTEGER NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(item_id) REFERENCES hw_items(id) ON DELETE CASCADE,
+      UNIQUE(course_id, plan_date, item_id)
+    );
+  `);
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS hw_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      item_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      record_date TEXT NOT NULL,
+      status TEXT NOT NULL,
+      recorded_at TEXT NOT NULL,
+      method TEXT NOT NULL DEFAULT '掃描',
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(item_id) REFERENCES hw_items(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      UNIQUE(item_id, student_id, record_date)
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_hw_records_course_date ON hw_records(course_id, record_date);"
+  );
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_hw_plans_course_date ON hw_plans(course_id, plan_date);"
+  );
+
   // 課堂即時公布欄：原本只存 localStorage，改為寫入資料庫（見 routes/bulletin.ts）。
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS bulletin_posts (

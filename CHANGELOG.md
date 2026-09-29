@@ -1,5 +1,23 @@
 # CHANGELOG
 
+## [2026-09-29b] 作業掃描登記：改以「作業專屬 QR Code」為主要收件方式
+
+- **修改檔案**：`static/js/homework-scan.js`
+- **修改內容**：收作業畫面改成以掃描作業上的專屬 QR Code（`ES:H:學生ID:作業ID`，每張綁定一位學生＋一項作業）為主，掃描即自動記錄「誰交了什麼」，並顯示最近 5 筆登記；借書證＋勾選作業的方式收進「作業上沒有 QR Code？」摺疊區。後端邏輯未變。
+
+## [2026-09-29a] 新增「作業掃描登記」功能（移植自 Examscan，僅限教師本機）
+
+- **修改模組/檔案**：
+  - 後端：`src/routes/homeworkScan.ts`（新增）、`src/middleware/localOnly.ts`（新增）、`src/index.ts`、`src/routes/system.ts`、`src/db.ts`、`prisma/schema.prisma`
+  - 前端：`static/js/homework-scan.js`（新增）、`static/index.html`、`static/js/app.js`
+- **修改類別**：新功能
+- **修改內容**：
+  1. 把 Examscan 的「收作業」模組併入：作業項目管理、每日「這天要收哪些作業」計畫、掃描借書證條碼（掃描器/手動輸入/電腦鏡頭）或作業簿專屬 QR Code 即時登記已繳交、手動補登（補繳/請假/改回未交）、復原上一筆、未交名單、A4 標籤貼紙 QR Code 列印、Excel/CSV 匯出（CSV 為 UTF-8 含 BOM）。掃描內容格式與 Examscan 相同（`ES:H:學生ID:作業ID`、`ES:I:作業ID`、其他視為借書證條碼，比對 `students.student_code`）。
+  2. 新增資料表 `hw_items`、`hw_plans`、`hw_records`（隨班級刪除連動清除，資料落在 `bin/` 資料庫，一併被備份）。
+  3. **只能在教師本機執行**：`/api/homework-scan/*` 先過 `requireLocalOnly`（依 TCP 實際連線來源，只放行 127.0.0.1、::1 與本機自己的網卡位址；區網內的學生手機/平板一律 403，不看可偽造的標頭），再過教師登入驗證。前端以 `GET /api/system/local-access` 判斷，非本機時選單根本不顯示。分頁位於「學習歷程 → 📥 作業掃描登記」。
+- **驗證**：`tsc --noEmit` 通過；在暫存複本（不動 `bin/` 正式資料庫）啟動伺服器，以 curl 走過建項目、計畫、借書證掃描（含大小寫）、專屬 QR、重複掃描、手動登記與復原、日內資料、CSV/Excel 匯出、標籤產生，皆正常；`requireLocalOnly` 對 127.0.0.1/::1/本機網卡放行、其他區網位址與無來源位址回 403。
+- **未驗證**：沒有實際開瀏覽器點過畫面（含鏡頭掃描、標籤列印預覽、手動登記彈窗）；沒有從另一台裝置實連確認 403。
+
 ## [2026-09-14g] 依使用者提供樣式調整點數卡使用統計分析彈窗顯示格式
 
 - **修改模組/檔案**：

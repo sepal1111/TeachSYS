@@ -48,6 +48,9 @@ model Course {
   bulletinPosts    BulletinPost[]
   fileCollections  FileCollection[]
   fileCollectionItems FileCollectionItem[]
+  homeworkItems    HomeworkItem[]
+  homeworkPlans    HomeworkPlan[]
+  homeworkRecords  HomeworkRecord[]
 
   @@map("courses")
 }
@@ -135,6 +138,7 @@ model Student {
   paperQuizRecords PaperQuizRecord[]
   leaderDiscussionLogs GroupDiscussionLog[]
   fileCollectionItems  FileCollectionItem[]
+  homeworkRecords      HomeworkRecord[]
 
   @@map("students")
 }
@@ -684,3 +688,54 @@ model FileCollectionItem {
   @@map("file_collection_items")
 }
 
+
+// ==========================================================================
+// 作業掃描登記 (Homework Scan)：教師本機專用（見 middleware/localOnly.ts），移植自 Examscan
+// 的「收作業」模組。作業項目、每日「這天要收哪些作業」計畫、每位學生的繳交紀錄。
+// ==========================================================================
+
+model HomeworkItem {
+  id        Int    @id @default(autoincrement())
+  courseId  Int    @map("course_id")
+  name      String
+  archived  Int    @default(0)
+  createdAt String @map("created_at")
+
+  course  Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  plans   HomeworkPlan[]
+  records HomeworkRecord[]
+
+  @@unique([courseId, name])
+  @@map("hw_items")
+}
+
+model HomeworkPlan {
+  id       Int    @id @default(autoincrement())
+  courseId Int    @map("course_id")
+  planDate String @map("plan_date")
+  itemId   Int    @map("item_id")
+
+  course Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  item   HomeworkItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, planDate, itemId])
+  @@map("hw_plans")
+}
+
+model HomeworkRecord {
+  id         Int    @id @default(autoincrement())
+  courseId   Int    @map("course_id")
+  itemId     Int    @map("item_id")
+  studentId  Int    @map("student_id")
+  recordDate String @map("record_date")
+  status     String
+  recordedAt String @map("recorded_at")
+  method     String @default("掃描")
+
+  course  Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  item    HomeworkItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, studentId, recordDate])
+  @@map("hw_records")
+}
