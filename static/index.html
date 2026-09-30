@@ -686,6 +686,8 @@
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="draw" data-i18n="toolkit_subtab_draw">🎲 隨機抽籤</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="timer" data-i18n="toolkit_subtab_timer">⏱️ 計時器與碼錶</button>
             <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="liveWall" data-i18n="toolkit_subtab_livewall">🎨 即時互動牆</button>
+            <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="wordCloud" id="btn-toolkit-tab-wordCloud">☁️ 文字雲</button>
+            <button type="button" class="btn btn-secondary toolkit-subtab-btn" data-toolkit-tab="kahoot" id="btn-toolkit-tab-kahoot">🎮 答題競賽</button>
           </div>
         </div>
 
@@ -932,6 +934,251 @@
             </div>
             <div id="livewall-posts-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;"></div>
             <div id="livewall-posts-empty" class="glass-card" style="display: none; text-align: center; color: var(--text-muted);" data-i18n="livewall_posts_empty">還沒有人送出貼文。</div>
+          </div>
+        </div>
+
+        <!-- 5. 文字雲 Subpane -->
+        <div id="toolkit-subpane-wordCloud" class="toolkit-subpane" style="display: none;">
+          <!-- 頂部操作與設定列 -->
+          <div class="glass-card" style="margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.1rem; font-weight: 800; color: #93c5fd;">☁️ 課堂即時文字雲</span>
+                <span id="wordcloud-status-badge" class="badge" style="background: rgba(148, 163, 184, 0.2); color: #cbd5e1; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem; font-weight: 700;">未開始</span>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button type="button" id="btn-wordcloud-history" class="btn btn-secondary btn-sm">📜 歷史場次</button>
+                <button type="button" id="btn-wordcloud-fullscreen" class="btn btn-secondary btn-sm">⛶ 全螢幕投影</button>
+                <button type="button" id="btn-wordcloud-export" class="btn btn-secondary btn-sm">🖼️ 匯出圖片</button>
+              </div>
+            </div>
+
+            <!-- 設定與開始表單 -->
+            <div id="wordcloud-config-form" style="display: flex; flex-direction: column; gap: 10px;">
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <label for="wordcloud-title-input" style="font-weight: 700; font-size: 0.9rem; min-width: 80px;">提示主題：</label>
+                <input type="text" id="wordcloud-title-input" class="input-control" placeholder="例如：這堂課你最有印象的一個關鍵字？" style="flex: 1; min-width: 240px;" maxlength="50">
+              </div>
+              <div style="display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer;">
+                  <input type="checkbox" id="wordcloud-allow-duplicate" checked style="width: 16px; height: 16px;">
+                  <span>允許每位學生提交多個詞彙</span>
+                </label>
+                <div style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem;">
+                  <span>每人上限：</span>
+                  <select id="wordcloud-max-words" class="input-control" style="width: auto; padding: 4px 8px;">
+                    <option value="1">1 個詞</option>
+                    <option value="2">2 個詞</option>
+                    <option value="3" selected>3 個詞</option>
+                    <option value="5">5 個詞</option>
+                  </select>
+                </div>
+                <div style="margin-left: auto; display: flex; gap: 8px;">
+                  <button type="button" id="btn-wordcloud-start" class="btn btn-primary" style="font-weight: 700;">🚀 開始收集詞彙</button>
+                  <button type="button" id="btn-wordcloud-stop" class="btn btn-secondary" style="display: none; color: #f87171; border-color: rgba(248, 113, 113, 0.4);">⏹️ 停止收集</button>
+                  <button type="button" id="btn-wordcloud-clear" class="btn btn-secondary" style="display: none; color: #f87171;">🗑️ 清空詞彙</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 文字雲展示區 + 詞頻統計列表 -->
+          <div style="display: grid; grid-template-columns: 1fr 280px; gap: 14px; min-height: 480px;" id="wordcloud-main-layout">
+            <!-- 螺旋渲染畫布容器 -->
+            <div id="wordcloud-canvas-container" class="glass-card" style="position: relative; overflow: hidden; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; min-height: 480px; box-shadow: inset 0 0 40px rgba(0,0,0,0.5);">
+              <div id="wordcloud-empty-hint" style="text-align: center; color: #94a3b8;">
+                <div style="font-size: 3rem; margin-bottom: 8px;">☁️</div>
+                <div style="font-size: 1.1rem; font-weight: 700;">尚未開始收集或無詞彙</div>
+                <div style="font-size: 0.85rem; margin-top: 4px;">請在上方輸入主題並點擊「開始收集詞彙」</div>
+              </div>
+              <div id="wordcloud-stage" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none;"></div>
+            </div>
+
+            <!-- 右側詞頻排行側欄 -->
+            <div class="glass-card" style="display: flex; flex-direction: column; overflow: hidden;">
+              <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--card-border); padding-bottom: 8px; margin-bottom: 10px;">
+                <span style="font-weight: 800; font-size: 0.95rem; color: #cbd5e1;">📊 詞頻排行榜</span>
+                <span id="wordcloud-stats-count" style="font-size: 0.8rem; color: #94a3b8;">共 0 詞</span>
+              </div>
+              <div id="wordcloud-ranking-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; max-height: 420px; padding-right: 4px;">
+                <div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 20px 0;">暫無數據</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6. 答題競賽 (Kahoot) Subpane -->
+        <div id="toolkit-subpane-kahoot" class="toolkit-subpane" style="display: none;">
+          <!-- 頂部題庫選擇與模式設定列 -->
+          <div class="glass-card" style="margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <span style="font-size: 1.1rem; font-weight: 800; color: #f472b6;">🎮 課堂答題競賽</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <label for="kahoot-set-select" style="font-weight: 700; font-size: 0.9rem;">題庫：</label>
+                  <select id="kahoot-set-select" class="input-control" style="min-width: 180px; font-weight: 700;">
+                    <!-- JS populate -->
+                  </select>
+                </div>
+                <button type="button" id="btn-kahoot-manage-sets" class="btn btn-secondary btn-sm">⚙️ 題庫管理</button>
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                <!-- 競賽模式選擇：個人 vs 小組 -->
+                <div style="display: flex; align-items: center; background: rgba(255,255,255,0.06); padding: 3px 6px; border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+                  <label style="font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="kahoot-mode" value="individual" checked style="cursor: pointer;">
+                    <span>🧑 個人競賽</span>
+                  </label>
+                  <label style="font-size: 0.85rem; font-weight: 700; cursor: pointer; padding: 4px 8px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px;">
+                    <input type="radio" name="kahoot-mode" value="group" style="cursor: pointer;">
+                    <span>🚩 小組競賽</span>
+                  </label>
+                </div>
+                <button type="button" id="btn-kahoot-fullscreen" class="btn btn-secondary btn-sm">⛶ 全螢幕投影</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 答題主畫面 (Stage Container) -->
+          <div id="kahoot-stage-container" class="glass-card" style="padding: 24px; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95)); border-radius: var(--radius-xl); position: relative; overflow: hidden;">
+            <!-- 狀態 A: 尚未開始題目 (Lobby) -->
+            <div id="kahoot-lobby-view" style="text-align: center; padding: 40px 20px; margin: auto;">
+              <div style="font-size: 4rem; margin-bottom: 12px;">🏆</div>
+              <h2 id="kahoot-lobby-title" style="font-size: 1.8rem; margin-bottom: 8px; color: #fff;">準備開始答題競賽</h2>
+              <p id="kahoot-lobby-desc" style="color: #94a3b8; font-size: 1rem; max-width: 480px; margin: 0 auto 24px;">請選擇題庫與競賽模式，學生可使用手機或平板登入準備作答！</p>
+              <button type="button" id="btn-kahoot-start-game" class="btn btn-primary" style="font-size: 1.2rem; padding: 12px 36px; font-weight: 800; border-radius: 9999px; box-shadow: 0 10px 25px rgba(59, 130, 246, 0.4);">
+                🚀 開始測驗 (第 1 題)
+              </button>
+            </div>
+
+            <!-- 狀態 B: 進行中題目 (Running / Question View) -->
+            <div id="kahoot-running-view" style="display: none; flex-direction: column; height: 100%;">
+              <!-- 頂部資訊列：題號進度、倒數計時、已作答人數 -->
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span id="kahoot-q-badge" class="badge" style="background: #3b82f6; color: #fff; font-size: 0.95rem; font-weight: 800; padding: 6px 14px; border-radius: 9999px;">第 1 / 5 題</span>
+                  <span id="kahoot-mode-badge" class="badge" style="background: rgba(255,255,255,0.1); color: #cbd5e1; font-size: 0.85rem; padding: 6px 10px; border-radius: 9999px;">個人模式</span>
+                </div>
+                <div style="display: flex; align-items: center; gap: 16px;">
+                  <div style="display: flex; align-items: center; gap: 8px; font-size: 1.1rem; font-weight: 800; color: #fde047;">
+                    <span>⏱️</span>
+                    <span id="kahoot-timer-text" style="font-size: 1.6rem; min-width: 40px; text-align: center;">20</span>
+                    <span>秒</span>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px; font-size: 1rem; font-weight: 700; color: #94a3b8; background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 9999px;">
+                    <span>👥 已作答：</span>
+                    <span id="kahoot-answered-count" style="color: #60a5fa; font-weight: 800; font-size: 1.15rem;">0</span>
+                    <span id="kahoot-total-students">/ 0</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 題幹題目與圖片 -->
+              <div style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius-lg); padding: 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                <div id="kahoot-question-text" style="font-size: 1.6rem; font-weight: 800; color: #ffffff; line-height: 1.4;">題目載入中...</div>
+                <div id="kahoot-question-img-wrap" style="display: none; margin-top: 14px;">
+                  <img id="kahoot-question-img" src="" style="max-height: 200px; max-width: 100%; border-radius: 8px; object-fit: contain;" alt="Question Image">
+                </div>
+              </div>
+
+              <!-- 四色選項卡片網格 -->
+              <div id="kahoot-options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; flex: 1;">
+                <!-- A: 藍色 -->
+                <div class="kahoot-opt-card" id="kahoot-opt-card-0" style="background: #2563eb; color: #fff; padding: 18px; border-radius: 12px; display: flex; align-items: center; gap: 14px; font-size: 1.25rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;">
+                  <span class="kahoot-opt-badge" style="background: rgba(0,0,0,0.2); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem;">▲ A</span>
+                  <span class="kahoot-opt-text" id="kahoot-opt-text-0" style="flex: 1;">選項 A</span>
+                  <div class="kahoot-opt-stat" id="kahoot-opt-stat-0" style="display: none; font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 6px;">0 票</div>
+                </div>
+                <!-- B: 紅色 -->
+                <div class="kahoot-opt-card" id="kahoot-opt-card-1" style="background: #dc2626; color: #fff; padding: 18px; border-radius: 12px; display: flex; align-items: center; gap: 14px; font-size: 1.25rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;">
+                  <span class="kahoot-opt-badge" style="background: rgba(0,0,0,0.2); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem;">◆ B</span>
+                  <span class="kahoot-opt-text" id="kahoot-opt-text-1" style="flex: 1;">選項 B</span>
+                  <div class="kahoot-opt-stat" id="kahoot-opt-stat-1" style="display: none; font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 6px;">0 票</div>
+                </div>
+                <!-- C: 綠色 -->
+                <div class="kahoot-opt-card" id="kahoot-opt-card-2" style="background: #16a34a; color: #fff; padding: 18px; border-radius: 12px; display: flex; align-items: center; gap: 14px; font-size: 1.25rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;">
+                  <span class="kahoot-opt-badge" style="background: rgba(0,0,0,0.2); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem;">● C</span>
+                  <span class="kahoot-opt-text" id="kahoot-opt-text-2" style="flex: 1;">選項 C</span>
+                  <div class="kahoot-opt-stat" id="kahoot-opt-stat-2" style="display: none; font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 6px;">0 票</div>
+                </div>
+                <!-- D: 紫色 -->
+                <div class="kahoot-opt-card" id="kahoot-opt-card-3" style="background: #9333ea; color: #fff; padding: 18px; border-radius: 12px; display: flex; align-items: center; gap: 14px; font-size: 1.25rem; font-weight: 700; cursor: pointer; transition: all 0.2s; position: relative; overflow: hidden;">
+                  <span class="kahoot-opt-badge" style="background: rgba(0,0,0,0.2); width: 38px; height: 38px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.2rem;">■ D</span>
+                  <span class="kahoot-opt-text" id="kahoot-opt-text-3" style="flex: 1;">選項 D</span>
+                  <div class="kahoot-opt-stat" id="kahoot-opt-stat-3" style="display: none; font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 6px;">0 票</div>
+                </div>
+              </div>
+
+              <!-- 答案揭曉時的解析方塊 -->
+              <div id="kahoot-explanation-box" style="display: none; background: rgba(30, 58, 138, 0.4); border: 1px solid rgba(96, 165, 250, 0.4); border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 0.95rem; color: #e0f2fe;">
+                <b>💡 題目解析：</b><span id="kahoot-explanation-text"></span>
+              </div>
+
+              <!-- 底部操作列 -->
+              <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 14px;">
+                <button type="button" id="btn-kahoot-reveal-answer" class="btn btn-warning" style="font-weight: 800; font-size: 1rem; padding: 8px 24px;">
+                  📢 公佈答案
+                </button>
+                <div style="display: flex; gap: 10px;">
+                  <button type="button" id="btn-kahoot-next-question" class="btn btn-primary" style="display: none; font-weight: 800; font-size: 1rem; padding: 8px 24px;">
+                    ➡️ 下一題
+                  </button>
+                  <button type="button" id="btn-kahoot-end-game" class="btn btn-secondary" style="color: #f87171;">
+                    ⏹️ 結束測驗
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 狀態 C: 最終頒獎台 (Podium / Final Result) -->
+            <div id="kahoot-podium-view" style="display: none; flex-direction: column; align-items: center; padding: 20px 10px;">
+              <h2 style="font-size: 2rem; font-weight: 900; color: #facc15; margin-bottom: 24px; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.4);">
+                🎉 競賽最終排行榜 🎉
+              </h2>
+
+              <!-- 3D 頒獎台階 (第2名、第1名、第3名) -->
+              <div style="display: flex; align-items: flex-end; justify-content: center; gap: 16px; width: 100%; max-width: 600px; height: 260px; margin-bottom: 30px;">
+                <!-- 2nd Place -->
+                <div id="podium-col-2" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                  <div id="podium-name-2" style="font-weight: 800; font-size: 1.1rem; color: #e2e8f0; margin-bottom: 8px; text-align: center;">--</div>
+                  <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 6px;" id="podium-score-2">0 分</div>
+                  <div style="width: 100%; height: 130px; background: linear-gradient(to top, #64748b, #94a3b8); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 900; color: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
+                    🥈 2
+                  </div>
+                </div>
+                <!-- 1st Place (Center elevated) -->
+                <div id="podium-col-1" style="flex: 1.2; display: flex; flex-direction: column; align-items: center;">
+                  <div style="font-size: 2rem; margin-bottom: -4px;">👑</div>
+                  <div id="podium-name-1" style="font-weight: 900; font-size: 1.3rem; color: #fde047; margin-bottom: 8px; text-align: center;">--</div>
+                  <div style="font-size: 1rem; font-weight: 800; color: #fde047; margin-bottom: 6px;" id="podium-score-1">0 分</div>
+                  <div style="width: 100%; height: 180px; background: linear-gradient(to top, #d97706, #f59e0b); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; font-weight: 900; color: #fff; box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);">
+                    🥇 1
+                  </div>
+                </div>
+                <!-- 3rd Place -->
+                <div id="podium-col-3" style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                  <div id="podium-name-3" style="font-weight: 800; font-size: 1.1rem; color: #e2e8f0; margin-bottom: 8px; text-align: center;">--</div>
+                  <div style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 6px;" id="podium-score-3">0 分</div>
+                  <div style="width: 100%; height: 100px; background: linear-gradient(to top, #b45309, #d97706); border-radius: 12px 12px 0 0; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 900; color: #fff; box-shadow: 0 8px 20px rgba(0,0,0,0.3);">
+                    🥉 3
+                  </div>
+                </div>
+              </div>
+
+              <!-- Top 4~10 列表與小組榜單 -->
+              <div id="podium-more-list" style="width: 100%; max-width: 600px; max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 24px;"></div>
+
+              <!-- 一鍵加分獎勵按鈕 -->
+              <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                <button type="button" id="btn-kahoot-award-points" class="btn btn-primary" style="font-weight: 800; font-size: 1.1rem; padding: 10px 28px; background: linear-gradient(135deg, #10b981, #059669); border: none; box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4);">
+                  🎁 一鍵發放獎勵加分至系統記分板
+                </button>
+                <button type="button" id="btn-kahoot-restart-lobby" class="btn btn-secondary">
+                  🔄 返回競賽大廳
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -3340,6 +3587,130 @@
     </div>
   </div>
 
+  <!-- Modal: Kahoot 題庫管理 -->
+  <div id="modal-kahoot-manage-sets" class="modal-overlay" style="z-index: 100025;">
+    <div class="modal-content glass-card" style="max-width: 800px; max-height: 85vh; display: flex; flex-direction: column; padding: 24px;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;">⚙️ 答題競賽題庫管理</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-kahoot-manage">✕</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 240px 1fr; gap: 16px; flex: 1; min-height: 380px; overflow: hidden;">
+        <!-- 左欄：題庫清單與新增 -->
+        <div style="display: flex; flex-direction: column; border-right: 1px solid var(--card-border); padding-right: 14px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: 700; font-size: 0.9rem;">題庫列表</span>
+            <button type="button" id="btn-kahoot-create-set" class="btn btn-sm btn-primary" style="padding: 3px 8px; font-size: 0.8rem;">➕ 新增</button>
+          </div>
+          <div id="kahoot-sets-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+        </div>
+
+        <!-- 右欄：當前題庫之題目列表 -->
+        <div style="display: flex; flex-direction: column; overflow: hidden;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <div>
+              <span id="kahoot-selected-set-title" style="font-weight: 800; font-size: 1.05rem; color: #93c5fd;">請先選擇題庫</span>
+              <span id="kahoot-selected-set-count" style="font-size: 0.8rem; color: #94a3b8; margin-left: 6px;"></span>
+            </div>
+            <div style="display: flex; gap: 6px;">
+              <button type="button" id="btn-kahoot-add-question" class="btn btn-sm btn-primary" style="display: none;">➕ 新增題目</button>
+              <button type="button" id="btn-kahoot-delete-set" class="btn btn-sm btn-secondary" style="display: none; color: #f87171;">🗑️ 刪除題庫</button>
+            </div>
+          </div>
+          <div id="kahoot-questions-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+            <div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 40px 0;">請由左側點選或新增題庫</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Kahoot 題目新增與編輯 -->
+  <div id="modal-kahoot-edit-question" class="modal-overlay" style="z-index: 100030;">
+    <div class="modal-content glass-card" style="max-width: 580px; padding: 24px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <div class="modal-title" id="modal-kahoot-q-title" style="font-size: 1.2rem; font-weight: 800;">➕ 新增測驗題目</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-kahoot-q-edit">✕</button>
+      </div>
+      <form id="form-kahoot-question" style="display: flex; flex-direction: column; gap: 12px;">
+        <input type="hidden" id="kahoot-edit-q-id" value="">
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; margin-bottom: 4px;">題目敘述：*</label>
+          <textarea id="kahoot-edit-q-prompt" class="input-control" rows="2" placeholder="請輸入問題敘述..." required></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px;">
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;">作答時間 (秒)：</label>
+            <select id="kahoot-edit-q-timelimit" class="input-control">
+              <option value="10">10 秒 (超快節奏)</option>
+              <option value="15">15 秒</option>
+              <option value="20" selected>20 秒 (推薦)</option>
+              <option value="30">30 秒</option>
+              <option value="60">60 秒 (思考題)</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;">基本分值：</label>
+            <select id="kahoot-edit-q-points" class="input-control">
+              <option value="500">500 分</option>
+              <option value="1000" selected>1000 分 (標準)</option>
+              <option value="2000">2000 分 (雙倍分題)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- 4 個選項設定 -->
+        <div>
+          <label style="display: block; font-size: 0.88rem; font-weight: 700; margin-bottom: 6px;">選項內容與正確答案（勾選單選圓鈕為正解）：*</label>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="radio" name="kahoot-correct-opt" value="0" checked style="cursor: pointer; width: 18px; height: 18px;">
+              <span style="background: #2563eb; color: #fff; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">▲ A</span>
+              <input type="text" id="kahoot-opt-input-0" class="input-control" placeholder="選項 A 內容" style="flex: 1;" required>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="radio" name="kahoot-correct-opt" value="1" style="cursor: pointer; width: 18px; height: 18px;">
+              <span style="background: #dc2626; color: #fff; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">◆ B</span>
+              <input type="text" id="kahoot-opt-input-1" class="input-control" placeholder="選項 B 內容" style="flex: 1;" required>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="radio" name="kahoot-correct-opt" value="2" style="cursor: pointer; width: 18px; height: 18px;">
+              <span style="background: #16a34a; color: #fff; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">● C</span>
+              <input type="text" id="kahoot-opt-input-2" class="input-control" placeholder="選項 C 內容（選填）" style="flex: 1;">
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <input type="radio" name="kahoot-correct-opt" value="3" style="cursor: pointer; width: 18px; height: 18px;">
+              <span style="background: #9333ea; color: #fff; width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem;">■ D</span>
+              <input type="text" id="kahoot-opt-input-3" class="input-control" placeholder="選項 D 內容（選填）" style="flex: 1;">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label style="display: block; font-size: 0.85rem; font-weight: 700; margin-bottom: 4px;">題目解析（答題揭曉時顯示，選填）：</label>
+          <input type="text" id="kahoot-edit-q-explanation" class="input-control" placeholder="例如：由光合作用公式可知此產物為氧氣">
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px;">
+          <button type="button" class="btn btn-secondary close-modal">取消</button>
+          <button type="submit" class="btn btn-primary" id="btn-submit-kahoot-question">儲存題目</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: 文字雲歷史場次 -->
+  <div id="modal-wordcloud-history" class="modal-overlay" style="z-index: 100025;">
+    <div class="modal-content glass-card" style="max-width: 650px; max-height: 80vh; display: flex; flex-direction: column; padding: 24px;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+        <div class="modal-title" style="font-size: 1.25rem; font-weight: 800;">📜 文字雲歷史場次</div>
+        <button type="button" class="btn-icon close-modal" id="btn-close-wordcloud-history">✕</button>
+      </div>
+      <div id="wordcloud-history-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;"></div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/api.js?v=3.1"></script>
   <script src="/static/js/i18n.js?v=3.1"></script>
@@ -3347,8 +3718,8 @@
   <script src="/static/js/custom-select.js?v=1.0"></script>
   <script src="/static/js/image-lightbox.js?v=1.0"></script>
   <script src="/static/js/audio-engine.js?v=3.0"></script>
-  <script src="/static/js/toolkit.js?v=3.0"></script>
-  <script src="/static/js/realtime.js?v=3.0"></script>
+  <script src="/static/js/toolkit.js?v=3.2"></script>
+  <script src="/static/js/realtime.js?v=3.2"></script>
   <script src="/static/js/materials.js?v=1.4"></script>
   <script src="/static/js/journal.js?v=1.0"></script>
   <script src="/static/js/app.js?v=3.0"></script>

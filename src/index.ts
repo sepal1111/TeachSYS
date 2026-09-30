@@ -40,6 +40,8 @@ import { bulletinRouter } from "./routes/bulletin";
 import { fileCollectionsRouter } from "./routes/fileCollections";
 import { studentFileCollectionsRouter } from "./routes/studentFileCollections";
 import { homeworkScanRouter } from "./routes/homeworkScan";
+import { quizSetsRouter } from "./routes/quizSets";
+import { wordCloudsRouter } from "./routes/wordClouds";
 import { requireLocalOnly } from "./middleware/localOnly";
 
 const APP_STARTUP_TIMESTAMP = String(Date.now());
@@ -264,6 +266,8 @@ app.use("/api/bulletin", requireAuth, bulletinRouter);
 app.use("/api/file-collections", requireAuth, fileCollectionsRouter);
 // 作業掃描登記：只有教師本機（連線來源為本機）能呼叫，先擋來源再驗教師登入
 app.use("/api/homework-scan", requireLocalOnly, requireAuth, homeworkScanRouter);
+app.use("/api/quiz-sets", requireAuth, quizSetsRouter);
+app.use("/api/wordclouds", requireAuth, wordCloudsRouter);
 
 // --- LMS 學生端（Phase 2）：獨立的 JWT 驗證，不套用教師 requireAuth ---
 app.use("/api/auth/student", studentAuthRouter);

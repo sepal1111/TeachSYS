@@ -25,15 +25,63 @@ function connectCourseRealtime(courseId, onUpdate, onToolkitAction, tokenOverrid
   const socket = io({
     query: { course_id: courseId, token },
   });
+  window.activeSocket = socket;
 
   socket.on('server_event', (data) => {
-    if (data && data.event === 'toolkit_action') {
+    if (!data) return;
+    if (data.event === 'toolkit_action') {
       if (onToolkitAction) onToolkitAction(data.action, data.payload);
+    } else if (data.event === 'wordcloud:new_word') {
+      if (window.TeachingToolkit?.wordCloud?.onNewWord) {
+        window.TeachingToolkit.wordCloud.onNewWord(data.payload);
+      }
+      if (window.Projection?.onWordCloudNewWord) {
+        window.Projection.onWordCloudNewWord(data.payload);
+      }
+    } else if (data.event === 'kahoot:student_answered') {
+      if (window.TeachingToolkit?.kahoot?.onStudentAnswered) {
+        window.TeachingToolkit.kahoot.onStudentAnswered(data.payload);
+      }
+      if (window.Projection?.onKahootStudentAnswered) {
+        window.Projection.onKahootStudentAnswered(data.payload);
+      }
+    } else if (data.event === 'kahoot:question') {
+      if (window.Projection?.onKahootQuestion) {
+        window.Projection.onKahootQuestion(data.payload);
+      }
+      if (window.StudentApp?.onKahootQuestion) {
+        window.StudentApp.onKahootQuestion(data.payload);
+      }
+    } else if (data.event === 'kahoot:answer_revealed') {
+      if (window.Projection?.onKahootAnswerRevealed) {
+        window.Projection.onKahootAnswerRevealed(data.payload);
+      }
+      if (window.StudentApp?.onKahootAnswerRevealed) {
+        window.StudentApp.onKahootAnswerRevealed(data.payload);
+      }
+    } else if (data.event === 'kahoot:finished') {
+      if (window.Projection?.onKahootFinished) {
+        window.Projection.onKahootFinished(data.payload);
+      }
+      if (window.StudentApp?.onKahootFinished) {
+        window.StudentApp.onKahootFinished(data.payload);
+      }
+    } else if (data.event === 'wordcloud:start') {
+      if (window.Projection?.onWordCloudStart) {
+        window.Projection.onWordCloudStart(data.payload);
+      }
+      if (window.StudentApp?.onWordCloudStart) {
+        window.StudentApp.onWordCloudStart(data.payload);
+      }
+    } else if (data.event === 'wordcloud:end') {
+      if (window.Projection?.onWordCloudEnd) {
+        window.Projection.onWordCloudEnd(data.payload);
+      }
+      if (window.StudentApp?.onWordCloudEnd) {
+        window.StudentApp.onWordCloudEnd(data.payload);
+      }
     } else {
-      // 把事件名稱一併傳給 onUpdate，讓呼叫端可以只針對真正變動的部分刷新，
-      // 而不是每次任何事件都無腦重新整理整頁。既有呼叫端都是零參數箭頭函式，
-      // 多傳一個參數會被忽略，向下相容。
-      onUpdate(data && data.event);
+      if (onUpdate) onUpdate(data.event);
     }
   });
 

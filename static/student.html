@@ -486,6 +486,8 @@
         <button type="button" id="btnContentTabQuizzes" class="student-tab-btn">📝 紙本小考</button>
         <button type="button" id="btnContentTabScores" class="student-tab-btn">🌟 我的點數</button>
         <button type="button" id="btnContentTabLiveWall" class="student-tab-btn">🎨 即時互動牆</button>
+        <button type="button" id="btnContentTabWordCloud" class="student-tab-btn">☁️ 課堂文字雲</button>
+        <button type="button" id="btnContentTabKahoot" class="student-tab-btn">🎮 答題競賽</button>
         <button type="button" id="btnContentTabLeader" class="student-tab-btn" style="display: none;">👑 小組長專區</button>
       </div>
 
@@ -858,6 +860,117 @@
           目前老師尚未建立任何檔案蒐集項目。
         </div>
       </div>
+
+      <!-- ☁️ 課堂文字雲分頁 -->
+      <div id="wordCloudTabPane" class="student-tab-pane" hidden>
+        <!-- A. 尚未開始收集狀態 -->
+        <div id="studentWordCloudEmpty" class="student-card coming-soon-card" style="text-align: center; padding: 40px 16px;">
+          <span class="emoji" style="font-size: 3rem;">☁️</span>
+          <p class="title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 8px 0;">目前沒有進行中的文字雲活動</p>
+          <p class="desc" style="color: var(--text-muted); font-size: 0.9rem;">請等待老師於課堂中啟動文字雲，開啟後將可直接在此輸入並提交你的關鍵字！</p>
+        </div>
+
+        <!-- B. 進行中收集狀態 -->
+        <div id="studentWordCloudActive" class="student-card" hidden style="border: 2px solid var(--student-primary); box-shadow: var(--shadow-md);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 1.8rem;">☁️</span>
+              <h3 style="font-size: 1.2rem; font-weight: 800; color: var(--student-primary-dark); margin: 0;">課堂即時文字雲</h3>
+            </div>
+            <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #059669; font-weight: 800; padding: 4px 10px; border-radius: 9999px; font-size: 0.8rem;">🟢 收集進行中</span>
+          </div>
+
+          <div id="studentTabWordCloudTitle" style="font-size: 1.15rem; font-weight: 800; color: var(--text-main); background: var(--student-primary-bg); border-left: 4px solid var(--student-primary); padding: 12px 16px; border-radius: 4px; margin-bottom: 18px;">
+            請用一個詞分享你的想法
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;">
+            <input type="text" id="studentTabWordCloudInput" class="input-control" placeholder="請輸入一個詞（最多 20 字）..." maxlength="20" style="text-align: center; font-size: 1.15rem; padding: 12px; font-weight: 700;">
+            <button type="button" id="btnStudentTabWordCloudSubmit" class="btn" style="padding: 12px; font-size: 1.05rem; font-weight: 800; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff;">
+              🚀 送出詞彙
+            </button>
+          </div>
+
+          <!-- 已送出詞彙 -->
+          <div style="background: var(--input-bg); border: 1px solid var(--card-border); border-radius: var(--radius-md); padding: 14px;">
+            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 8px;" id="studentTabWordCloudMyWordsLabel">你已送出的詞彙：</div>
+            <div id="studentTabWordCloudMyWords" style="display: flex; gap: 8px; flex-wrap: wrap; min-height: 28px;">
+              <span style="font-size: 0.85rem; color: var(--text-muted);">尚未送出任何詞彙</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 🎮 課堂答題競賽 (Kahoot) 分頁 -->
+      <div id="kahootTabPane" class="student-tab-pane" hidden>
+        <!-- A. 尚未開始題目狀態 -->
+        <div id="studentKahootEmpty" class="student-card coming-soon-card" style="text-align: center; padding: 40px 16px;">
+          <span class="emoji" style="font-size: 3rem;">🎮</span>
+          <p class="title" style="font-size: 1.25rem; font-weight: 800; color: var(--text-main); margin: 8px 0;">目前沒有進行中的答題競賽</p>
+          <p class="desc" style="color: var(--text-muted); font-size: 0.9rem;">請等待老師在課堂中啟動題目，出題時畫面將即時出現四色答題卡片！</p>
+        </div>
+
+        <!-- B. 題目進行中 / 答題狀態 -->
+        <div id="studentKahootActive" class="student-card" hidden style="background: linear-gradient(145deg, #0f172a, #1e293b); color: #fff; border: 2px solid #3b82f6; border-radius: var(--radius-lg); padding: 20px;">
+          <!-- 頂部資訊列：題號、倒數、小組/個人 -->
+          <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.08); padding: 10px 16px; border-radius: 9999px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.1);">
+            <span id="studentTabKahootQBadge" style="font-weight: 800; font-size: 0.95rem; color: #60a5fa;">第 1 題</span>
+            <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.2rem; color: #fde047;">
+              <span>⏱️</span>
+              <span id="studentTabKahootTimer">20</span>
+              <span>秒</span>
+            </div>
+            <span id="studentTabKahootModeBadge" style="font-size: 0.82rem; color: #cbd5e1; background: rgba(255,255,255,0.15); padding: 3px 10px; border-radius: 9999px;">個人模式</span>
+          </div>
+
+          <!-- 題目文字 -->
+          <div id="studentTabKahootPrompt" style="font-size: 1.25rem; font-weight: 800; line-height: 1.4; text-align: center; margin-bottom: 16px; color: #ffffff; min-height: 48px; display: flex; align-items: center; justify-content: center;">
+            請看大螢幕題目，點擊下方四色卡片作答！
+          </div>
+
+          <!-- 四色大按鈕網格 -->
+          <div id="studentTabKahootOptionsGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+            <button type="button" class="student-kahoot-opt-btn" data-opt="0" style="background: #2563eb; color: #fff; border: none; border-radius: 14px; padding: 24px 10px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+              <span style="font-size: 1.6rem;">▲</span>
+              <span class="student-kahoot-btn-text" id="student-tab-kahoot-text-0">A</span>
+            </button>
+            <button type="button" class="student-kahoot-opt-btn" data-opt="1" style="background: #dc2626; color: #fff; border: none; border-radius: 14px; padding: 24px 10px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+              <span style="font-size: 1.6rem;">◆</span>
+              <span class="student-kahoot-btn-text" id="student-tab-kahoot-text-1">B</span>
+            </button>
+            <button type="button" class="student-kahoot-opt-btn" data-opt="2" style="background: #16a34a; color: #fff; border: none; border-radius: 14px; padding: 24px 10px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 6px 16px rgba(220, 38, 38, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+              <span style="font-size: 1.6rem;">●</span>
+              <span class="student-kahoot-btn-text" id="student-tab-kahoot-text-2">C</span>
+            </button>
+            <button type="button" class="student-kahoot-opt-btn" data-opt="3" style="background: #9333ea; color: #fff; border: none; border-radius: 14px; padding: 24px 10px; font-size: 1.2rem; font-weight: 900; cursor: pointer; box-shadow: 0 6px 16px rgba(147, 51, 234, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+              <span style="font-size: 1.6rem;">■</span>
+              <span class="student-kahoot-btn-text" id="student-tab-kahoot-text-3">D</span>
+            </button>
+          </div>
+
+          <!-- 送出後等待揭曉提示 -->
+          <div id="studentTabKahootSubmittedNotice" style="display: none; background: rgba(59, 130, 246, 0.2); border: 1.5px solid #3b82f6; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 12px;">
+            <div style="font-size: 1.8rem; margin-bottom: 4px;">⏳</div>
+            <div style="font-weight: 800; font-size: 1.15rem; color: #93c5fd;">已送出答案！</div>
+            <div style="font-size: 0.88rem; color: #cbd5e1; margin-top: 4px;">請看大螢幕，等待老師揭曉正確解答...</div>
+          </div>
+
+          <!-- 答案揭曉狀態 -->
+          <div id="studentTabKahootResultNotice" style="display: none; border-radius: 12px; padding: 18px; text-align: center; margin-bottom: 12px;">
+            <div id="studentTabKahootResultIcon" style="font-size: 2.8rem; margin-bottom: 4px;">🎉</div>
+            <div id="studentTabKahootResultTitle" style="font-weight: 900; font-size: 1.35rem; margin-bottom: 4px;">答對了！</div>
+            <div id="studentTabKahootResultScore" style="font-size: 1.1rem; font-weight: 800; color: #fde047;">+1000 分</div>
+            <div id="studentTabKahootResultExplanation" style="font-size: 0.88rem; color: #cbd5e1; margin-top: 8px; line-height: 1.5;"></div>
+          </div>
+
+          <!-- 測驗結束總結 -->
+          <div id="studentTabKahootFinalSummary" style="display: none; background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(15, 23, 42, 0.8)); border: 2px solid #eab308; border-radius: 14px; padding: 22px; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 6px;">🏆</div>
+            <h3 style="font-size: 1.4rem; font-weight: 900; color: #facc15; margin-bottom: 4px;">競賽圓滿結束！</h3>
+            <p style="font-size: 0.9rem; color: #cbd5e1; margin-bottom: 0;">感謝你的熱情參與！請抬頭觀看大螢幕頒獎台 🎉</p>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1034,11 +1147,107 @@
         <button type="button" id="btnStudentGenericPromptOk" class="btn" style="flex: 1; padding: 10px; font-weight: 800;">確定</button>
       </div>
     </div>
+  <!-- Modal: 學生端文字雲互動 -->
+  <div id="modalStudentWordCloud" class="student-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(16px); z-index: 100070; align-items: center; justify-content: center; padding: 20px;">
+    <div class="student-card" style="width: 100%; max-width: 440px; margin: 0; padding: 26px 20px; text-align: center; border: 2px solid #60a5fa; box-shadow: 0 20px 50px rgba(0,0,0,0.5);">
+      <div style="font-size: 2.8rem; margin-bottom: 6px;">☁️</div>
+      <h3 style="font-size: 1.25rem; font-weight: 900; color: #93c5fd; margin-bottom: 6px;">課堂文字雲互動</h3>
+      <div id="studentWordCloudTitle" style="font-size: 1.05rem; font-weight: 800; color: #ffffff; background: rgba(255,255,255,0.06); padding: 10px 14px; border-radius: 8px; margin-bottom: 16px; border: 1px solid rgba(255,255,255,0.1);">
+        題目載入中...
+      </div>
+
+      <div id="studentWordCloudInputArea" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+        <input type="text" id="studentWordCloudInput" class="input-control" placeholder="請輸入一個詞（最多 20 字）..." maxlength="20" style="text-align: center; font-size: 1.1rem; padding: 12px; font-weight: 700;">
+        <button type="button" id="btnStudentWordCloudSubmit" class="btn btn-primary" style="padding: 12px; font-size: 1.05rem; font-weight: 800; background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+          🚀 送出詞彙
+        </button>
+      </div>
+
+      <!-- 已送出的詞彙清單 -->
+      <div style="text-align: left; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 10px 14px;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; margin-bottom: 6px;" id="studentWordCloudMyWordsLabel">你已送出的詞彙：</div>
+        <div id="studentWordCloudMyWords" style="display: flex; gap: 6px; flex-wrap: wrap; min-height: 24px;">
+          <span style="font-size: 0.82rem; color: #64748b;">尚未送出任何詞彙</span>
+        </div>
+      </div>
+
+      <div style="margin-top: 16px;">
+        <button type="button" id="btnStudentWordCloudClose" class="btn btn-secondary btn-sm" style="font-size: 0.82rem; padding: 5px 16px;">
+          收起視窗（稍後可再開啟）
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: 學生端 Kahoot 答題介面 -->
+  <div id="modalStudentKahoot" class="student-modal-overlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.96); backdrop-filter: blur(20px); z-index: 100080; flex-direction: column; padding: 16px; overflow-y: auto;">
+    <div style="max-width: 500px; width: 100%; margin: auto; display: flex; flex-direction: column; gap: 14px;">
+      <!-- 頂部資訊：題號、倒數、小組/個人 -->
+      <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(255,255,255,0.06); padding: 10px 16px; border-radius: 9999px; border: 1px solid rgba(255,255,255,0.1);">
+        <span id="studentKahootQBadge" style="font-weight: 800; font-size: 0.95rem; color: #60a5fa;">第 1 題</span>
+        <div style="display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: 1.15rem; color: #fde047;">
+          <span>⏱️</span>
+          <span id="studentKahootTimer">20</span>
+          <span>秒</span>
+        </div>
+        <span id="studentKahootModeBadge" style="font-size: 0.82rem; color: #cbd5e1; background: rgba(255,255,255,0.1); padding: 3px 10px; border-radius: 9999px;">個人模式</span>
+      </div>
+
+      <!-- 題目預覽（或提示看大螢幕） -->
+      <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; text-align: center;">
+        <div id="studentKahootPrompt" style="font-size: 1.15rem; font-weight: 800; color: #fff; line-height: 1.4;">題目載入中...</div>
+      </div>
+
+      <!-- 4 大彩色答題按鈕 -->
+      <div id="studentKahootBtnGrid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 4px;">
+        <button type="button" class="student-kahoot-opt-btn" data-opt="0" style="background: #2563eb; color: #fff; border: none; border-radius: 14px; padding: 26px 12px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+          <span style="font-size: 1.8rem;">▲</span>
+          <span class="student-kahoot-btn-text" id="student-kahoot-text-0">A</span>
+        </button>
+        <button type="button" class="student-kahoot-opt-btn" data-opt="1" style="background: #dc2626; color: #fff; border: none; border-radius: 14px; padding: 26px 12px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 8px 20px rgba(220, 38, 38, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+          <span style="font-size: 1.8rem;">◆</span>
+          <span class="student-kahoot-btn-text" id="student-kahoot-text-1">B</span>
+        </button>
+        <button type="button" class="student-kahoot-opt-btn" data-opt="2" style="background: #16a34a; color: #fff; border: none; border-radius: 14px; padding: 26px 12px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 8px 20px rgba(22, 163, 74, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+          <span style="font-size: 1.8rem;">●</span>
+          <span class="student-kahoot-btn-text" id="student-kahoot-text-2">C</span>
+        </button>
+        <button type="button" class="student-kahoot-opt-btn" data-opt="3" style="background: #9333ea; color: #fff; border: none; border-radius: 14px; padding: 26px 12px; font-size: 1.35rem; font-weight: 900; cursor: pointer; box-shadow: 0 8px 20px rgba(147, 51, 234, 0.4); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; transition: transform 0.1s, opacity 0.2s;">
+          <span style="font-size: 1.8rem;">■</span>
+          <span class="student-kahoot-btn-text" id="student-kahoot-text-3">D</span>
+        </button>
+      </div>
+
+      <!-- 送出後等待揭曉提示 -->
+      <div id="studentKahootSubmittedNotice" style="display: none; background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6; border-radius: 12px; padding: 18px; text-align: center;">
+        <div style="font-size: 2rem; margin-bottom: 4px;">⏳</div>
+        <div style="font-weight: 800; font-size: 1.2rem; color: #93c5fd;">已送出答案！</div>
+        <div style="font-size: 0.9rem; color: #cbd5e1; margin-top: 4px;">請看大螢幕，等待老師揭曉正確解答...</div>
+      </div>
+
+      <!-- 答案揭曉狀態 -->
+      <div id="studentKahootResultNotice" style="display: none; border-radius: 12px; padding: 20px; text-align: center;">
+        <div id="studentKahootResultIcon" style="font-size: 3rem; margin-bottom: 6px;">🎉</div>
+        <div id="studentKahootResultTitle" style="font-weight: 900; font-size: 1.4rem; margin-bottom: 4px;">答對了！</div>
+        <div id="studentKahootResultScore" style="font-size: 1.1rem; font-weight: 800; color: #fde047;">+1000 分</div>
+        <div id="studentKahootResultExplanation" style="font-size: 0.88rem; color: #cbd5e1; margin-top: 8px; line-height: 1.5;"></div>
+      </div>
+
+      <!-- 測驗結束總結 -->
+      <div id="studentKahootFinalSummary" style="display: none; background: linear-gradient(135deg, rgba(234, 179, 8, 0.2), rgba(15, 23, 42, 0.8)); border: 2px solid #eab308; border-radius: 14px; padding: 24px; text-align: center;">
+        <div style="font-size: 3.5rem; margin-bottom: 8px;">🏆</div>
+        <h3 style="font-size: 1.5rem; font-weight: 900; color: #facc15; margin-bottom: 6px;">競賽圓滿結束！</h3>
+        <p style="font-size: 0.95rem; color: #cbd5e1; margin-bottom: 16px;">感謝你的熱情參與！請抬頭觀看大螢幕頒獎台 🎉</p>
+        <button type="button" id="btnStudentKahootClose" class="btn btn-secondary" style="padding: 10px 24px; font-weight: 700;">
+          關閉答題畫面
+        </button>
+      </div>
+    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="/static/js/vendor/html5-qrcode.min.js"></script>
-  <script src="/static/js/realtime.js?v=1.0"></script>
-  <script src="/static/js/student.js?v=2.0"></script>
+  <script src="/static/js/realtime.js?v=3.2"></script>
+  <script src="/static/js/student.js?v=3.2"></script>
 </body>
 </html>

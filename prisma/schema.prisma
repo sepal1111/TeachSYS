@@ -51,6 +51,8 @@ model Course {
   homeworkItems    HomeworkItem[]
   homeworkPlans    HomeworkPlan[]
   homeworkRecords  HomeworkRecord[]
+  quizSets         QuizSet[]
+  wordCloudSessions WordCloudSession[]
 
   @@map("courses")
 }
@@ -738,4 +740,52 @@ model HomeworkRecord {
 
   @@unique([itemId, studentId, recordDate])
   @@map("hw_records")
+}
+
+model QuizSet {
+  id          Int      @id @default(autoincrement())
+  courseId    Int      @map("course_id")
+  title       String
+  description String?
+  category    String?  @default("課堂測驗")
+  createdAt   String   @map("created_at")
+  updatedAt   String   @map("updated_at")
+
+  course    Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions QuizQuestion[]
+
+  @@map("quiz_sets")
+}
+
+model QuizQuestion {
+  id           Int     @id @default(autoincrement())
+  quizSetId    Int     @map("quiz_set_id")
+  orderIndex   Int     @default(0) @map("order_index")
+  prompt       String
+  questionType String  @default("single") @map("question_type")
+  options      String  // JSON array of options: [{"id": "A", "text": "...", "isCorrect": true}, ...]
+  timeLimitSec Int     @default(20) @map("time_limit_sec")
+  points       Int     @default(1000)
+  imageUrl     String? @map("image_url")
+  explanation  String?
+
+  quizSet QuizSet @relation(fields: [quizSetId], references: [id], onDelete: Cascade)
+
+  @@map("quiz_questions")
+}
+
+model WordCloudSession {
+  id              Int     @id @default(autoincrement())
+  courseId        Int     @map("course_id")
+  title           String
+  status          String  @default("active")
+  allowDuplicate  Int     @default(0) @map("allow_duplicate")
+  maxWordsPerUser Int     @default(3) @map("max_words_per_user")
+  wordsData       String  @default("[]") @map("words_data")
+  createdAt       String  @map("created_at")
+  updatedAt       String  @map("updated_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("wordcloud_sessions")
 }

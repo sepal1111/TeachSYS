@@ -199,6 +199,56 @@
       <div id="proj-livewall-title" style="font-size: 1.6rem; font-weight: 900; text-align: center; margin-bottom: 14px; color: #ffffff;">🎨 即時互動牆</div>
       <div id="proj-livewall-grid" class="proj-livewall-grid"></div>
     </div>
+
+    <!-- 4. 文字雲大螢幕看板 -->
+    <div id="proj-wordcloud-view-container" style="display: none; flex: 1; flex-direction: column; overflow: hidden; padding: 10px 22px;">
+      <div id="proj-wordcloud-title" style="font-size: 1.8rem; font-weight: 900; text-align: center; margin-bottom: 12px; color: #93c5fd;">☁️ 課堂即時文字雲</div>
+      <div id="proj-wordcloud-stage" style="flex: 1; position: relative; overflow: hidden; background: radial-gradient(circle at center, #1e293b 0%, #0f172a 100%); border-radius: var(--radius-xl); border: 2px solid rgba(255,255,255,0.15); box-shadow: inset 0 0 50px rgba(0,0,0,0.6);"></div>
+    </div>
+
+    <!-- 5. 答題競賽 (Kahoot) 大螢幕看板 -->
+    <div id="proj-kahoot-view-container" style="display: none; flex: 1; flex-direction: column; overflow: hidden; padding: 10px 22px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+        <span id="proj-kahoot-q-badge" class="badge" style="background: #3b82f6; font-size: 1.1rem; font-weight: 900; padding: 6px 18px; border-radius: 9999px;">第 1 題</span>
+        <div style="display: flex; align-items: center; gap: 10px; font-size: 1.6rem; font-weight: 900; color: #fde047;">
+          <span>⏱️</span>
+          <span id="proj-kahoot-timer">20</span>
+          <span>秒</span>
+        </div>
+        <span id="proj-kahoot-answered-badge" style="font-size: 1.1rem; font-weight: 800; background: rgba(0,0,0,0.4); padding: 6px 18px; border-radius: 9999px; color: #93c5fd;">已答題：0 人</span>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.06); border: 1.5px solid rgba(255,255,255,0.15); border-radius: var(--radius-xl); padding: 22px; text-align: center; margin-bottom: 16px;">
+        <div id="proj-kahoot-prompt" style="font-size: 2rem; font-weight: 900; color: #fff; line-height: 1.4;">題目載入中...</div>
+      </div>
+
+      <div id="proj-kahoot-options-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; flex: 1; margin-bottom: 14px;">
+        <div class="kahoot-opt-card" id="proj-kahoot-opt-0" style="background: #2563eb; color: #fff; padding: 22px; border-radius: 16px; display: flex; align-items: center; gap: 16px; font-size: 1.6rem; font-weight: 800;">
+          <span style="background: rgba(0,0,0,0.25); width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">▲ A</span>
+          <span id="proj-kahoot-text-0" style="flex: 1;">選項 A</span>
+          <div id="proj-kahoot-stat-0" style="display: none; font-size: 1.4rem; font-weight: 900; background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 8px;">0 票</div>
+        </div>
+        <div class="kahoot-opt-card" id="proj-kahoot-opt-1" style="background: #dc2626; color: #fff; padding: 22px; border-radius: 16px; display: flex; align-items: center; gap: 16px; font-size: 1.6rem; font-weight: 800;">
+          <span style="background: rgba(0,0,0,0.25); width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">◆ B</span>
+          <span id="proj-kahoot-text-1" style="flex: 1;">選項 B</span>
+          <div id="proj-kahoot-stat-1" style="display: none; font-size: 1.4rem; font-weight: 900; background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 8px;">0 票</div>
+        </div>
+        <div class="kahoot-opt-card" id="proj-kahoot-opt-2" style="background: #16a34a; color: #fff; padding: 22px; border-radius: 16px; display: flex; align-items: center; gap: 16px; font-size: 1.6rem; font-weight: 800;">
+          <span style="background: rgba(0,0,0,0.25); width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">● C</span>
+          <span id="proj-kahoot-text-2" style="flex: 1;">選項 C</span>
+          <div id="proj-kahoot-stat-2" style="display: none; font-size: 1.4rem; font-weight: 900; background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 8px;">0 票</div>
+        </div>
+        <div class="kahoot-opt-card" id="proj-kahoot-opt-3" style="background: #9333ea; color: #fff; padding: 22px; border-radius: 16px; display: flex; align-items: center; gap: 16px; font-size: 1.6rem; font-weight: 800;">
+          <span style="background: rgba(0,0,0,0.25); width: 48px; height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">■ D</span>
+          <span id="proj-kahoot-text-3" style="flex: 1;">選項 D</span>
+          <div id="proj-kahoot-stat-3" style="display: none; font-size: 1.4rem; font-weight: 900; background: rgba(0,0,0,0.3); padding: 6px 14px; border-radius: 8px;">0 票</div>
+        </div>
+      </div>
+
+      <div id="proj-kahoot-explanation-box" style="display: none; background: rgba(30, 58, 138, 0.5); border: 2px solid rgba(96, 165, 250, 0.5); border-radius: 10px; padding: 14px 20px; font-size: 1.2rem; color: #e0f2fe;">
+        <b>💡 題目解析：</b><span id="proj-kahoot-explanation-text"></span>
+      </div>
+    </div>
   </main>
 
   <!-- Toolkit Remote-Control Receiver: draw reveal / bulletin, triggered from a phone -->

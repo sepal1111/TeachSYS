@@ -631,6 +631,59 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_file_collection_items_stu ON file_collection_items(student_id);"
   );
 
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS quiz_sets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NULL,
+      category TEXT DEFAULT '課堂測驗',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_quiz_sets_course ON quiz_sets(course_id);"
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS quiz_questions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      quiz_set_id INTEGER NOT NULL,
+      order_index INTEGER DEFAULT 0,
+      prompt TEXT NOT NULL,
+      question_type TEXT DEFAULT 'single',
+      options TEXT NOT NULL,
+      time_limit_sec INTEGER DEFAULT 20,
+      points INTEGER DEFAULT 1000,
+      image_url TEXT NULL,
+      explanation TEXT NULL,
+      FOREIGN KEY(quiz_set_id) REFERENCES quiz_sets(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_quiz_questions_set ON quiz_questions(quiz_set_id, order_index);"
+  );
+
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS wordcloud_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      title TEXT NOT NULL,
+      status TEXT DEFAULT 'active',
+      allow_duplicate INTEGER DEFAULT 0,
+      max_words_per_user INTEGER DEFAULT 3,
+      words_data TEXT DEFAULT '[]',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_wordcloud_sessions_course ON wordcloud_sessions(course_id);"
+  );
+
   // Column migrations for DBs created by older schema versions (safe no-op if already present).
   await tryAlter("ALTER TABLE group_members ADD COLUMN is_leader INTEGER DEFAULT 0;");
   await tryAlter("ALTER TABLE groups ADD COLUMN icon_url TEXT NULL;");

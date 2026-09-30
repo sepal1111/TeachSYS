@@ -5138,3 +5138,65 @@ body.mobile-scoring-only #quick-group-bar .btn {
   }
 }
 
+/* ==========================================================================
+   Word Cloud (文字雲) Styles
+   ========================================================================== */
+.wordcloud-item {
+  animation: wordCloudPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  cursor: default;
+  transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.wordcloud-item:hover {
+  transform: scale(1.18);
+  filter: drop-shadow(0 0 12px currentColor);
+  z-index: 10;
+}
+
+@keyframes wordCloudPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.4) rotate(-8deg);
+  }
+  70% {
+    opacity: 1;
+    transform: scale(1.08) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+/* ==========================================================================
+   Kahoot Game Quiz (答題競賽) Styles
+   ========================================================================== */
+.kahoot-opt-card {
+  user-select: none;
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.3s ease;
+}
+
+.kahoot-opt-card:hover {
+  transform: translateY(-3px) scale(1.01);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.kahoot-opt-card:active {
+  transform: scale(0.98);
+}
+
+.kahoot-manage-set-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+@media (max-width: 768px) {
+  #wordcloud-main-layout {
+    grid-template-columns: 1fr !important;
+  }
+  #kahoot-options-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+

@@ -2873,7 +2873,1239 @@
   };
 
   // =========================================================================
-  // 6. Master Teaching Toolkit Manager
+  // 6. WordCloud (課堂即時文字雲 - 螺旋防重疊算法、詞頻統計與多色彩主題)
+  // =========================================================================
+  const WordCloud = {
+    currentCourseId: null,
+    currentSession: null,
+    words: new Map(),
+    totalWordsCount: 0,
+    wordsList: [],
+    spiralWords: [],
+    colors: [
+      '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb7185',
+      '#34d399', '#fbbf24', '#f97316', '#a78bfa', '#22d3ee',
+      '#4ade80', '#e879f9'
+    ],
+
+    getCourseId() {
+      if (window.AppState && window.AppState.currentCourseId) {
+        return Number(window.AppState.currentCourseId);
+      }
+      return this.currentCourseId;
+    },
+
+    init() {
+      const btnStart = document.getElementById('btn-wordcloud-start');
+      const btnStop = document.getElementById('btn-wordcloud-stop');
+      const btnClear = document.getElementById('btn-wordcloud-clear');
+      const btnExport = document.getElementById('btn-wordcloud-export');
+      const btnFullscreen = document.getElementById('btn-wordcloud-fullscreen');
+      const btnHistory = document.getElementById('btn-wordcloud-history');
+      const btnCloseHistory = document.getElementById('btn-close-wordcloud-history');
+
+      if (btnStart) btnStart.addEventListener('click', () => this.startSession());
+      if (btnStop) btnStop.addEventListener('click', () => this.stopSession());
+      if (btnClear) btnClear.addEventListener('click', () => this.clearWords());
+      if (btnExport) btnExport.addEventListener('click', () => this.exportImage());
+      if (btnFullscreen) btnFullscreen.addEventListener('click', () => this.toggleFullscreen());
+      if (btnHistory) btnHistory.addEventListener('click', () => this.openHistory());
+      if (btnCloseHistory) btnCloseHistory.addEventListener('click', () => {
+        document.getElementById('modal-wordcloud-history')?.classList.remove('open');
+      });
+
+      window.addEventListener('resize', () => {
+        if (this.words.size > 0) this.renderCloud();
+      });
+    },
+
+    async loadCourse(courseId) {
+      this.currentCourseId = Number(courseId);
+      if (!this.currentCourseId) return;
+
+      try {
+        const res = await fetch(`/api/wordclouds/${this.currentCourseId}`);
+        if (!res.ok) return;
+        const sessions = await res.json();
+        const active = sessions.find(s => s.status === 'active');
+        if (active) {
+          this.setSession(active);
+        } else {
+          this.resetUI();
+        }
+      } catch (err) {
+        console.error('[WordCloud] loadCourse error:', err);
+      }
+    },
+
+    setSession(session) {
+      this.currentSession = session;
+      const titleInput = document.getElementById('wordcloud-title-input');
+      const badge = document.getElementById('wordcloud-status-badge');
+      const btnStart = document.getElementById('btn-wordcloud-start');
+      const btnStop = document.getElementById('btn-wordcloud-stop');
+      const btnClear = document.getElementById('btn-wordcloud-clear');
+
+      if (titleInput) titleInput.value = session.title || '';
+      if (badge) {
+        badge.textContent = session.status === 'active' ? '🟢 收集進行中' : '⚪ 已停止收集';
+        badge.style.background = session.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(148, 163, 184, 0.2)';
+        badge.style.color = session.status === 'active' ? '#34d399' : '#cbd5e1';
+      }
+
+      if (btnStart) btnStart.style.display = session.status === 'active' ? 'none' : 'inline-flex';
+      if (btnStop) btnStop.style.display = session.status === 'active' ? 'inline-flex' : 'none';
+      if (btnClear) btnClear.style.display = 'inline-flex';
+
+      this.words.clear();
+      this.wordsList = Array.isArray(session.words) ? session.words : [];
+      this.totalWordsCount = this.wordsList.length;
+
+      this.wordsList.forEach(w => {
+        const text = w.word;
+        this.words.set(text, (this.words.get(text) || 0) + 1);
+      });
+
+      this.renderCloud();
+      this.renderRanking();
+    },
+
+    resetUI() {
+      this.currentSession = null;
+      this.words.clear();
+      this.wordsList = [];
+      this.totalWordsCount = 0;
+
+      const badge = document.getElementById('wordcloud-status-badge');
+      const btnStart = document.getElementById('btn-wordcloud-start');
+      const btnStop = document.getElementById('btn-wordcloud-stop');
+      const btnClear = document.getElementById('btn-wordcloud-clear');
+
+      if (badge) {
+        badge.textContent = '未開始';
+        badge.style.background = 'rgba(148, 163, 184, 0.2)';
+        badge.style.color = '#cbd5e1';
+      }
+      if (btnStart) btnStart.style.display = 'inline-flex';
+      if (btnStop) btnStop.style.display = 'none';
+      if (btnClear) btnClear.style.display = 'none';
+
+      const stage = document.getElementById('wordcloud-stage');
+      const emptyHint = document.getElementById('wordcloud-empty-hint');
+      const rankingList = document.getElementById('wordcloud-ranking-list');
+      const statsCount = document.getElementById('wordcloud-stats-count');
+
+      if (stage) stage.innerHTML = '';
+      if (emptyHint) emptyHint.style.display = 'block';
+      if (rankingList) rankingList.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 20px 0;">暫無數據</div>';
+      if (statsCount) statsCount.textContent = '共 0 詞';
+    },
+
+    async startSession() {
+      const courseId = this.getCourseId();
+      if (!courseId) {
+        alert('請先選擇或載入班級！');
+        return;
+      }
+      const titleInput = document.getElementById('wordcloud-title-input');
+      const title = (titleInput?.value || '').trim();
+      if (!title) {
+        alert('請先輸入提示主題！');
+        titleInput?.focus();
+        return;
+      }
+
+      const allowDuplicate = document.getElementById('wordcloud-allow-duplicate')?.checked ? 1 : 0;
+      const maxWords = Number(document.getElementById('wordcloud-max-words')?.value) || 3;
+
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            allow_duplicate: allowDuplicate,
+            max_words_per_user: maxWords
+          })
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || '啟動文字雲失敗');
+        }
+        const session = await res.json();
+        this.setSession(session);
+
+        if (window.activeSocket) {
+          window.activeSocket.emit('wordcloud:start', {
+            sessionId: session.id,
+            title: session.title,
+            allowDuplicate: session.allow_duplicate,
+            maxWordsPerUser: session.max_words_per_user
+          });
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+
+    async stopSession() {
+      if (!this.currentSession) return;
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}/${this.currentSession.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'closed' })
+        });
+        if (res.ok) {
+          this.currentSession.status = 'closed';
+          const badge = document.getElementById('wordcloud-status-badge');
+          const btnStart = document.getElementById('btn-wordcloud-start');
+          const btnStop = document.getElementById('btn-wordcloud-stop');
+          if (badge) {
+            badge.textContent = '⚪ 已停止收集';
+            badge.style.background = 'rgba(148, 163, 184, 0.2)';
+            badge.style.color = '#cbd5e1';
+          }
+          if (btnStart) btnStart.style.display = 'inline-flex';
+          if (btnStop) btnStop.style.display = 'none';
+
+          if (window.activeSocket) {
+            window.activeSocket.emit('wordcloud:end', { sessionId: this.currentSession.id });
+          }
+        }
+      } catch (err) {
+        console.error('[WordCloud] stop error:', err);
+      }
+    },
+
+    async clearWords() {
+      if (!this.currentSession) return;
+      if (!confirm('確定要清空當前文字雲的所有詞彙嗎？此動作無法復原。')) return;
+
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}/${this.currentSession.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ clear_words: true })
+        });
+        if (res.ok) {
+          this.words.clear();
+          this.wordsList = [];
+          this.totalWordsCount = 0;
+          this.renderCloud();
+          this.renderRanking();
+        }
+      } catch (err) {
+        alert('清空失敗：' + err.message);
+      }
+    },
+
+    onNewWord(payload) {
+      if (!this.currentSession || this.currentSession.id !== payload.sessionId) {
+        return;
+      }
+      const word = payload.word;
+      this.words.set(word, (this.words.get(word) || 0) + 1);
+      this.totalWordsCount++;
+
+      AudioEngine?.playChime?.();
+
+      this.renderCloud();
+      this.renderRanking();
+    },
+
+    renderCloud() {
+      const stage = document.getElementById('wordcloud-stage');
+      const emptyHint = document.getElementById('wordcloud-empty-hint');
+      const container = document.getElementById('wordcloud-canvas-container');
+      if (!stage || !container) return;
+
+      if (this.words.size === 0) {
+        stage.innerHTML = '';
+        if (emptyHint) emptyHint.style.display = 'block';
+        return;
+      }
+      if (emptyHint) emptyHint.style.display = 'none';
+
+      const width = container.clientWidth || 650;
+      const height = container.clientHeight || 480;
+
+      const entries = Array.from(this.words.entries()).sort((a, b) => b[1] - a[1]);
+      const maxCount = entries[0]?.[1] || 1;
+
+      const placedRects = [];
+      const placedWords = [];
+
+      entries.forEach(([word, count], idx) => {
+        const rel = count / maxCount;
+        const fontSize = Math.round(18 + rel * 46);
+        const color = this.colors[Math.abs(word.charCodeAt(0) * 13 + (word.charCodeAt(1) || 7)) % this.colors.length];
+
+        const estWidth = word.length * (fontSize * 0.95) + 16;
+        const estHeight = fontSize * 1.3;
+
+        let found = false;
+        let x = 0, y = 0;
+
+        if (idx === 0) {
+          x = (width - estWidth) / 2;
+          y = (height - estHeight) / 2;
+          found = true;
+        } else {
+          let radius = Math.min(estWidth, estHeight) * 0.4 + 20;
+          const maxRadius = Math.max(width, height);
+          const angleOffset = (word.charCodeAt(0) * 23) % 360;
+
+          while (!found && radius < maxRadius) {
+            for (let a = 0; a < 360; a += 20) {
+              const rad = ((angleOffset + a) * Math.PI) / 180;
+              x = width / 2 + radius * Math.cos(rad) - estWidth / 2;
+              y = height / 2 + radius * Math.sin(rad) - estHeight / 2;
+
+              const pad = 6;
+              const rect = {
+                left: x - pad,
+                top: y - pad,
+                right: x + estWidth + pad,
+                bottom: y + estHeight + pad,
+              };
+
+              if (rect.left > 10 && rect.top > 10 && rect.right < width - 10 && rect.bottom < height - 10) {
+                const overlaps = placedRects.some(p => !(
+                  rect.right < p.left ||
+                  rect.left > p.right ||
+                  rect.bottom < p.top ||
+                  rect.top > p.bottom
+                ));
+                if (!overlaps) {
+                  found = true;
+                  break;
+                }
+              }
+            }
+            radius += 10;
+          }
+        }
+
+        if (found) {
+          placedRects.push({
+            left: x,
+            top: y,
+            right: x + estWidth,
+            bottom: y + estHeight,
+          });
+          placedWords.push({ word, count, x, y, fontSize, color, isTop: idx === 0 });
+        }
+      });
+
+      this.spiralWords = placedWords;
+
+      stage.innerHTML = placedWords.map(w => `
+        <div class="wordcloud-item" style="
+          position: absolute;
+          left: ${Math.round(w.x)}px;
+          top: ${Math.round(w.y)}px;
+          font-size: ${w.fontSize}px;
+          color: ${w.color};
+          font-weight: 800;
+          line-height: 1.2;
+          text-shadow: 0 2px 10px rgba(0,0,0,0.6)${w.isTop ? ', 0 0 20px ' + w.color : ''};
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          user-select: none;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        ">
+          <span>${w.word}</span>
+          ${w.count > 1 ? `<span style="font-size: ${Math.max(12, Math.round(w.fontSize * 0.45))}px; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 9999px; vertical-align: middle;">${w.count}</span>` : ''}
+        </div>
+      `).join('');
+    },
+
+    renderRanking() {
+      const listEl = document.getElementById('wordcloud-ranking-list');
+      const countEl = document.getElementById('wordcloud-stats-count');
+      if (!listEl) return;
+
+      const entries = Array.from(this.words.entries()).sort((a, b) => b[1] - a[1]);
+      if (countEl) countEl.textContent = `共 ${entries.length} 詞（${this.totalWordsCount} 次提交）`;
+
+      if (entries.length === 0) {
+        listEl.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 20px 0;">暫無數據</div>';
+        return;
+      }
+
+      listEl.innerHTML = entries.map(([word, count], i) => `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); border: 1px solid var(--card-border);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-weight: 800; font-size: 0.85rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : 'rgba(255,255,255,0.1)'}; color: #fff;">
+              ${i + 1}
+            </span>
+            <span style="font-weight: 700; font-size: 0.95rem; color: #f1f5f9;">${word}</span>
+          </div>
+          <span style="font-size: 0.85rem; font-weight: 800; color: #60a5fa; background: rgba(96, 165, 250, 0.15); padding: 2px 8px; border-radius: 9999px;">
+            ${count} 次
+          </span>
+        </div>
+      `).join('');
+    },
+
+    exportImage() {
+      const container = document.getElementById('wordcloud-canvas-container');
+      if (!container || this.spiralWords.length === 0) {
+        alert('目前無文字雲內容可匯出');
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const width = container.clientWidth || 800;
+      const height = container.clientHeight || 600;
+      canvas.width = width * 2;
+      canvas.height = height * 2;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      ctx.scale(2, 2);
+
+      const bgGrad = ctx.createRadialGradient(width / 2, height / 2, 20, width / 2, height / 2, width / 2);
+      bgGrad.addColorStop(0, '#1e293b');
+      bgGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(this.currentSession?.title || '課堂文字雲', 20, 32);
+
+      this.spiralWords.forEach(w => {
+        ctx.fillStyle = w.color;
+        ctx.font = `800 ${w.fontSize}px "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif`;
+        ctx.fillText(w.word, w.x, w.y + w.fontSize);
+      });
+
+      const link = document.createElement('a');
+      link.download = `文字雲_${this.currentSession?.title || '紀錄'}_${Date.now()}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    },
+
+    toggleFullscreen() {
+      const elem = document.getElementById('wordcloud-canvas-container');
+      if (!elem) return;
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    },
+
+    async openHistory() {
+      const courseId = this.getCourseId();
+      if (!courseId) return;
+
+      const modal = document.getElementById('modal-wordcloud-history');
+      const listEl = document.getElementById('wordcloud-history-list');
+      if (!modal || !listEl) return;
+
+      modal.classList.add('open');
+      listEl.innerHTML = '<div style="text-align: center; color: #94a3b8; padding: 20px 0;">載入中...</div>';
+
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}`);
+        const sessions = await res.json();
+        if (sessions.length === 0) {
+          listEl.innerHTML = '<div style="text-align: center; color: #64748b; padding: 30px 0;">尚無歷史文字雲紀錄</div>';
+          return;
+        }
+
+        listEl.innerHTML = sessions.map(s => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <div>
+              <div style="font-weight: 800; font-size: 1rem; color: #f1f5f9;">${s.title}</div>
+              <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 4px;">
+                狀態：${s.status === 'active' ? '🟢 進行中' : '⚪ 已關閉'} ｜ 總收集：${(s.words || []).length} 個詞 ｜ 時間：${s.created_at || ''}
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" class="btn btn-sm btn-primary" onclick="TeachingToolkit.wordCloud.loadSpecificSession(${s.id})">載入查看</button>
+              <button type="button" class="btn btn-sm btn-secondary" style="color: #f87171;" onclick="TeachingToolkit.wordCloud.deleteSession(${s.id})">刪除</button>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        listEl.innerHTML = `<div style="color: #f87171; padding: 20px 0;">載入失敗：${err.message}</div>`;
+      }
+    },
+
+    async loadSpecificSession(sessionId) {
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}/${sessionId}`);
+        if (res.ok) {
+          const s = await res.json();
+          this.setSession(s);
+          document.getElementById('modal-wordcloud-history')?.classList.remove('open');
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+
+    async deleteSession(sessionId) {
+      if (!confirm('確定要刪除此歷史文字雲嗎？')) return;
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/wordclouds/${courseId}/${sessionId}`, { method: 'DELETE' });
+        if (res.ok) {
+          if (this.currentSession?.id === sessionId) {
+            this.resetUI();
+          }
+          this.openHistory();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  // =========================================================================
+  // 7. KahootGame (課堂答題競賽 - 個人與小組模式、實時競速計分與頒獎台)
+  // =========================================================================
+  const KahootGame = {
+    currentCourseId: null,
+    sets: [],
+    selectedSet: null,
+    questions: [],
+    mode: 'individual',
+    currentQIndex: 0,
+    currentQuestion: null,
+    phase: 'lobby',
+    timeLeft: 20,
+    timerHandle: null,
+    answers: new Map(),
+    scores: new Map(),
+    groupScores: new Map(),
+
+    getCourseId() {
+      if (window.AppState && window.AppState.currentCourseId) {
+        return Number(window.AppState.currentCourseId);
+      }
+      return this.currentCourseId;
+    },
+
+    init() {
+      document.getElementById('btn-kahoot-manage-sets')?.addEventListener('click', () => this.openManageModal());
+      document.getElementById('btn-close-kahoot-manage')?.addEventListener('click', () => {
+        document.getElementById('modal-kahoot-manage-sets')?.classList.remove('open');
+      });
+      document.getElementById('btn-close-kahoot-q-edit')?.addEventListener('click', () => {
+        document.getElementById('modal-kahoot-edit-question')?.classList.remove('open');
+      });
+
+      document.getElementById('kahoot-set-select')?.addEventListener('change', (e) => {
+        const setId = Number(e.target.value);
+        this.selectSet(setId);
+      });
+
+      document.querySelectorAll('input[name="kahoot-mode"]').forEach(r => {
+        r.addEventListener('change', (e) => {
+          this.mode = e.target.value;
+        });
+      });
+
+      document.getElementById('btn-kahoot-start-game')?.addEventListener('click', () => this.startGame());
+      document.getElementById('btn-kahoot-reveal-answer')?.addEventListener('click', () => this.revealAnswer());
+      document.getElementById('btn-kahoot-next-question')?.addEventListener('click', () => this.nextQuestion());
+      document.getElementById('btn-kahoot-end-game')?.addEventListener('click', () => this.endGame());
+      document.getElementById('btn-kahoot-award-points')?.addEventListener('click', () => this.awardPointsToBoard());
+      document.getElementById('btn-kahoot-restart-lobby')?.addEventListener('click', () => this.returnToLobby());
+      document.getElementById('btn-kahoot-fullscreen')?.addEventListener('click', () => {
+        const elem = document.getElementById('kahoot-stage-container');
+        if (!elem) return;
+        if (!document.fullscreenElement) elem.requestFullscreen().catch(() => {});
+        else document.exitFullscreen().catch(() => {});
+      });
+
+      document.getElementById('btn-kahoot-create-set')?.addEventListener('click', () => this.promptCreateSet());
+      document.getElementById('btn-kahoot-add-question')?.addEventListener('click', () => this.openEditQuestionModal());
+      document.getElementById('btn-kahoot-delete-set')?.addEventListener('click', () => this.deleteCurrentSet());
+      document.getElementById('form-kahoot-question')?.addEventListener('submit', (e) => this.handleSaveQuestion(e));
+    },
+
+    async loadCourse(courseId) {
+      this.currentCourseId = Number(courseId);
+      if (!this.currentCourseId) return;
+
+      try {
+        const res = await fetch(`/api/quiz-sets/${this.currentCourseId}`);
+        if (!res.ok) return;
+        this.sets = await res.json();
+        this.renderSetDropdown();
+      } catch (err) {
+        console.error('[KahootGame] loadCourse error:', err);
+      }
+    },
+
+    renderSetDropdown() {
+      const select = document.getElementById('kahoot-set-select');
+      if (!select) return;
+      if (this.sets.length === 0) {
+        select.innerHTML = '<option value="">(尚未建立題庫)</option>';
+        this.selectedSet = null;
+        this.questions = [];
+        return;
+      }
+
+      select.innerHTML = this.sets.map(s => `
+        <option value="${s.id}">${s.title} (${s.question_count} 題)</option>
+      `).join('');
+
+      const firstId = this.sets[0].id;
+      select.value = firstId;
+      this.selectSet(firstId);
+    },
+
+    async selectSet(setId) {
+      const idNum = Number(setId);
+      this.selectedSet = this.sets.find(s => s.id === idNum) || null;
+      if (!this.selectedSet) return;
+
+      try {
+        const res = await fetch(`/api/quiz-sets/${this.currentCourseId}/${setId}/questions`);
+        if (res.ok) {
+          this.questions = await res.json();
+          const lobbyTitle = document.getElementById('kahoot-lobby-title');
+          const lobbyDesc = document.getElementById('kahoot-lobby-desc');
+          if (lobbyTitle) lobbyTitle.textContent = `準備開始：${this.selectedSet.title}`;
+          if (lobbyDesc) lobbyDesc.textContent = `共 ${this.questions.length} 道題目。請選擇個人或小組競賽模式，點擊下方按鈕啟動！`;
+        }
+      } catch (err) {
+        console.error('[KahootGame] selectSet error:', err);
+      }
+    },
+
+    startGame() {
+      if (!this.selectedSet || this.questions.length === 0) {
+        alert('請先選擇包含題目的題庫，或至題庫管理中新增題目！');
+        return;
+      }
+
+      this.currentQIndex = 0;
+      this.scores.clear();
+      this.groupScores.clear();
+      this.startQuestion(0);
+    },
+
+    startQuestion(index) {
+      if (index >= this.questions.length) {
+        this.showPodium();
+        return;
+      }
+
+      this.currentQIndex = index;
+      this.currentQuestion = this.questions[index];
+      this.phase = 'running';
+      this.answers.clear();
+      this.timeLeft = this.currentQuestion.time_limit_sec || 20;
+
+      document.getElementById('kahoot-lobby-view').style.display = 'none';
+      document.getElementById('kahoot-podium-view').style.display = 'none';
+      const runningView = document.getElementById('kahoot-running-view');
+      runningView.style.display = 'flex';
+
+      document.getElementById('kahoot-q-badge').textContent = `第 ${index + 1} / ${this.questions.length} 題`;
+      document.getElementById('kahoot-mode-badge').textContent = this.mode === 'group' ? '🚩 小組競賽模式' : '🧑 個人競賽模式';
+      document.getElementById('kahoot-question-text').textContent = this.currentQuestion.prompt;
+      document.getElementById('kahoot-timer-text').textContent = this.timeLeft;
+      document.getElementById('kahoot-answered-count').textContent = '0';
+
+      const totalStudentsCount = window.AppState?.students?.length || 0;
+      document.getElementById('kahoot-total-students').textContent = `/ ${totalStudentsCount}`;
+
+      const imgWrap = document.getElementById('kahoot-question-img-wrap');
+      const imgEl = document.getElementById('kahoot-question-img');
+      if (this.currentQuestion.image_url) {
+        imgEl.src = this.currentQuestion.image_url;
+        imgWrap.style.display = 'block';
+      } else {
+        imgWrap.style.display = 'none';
+      }
+
+      const options = this.currentQuestion.options || [];
+      for (let i = 0; i < 4; i++) {
+        const card = document.getElementById(`kahoot-opt-card-${i}`);
+        const textEl = document.getElementById(`kahoot-opt-text-${i}`);
+        const statEl = document.getElementById(`kahoot-opt-stat-${i}`);
+        if (!card) continue;
+
+        if (i < options.length) {
+          card.style.display = 'flex';
+          card.style.opacity = '1';
+          card.style.border = 'none';
+          card.style.boxShadow = 'none';
+          textEl.textContent = options[i].text || `選項 ${['A','B','C','D'][i]}`;
+          statEl.style.display = 'none';
+          statEl.textContent = '0 票';
+        } else {
+          card.style.display = 'none';
+        }
+      }
+
+      document.getElementById('kahoot-explanation-box').style.display = 'none';
+      document.getElementById('btn-kahoot-reveal-answer').style.display = 'inline-flex';
+      document.getElementById('btn-kahoot-next-question').style.display = 'none';
+
+      if (window.activeSocket) {
+        window.activeSocket.emit('kahoot:start_question', {
+          quizSetId: this.selectedSet.id,
+          questionId: this.currentQuestion.id,
+          questionIndex: index + 1,
+          totalQuestions: this.questions.length,
+          mode: this.mode
+        });
+      }
+
+      if (this.timerHandle) clearInterval(this.timerHandle);
+      this.timerHandle = setInterval(() => {
+        this.timeLeft--;
+        const timerText = document.getElementById('kahoot-timer-text');
+        if (timerText) timerText.textContent = Math.max(0, this.timeLeft);
+
+        if (this.timeLeft <= 5 && this.timeLeft > 0) {
+          AudioEngine?.playTick?.(false);
+        }
+
+        if (this.timeLeft <= 0) {
+          clearInterval(this.timerHandle);
+          this.timerHandle = null;
+          this.revealAnswer();
+        }
+      }, 1000);
+    },
+
+    onStudentAnswered(payload) {
+      if (this.phase !== 'running') return;
+      this.answers.set(payload.studentId, payload);
+      const countEl = document.getElementById('kahoot-answered-count');
+      if (countEl) countEl.textContent = this.answers.size;
+
+      AudioEngine?.playTick?.(true);
+
+      const totalStudents = window.AppState?.students?.length || 0;
+      if (totalStudents > 0 && this.answers.size >= totalStudents) {
+        clearInterval(this.timerHandle);
+        this.timerHandle = null;
+        this.revealAnswer();
+      }
+    },
+
+    revealAnswer() {
+      if (this.phase === 'revealed') return;
+      this.phase = 'revealed';
+      if (this.timerHandle) {
+        clearInterval(this.timerHandle);
+        this.timerHandle = null;
+      }
+
+      const options = this.currentQuestion.options || [];
+      const correctIdx = options.findIndex(o => o.isCorrect === true);
+
+      if (window.activeSocket) {
+        window.activeSocket.emit('kahoot:reveal_answer', {
+          questionId: this.currentQuestion.id
+        });
+      }
+
+      const counts = [0, 0, 0, 0];
+      this.answers.forEach(ans => {
+        if (ans.optionIndex >= 0 && ans.optionIndex < 4) {
+          counts[ans.optionIndex]++;
+        }
+
+        const isCorrect = ans.optionIndex === correctIdx;
+        if (isCorrect) {
+          const ratio = Math.max(0, Math.min(1, (ans.timeMsRemaining || 0) / (this.currentQuestion.time_limit_sec * 1000)));
+          const pts = Math.round((this.currentQuestion.points || 1000) * (0.5 + 0.5 * ratio));
+
+          const currentStu = this.scores.get(ans.studentId) || {
+            studentId: ans.studentId,
+            studentName: ans.studentName,
+            studentNumber: ans.studentNumber,
+            groupId: ans.groupId,
+            groupName: ans.groupName,
+            totalScore: 0,
+            correctCount: 0
+          };
+          currentStu.totalScore += pts;
+          currentStu.correctCount++;
+          this.scores.set(ans.studentId, currentStu);
+
+          if (ans.groupId) {
+            const currentGrp = this.groupScores.get(ans.groupId) || {
+              groupId: ans.groupId,
+              groupName: ans.groupName || `第 ${ans.groupId} 組`,
+              totalScore: 0,
+              memberCount: 0
+            };
+            currentGrp.totalScore += pts;
+            this.groupScores.set(ans.groupId, currentGrp);
+          }
+        }
+      });
+
+      for (let i = 0; i < 4; i++) {
+        const card = document.getElementById(`kahoot-opt-card-${i}`);
+        const statEl = document.getElementById(`kahoot-opt-stat-${i}`);
+        if (!card) continue;
+
+        if (statEl) {
+          statEl.textContent = `${counts[i]} 人選`;
+          statEl.style.display = 'inline-block';
+        }
+
+        if (i === correctIdx) {
+          card.style.opacity = '1';
+          card.style.border = '4px solid #facc15';
+          card.style.boxShadow = '0 0 25px rgba(250, 204, 21, 0.6)';
+        } else {
+          card.style.opacity = '0.35';
+        }
+      }
+
+      AudioEngine?.playVictory?.();
+
+      const explanation = this.currentQuestion.explanation;
+      const expBox = document.getElementById('kahoot-explanation-box');
+      const expText = document.getElementById('kahoot-explanation-text');
+      if (expBox && expText) {
+        if (explanation) {
+          expText.textContent = explanation;
+          expBox.style.display = 'block';
+        } else {
+          expBox.style.display = 'none';
+        }
+      }
+
+      document.getElementById('btn-kahoot-reveal-answer').style.display = 'none';
+      const nextBtn = document.getElementById('btn-kahoot-next-question');
+      if (nextBtn) {
+        nextBtn.style.display = 'inline-flex';
+        nextBtn.textContent = (this.currentQIndex + 1 < this.questions.length) ? '➡️ 下一題' : '🏆 查看頒獎台';
+      }
+    },
+
+    nextQuestion() {
+      if (this.currentQIndex + 1 < this.questions.length) {
+        this.startQuestion(this.currentQIndex + 1);
+      } else {
+        this.showPodium();
+      }
+    },
+
+    showPodium() {
+      this.phase = 'podium';
+      document.getElementById('kahoot-running-view').style.display = 'none';
+      const podiumView = document.getElementById('kahoot-podium-view');
+      podiumView.style.display = 'flex';
+
+      AudioEngine?.playApplause?.();
+
+      let leaderboard = [];
+      if (this.mode === 'group') {
+        leaderboard = Array.from(this.groupScores.values())
+          .sort((a, b) => b.totalScore - a.totalScore)
+          .map(g => ({
+            id: g.groupId,
+            name: g.groupName,
+            score: g.totalScore,
+            isGroup: true
+          }));
+      } else {
+        leaderboard = Array.from(this.scores.values())
+          .sort((a, b) => b.totalScore - a.totalScore)
+          .map(s => ({
+            id: s.studentId,
+            name: `${s.studentNumber ? s.studentNumber + '號 ' : ''}${s.studentName}`,
+            score: s.totalScore,
+            groupId: s.groupId,
+            isGroup: false
+          }));
+      }
+
+      const p1 = leaderboard[0];
+      const p2 = leaderboard[1];
+      const p3 = leaderboard[2];
+
+      document.getElementById('podium-name-1').textContent = p1 ? p1.name : '（從缺）';
+      document.getElementById('podium-score-1').textContent = p1 ? `${p1.score} 分` : '0 分';
+
+      document.getElementById('podium-name-2').textContent = p2 ? p2.name : '（從缺）';
+      document.getElementById('podium-score-2').textContent = p2 ? `${p2.score} 分` : '0 分';
+
+      document.getElementById('podium-name-3').textContent = p3 ? p3.name : '（從缺）';
+      document.getElementById('podium-score-3').textContent = p3 ? `${p3.score} 分` : '0 分';
+
+      const moreList = document.getElementById('podium-more-list');
+      if (moreList) {
+        const others = leaderboard.slice(3, 10);
+        if (others.length === 0) {
+          moreList.innerHTML = '';
+        } else {
+          moreList.innerHTML = others.map((item, idx) => `
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 14px; background: rgba(255,255,255,0.06); border-radius: 6px; font-size: 0.95rem;">
+              <span style="font-weight: 700; color: #cbd5e1;">第 ${idx + 4} 名：${item.name}</span>
+              <span style="font-weight: 800; color: #93c5fd;">${item.score} 分</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      if (window.activeSocket) {
+        window.activeSocket.emit('kahoot:finished', {
+          quizSetId: this.selectedSet?.id,
+          leaderboard
+        });
+      }
+    },
+
+    async awardPointsToBoard() {
+      const courseId = this.getCourseId();
+      if (!courseId) return;
+
+      const rewards = [];
+      if (this.mode === 'group') {
+        const grpList = Array.from(this.groupScores.values()).sort((a, b) => b.totalScore - a.totalScore);
+        const topBonuses = [3, 2, 1];
+
+        grpList.slice(0, 3).forEach((g, idx) => {
+          const bonus = topBonuses[idx] || 1;
+          const members = (window.AppState?.students || []).filter(s => s.groupId === g.groupId);
+          members.forEach(m => {
+            rewards.push({
+              studentId: m.id,
+              score: bonus,
+              reason: `答題競賽小組優勝【${g.groupName}】第 ${idx + 1} 名`,
+              groupId: g.groupId
+            });
+          });
+        });
+      } else {
+        const stuList = Array.from(this.scores.values()).sort((a, b) => b.totalScore - a.totalScore);
+        const topBonuses = [3, 2, 1];
+
+        stuList.slice(0, 3).forEach((s, idx) => {
+          rewards.push({
+            studentId: s.studentId,
+            score: topBonuses[idx] || 1,
+            reason: `答題競賽個人優勝第 ${idx + 1} 名`,
+            groupId: s.groupId
+          });
+        });
+      }
+
+      if (rewards.length === 0) {
+        alert('尚無可發放獎勵的名單！');
+        return;
+      }
+
+      if (!confirm(`確定要為優勝名單（共 ${rewards.length} 人次）發放系統獎勵加分嗎？`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}/award-scores`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rewards })
+        });
+        if (!res.ok) throw new Error('發放加分失敗');
+        const data = await res.json();
+        alert(`🎉 ${data.message}！`);
+
+        if (window.renderScoringView) window.renderScoringView();
+        if (window.notifyScoreUpdates) window.notifyScoreUpdates();
+      } catch (err) {
+        alert('加分失敗：' + err.message);
+      }
+    },
+
+    returnToLobby() {
+      this.phase = 'lobby';
+      document.getElementById('kahoot-podium-view').style.display = 'none';
+      document.getElementById('kahoot-running-view').style.display = 'none';
+      document.getElementById('kahoot-lobby-view').style.display = 'block';
+    },
+
+    endGame() {
+      if (confirm('確定要提前結束本次測驗嗎？')) {
+        this.showPodium();
+      }
+    },
+
+    openManageModal() {
+      const modal = document.getElementById('modal-kahoot-manage-sets');
+      if (!modal) return;
+      modal.classList.add('open');
+      this.renderManageModal();
+    },
+
+    renderManageModal() {
+      const setsListEl = document.getElementById('kahoot-sets-list');
+      if (!setsListEl) return;
+
+      if (this.sets.length === 0) {
+        setsListEl.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; padding: 12px 0;">暫無題庫</div>';
+        this.renderManageQuestions(null);
+        return;
+      }
+
+      setsListEl.innerHTML = this.sets.map(s => `
+        <div class="kahoot-manage-set-item ${this.selectedSet?.id === s.id ? 'active' : ''}" onclick="TeachingToolkit.kahoot.manageSelectSet(${s.id})" style="
+          padding: 10px 12px;
+          border-radius: var(--radius-sm);
+          cursor: pointer;
+          background: ${this.selectedSet?.id === s.id ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.04)'};
+          border: 1px solid ${this.selectedSet?.id === s.id ? 'rgba(59, 130, 246, 0.5)' : 'var(--card-border)'};
+        ">
+          <div style="font-weight: 700; font-size: 0.95rem; color: #f1f5f9;">${s.title}</div>
+          <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 3px;">共 ${s.question_count} 題</div>
+        </div>
+      `).join('');
+
+      this.renderManageQuestions(this.selectedSet || this.sets[0]);
+    },
+
+    manageSelectSet(setId) {
+      this.selectSet(setId).then(() => {
+        this.renderManageModal();
+      });
+    },
+
+    renderManageQuestions(set) {
+      const titleEl = document.getElementById('kahoot-selected-set-title');
+      const countEl = document.getElementById('kahoot-selected-set-count');
+      const addQBtn = document.getElementById('btn-kahoot-add-question');
+      const delSetBtn = document.getElementById('btn-kahoot-delete-set');
+      const qListEl = document.getElementById('kahoot-questions-list');
+
+      if (!set) {
+        if (titleEl) titleEl.textContent = '請先選擇題庫';
+        if (countEl) countEl.textContent = '';
+        if (addQBtn) addQBtn.style.display = 'none';
+        if (delSetBtn) delSetBtn.style.display = 'none';
+        if (qListEl) qListEl.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 40px 0;">請由左側點選或新增題庫</div>';
+        return;
+      }
+
+      if (titleEl) titleEl.textContent = set.title;
+      if (countEl) countEl.textContent = `(共 ${this.questions.length} 題)`;
+      if (addQBtn) addQBtn.style.display = 'inline-flex';
+      if (delSetBtn) delSetBtn.style.display = 'inline-flex';
+
+      if (this.questions.length === 0) {
+        qListEl.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 40px 0;">題庫內尚無題目，請點擊「➕ 新增題目」</div>';
+        return;
+      }
+
+      qListEl.innerHTML = this.questions.map((q, idx) => {
+        const opts = q.options || [];
+        return `
+          <div style="padding: 12px 14px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
+              <div style="font-weight: 800; font-size: 0.95rem; color: #f1f5f9;">
+                <span style="color: #60a5fa; margin-right: 6px;">Q${idx + 1}.</span>${q.prompt}
+              </div>
+              <div style="display: flex; gap: 6px; flex-shrink: 0;">
+                <button type="button" class="btn btn-sm btn-secondary" onclick="TeachingToolkit.kahoot.openEditQuestionModal(${q.id})">✏️</button>
+                <button type="button" class="btn btn-sm btn-secondary" style="color: #f87171;" onclick="TeachingToolkit.kahoot.deleteQuestion(${q.id})">🗑️</button>
+              </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; font-size: 0.85rem;">
+              ${opts.map((o, oi) => `
+                <div style="color: ${o.isCorrect ? '#4ade80' : '#94a3b8'}; font-weight: ${o.isCorrect ? '800' : 'normal'};">
+                  ${['A','B','C','D'][oi]}. ${o.text} ${o.isCorrect ? '✓ (正解)' : ''}
+                </div>
+              `).join('')}
+            </div>
+            <div style="font-size: 0.78rem; color: #64748b; margin-top: 6px;">
+              ⏱️ ${q.time_limit_sec} 秒 ｜ 🌟 ${q.points} 分 ${q.explanation ? '｜ 💡 含解析' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    },
+
+    async promptCreateSet() {
+      const title = prompt('請輸入新題庫名稱（例如：第四單元自然科學競賽）：');
+      if (!title || !title.trim()) return;
+
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: title.trim() })
+        });
+        if (res.ok) {
+          const newSet = await res.json();
+          this.sets.unshift(newSet);
+          this.renderSetDropdown();
+          this.selectSet(newSet.id).then(() => {
+            this.renderManageModal();
+          });
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+
+    async deleteCurrentSet() {
+      if (!this.selectedSet) return;
+      if (!confirm(`確定要刪除題庫【${this.selectedSet.title}】及其所有題目嗎？`)) return;
+
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}/${this.selectedSet.id}`, { method: 'DELETE' });
+        if (res.ok) {
+          this.sets = this.sets.filter(s => s.id !== this.selectedSet.id);
+          this.selectedSet = this.sets[0] || null;
+          this.renderSetDropdown();
+          this.renderManageModal();
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    },
+
+    openEditQuestionModal(qId = null) {
+      const modal = document.getElementById('modal-kahoot-edit-question');
+      if (!modal) return;
+
+      const idInput = document.getElementById('kahoot-edit-q-id');
+      const promptInput = document.getElementById('kahoot-edit-q-prompt');
+      const timeInput = document.getElementById('kahoot-edit-q-timelimit');
+      const pointsInput = document.getElementById('kahoot-edit-q-points');
+      const expInput = document.getElementById('kahoot-edit-q-explanation');
+
+      if (qId) {
+        const q = this.questions.find(item => item.id === qId);
+        if (!q) return;
+        document.getElementById('modal-kahoot-q-title').textContent = '✏️ 編輯測驗題目';
+        idInput.value = q.id;
+        promptInput.value = q.prompt;
+        timeInput.value = q.time_limit_sec;
+        pointsInput.value = q.points;
+        expInput.value = q.explanation || '';
+
+        const opts = q.options || [];
+        opts.forEach((o, i) => {
+          const optInput = document.getElementById(`kahoot-opt-input-${i}`);
+          if (optInput) optInput.value = o.text || '';
+          if (o.isCorrect) {
+            const rad = document.querySelector(`input[name="kahoot-correct-opt"][value="${i}"]`);
+            if (rad) rad.checked = true;
+          }
+        });
+      } else {
+        document.getElementById('modal-kahoot-q-title').textContent = '➕ 新增測驗題目';
+        idInput.value = '';
+        promptInput.value = '';
+        timeInput.value = '20';
+        pointsInput.value = '1000';
+        expInput.value = '';
+        for (let i = 0; i < 4; i++) {
+          const optInput = document.getElementById(`kahoot-opt-input-${i}`);
+          if (optInput) optInput.value = '';
+        }
+        const rad0 = document.querySelector('input[name="kahoot-correct-opt"][value="0"]');
+        if (rad0) rad0.checked = true;
+      }
+
+      modal.classList.add('open');
+    },
+
+    async handleSaveQuestion(e) {
+      e.preventDefault();
+      if (!this.selectedSet) return;
+
+      const courseId = this.getCourseId();
+      const qId = document.getElementById('kahoot-edit-q-id').value;
+      const prompt = document.getElementById('kahoot-edit-q-prompt').value.trim();
+      const timeLimitSec = Number(document.getElementById('kahoot-edit-q-timelimit').value) || 20;
+      const points = Number(document.getElementById('kahoot-edit-q-points').value) || 1000;
+      const explanation = document.getElementById('kahoot-edit-q-explanation').value.trim();
+      const correctIdx = Number(document.querySelector('input[name="kahoot-correct-opt"]:checked')?.value || 0);
+
+      const options = [];
+      for (let i = 0; i < 4; i++) {
+        const text = (document.getElementById(`kahoot-opt-input-${i}`)?.value || '').trim();
+        if (text) {
+          options.push({
+            id: ['A', 'B', 'C', 'D'][i],
+            text,
+            isCorrect: i === correctIdx
+          });
+        }
+      }
+
+      if (options.length < 2) {
+        alert('請至少填寫 2 個選項！');
+        return;
+      }
+
+      const body = {
+        prompt,
+        options,
+        time_limit_sec: timeLimitSec,
+        points,
+        explanation
+      };
+
+      try {
+        let res;
+        if (qId) {
+          res = await fetch(`/api/quiz-sets/${courseId}/${this.selectedSet.id}/questions/${qId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+        } else {
+          res = await fetch(`/api/quiz-sets/${courseId}/${this.selectedSet.id}/questions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+        }
+
+        if (res.ok) {
+          document.getElementById('modal-kahoot-edit-question')?.classList.remove('open');
+          await this.selectSet(this.selectedSet.id);
+          this.renderManageQuestions(this.selectedSet);
+        }
+      } catch (err) {
+        alert('儲存失敗：' + err.message);
+      }
+    },
+
+    async deleteQuestion(qId) {
+      if (!confirm('確定要刪除這道題目嗎？')) return;
+      const courseId = this.getCourseId();
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}/${this.selectedSet.id}/questions/${qId}`, { method: 'DELETE' });
+        if (res.ok) {
+          await this.selectSet(this.selectedSet.id);
+          this.renderManageQuestions(this.selectedSet);
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+  };
+
+  // =========================================================================
+  // 8. Master Teaching Toolkit Manager
   // =========================================================================
   const TeachingToolkit = {
     audio: AudioEngine,
@@ -2881,6 +4113,8 @@
     luckyDraw: LuckyDraw,
     timer: TimerEngine,
     liveWall: LiveWall,
+    wordCloud: WordCloud,
+    kahoot: KahootGame,
     floatingDock: FloatingClassroomDock,
 
     init() {
@@ -2888,6 +4122,8 @@
       this.luckyDraw.init();
       this.timer.init();
       this.liveWall.init();
+      this.wordCloud.init();
+      this.kahoot.init();
       this.floatingDock.init();
 
       this.luckyDraw.updatePoolCountBadge();
@@ -2912,8 +4148,6 @@
         this.timer.updatePresetButtons();
         this.timer.updateCountdownControls();
         this.timer.updateStopwatchControls();
-        // Re-render Live Wall's dynamically-built text (status meta, post cards) — these
-        // aren't covered by the generic [data-i18n] pass since they're built in JS.
         this.liveWall.refresh();
         if (document.getElementById('modal-livewall-history')?.classList.contains('open')) {
           this.liveWall.loadHistory();
@@ -2952,6 +4186,18 @@
       } else {
         this.liveWall.onLeaveLiveWallTab();
       }
+      if (subtab === 'wordCloud') {
+        const cId = this.wordCloud.getCourseId();
+        if (cId && !this.wordCloud.currentSession) {
+          this.wordCloud.loadCourse(cId);
+        }
+      }
+      if (subtab === 'kahoot') {
+        const cId = this.kahoot.getCourseId();
+        if (cId && this.kahoot.sets.length === 0) {
+          this.kahoot.loadCourse(cId);
+        }
+      }
     },
 
     onCourseLoaded(courseId, students, groups) {
@@ -2962,6 +4208,8 @@
       this.bulletin.loadCourse(courseId);
       this.luckyDraw.setStudents(students);
       this.luckyDraw.setGroups(groups);
+      this.wordCloud.loadCourse(courseId);
+      this.kahoot.loadCourse(courseId);
     },
 
     // 課堂公布欄／隨機抽籤都需要課程資料（公告存在 localStorage 的課程 key 下、抽籤池來自班級名冊），

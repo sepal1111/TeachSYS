@@ -973,4 +973,239 @@ async function refreshProjectionData(force = false) {
   }
 }
 
+// =========================================================================
+// Projection: 課堂文字雲與 Kahoot 答題大螢幕互動展示
+// =========================================================================
+window.Projection = {
+  activeWordCloudSession: null,
+  wordCloudWords: new Map(),
+  kahootTimer: null,
+  kahootTimeLeft: 0,
+  activeKahootQuestion: null,
+
+  colors: [
+    '#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb7185',
+    '#34d399', '#fbbf24', '#f97316', '#a78bfa', '#22d3ee'
+  ],
+
+  hideDefaultViews() {
+    const p = document.getElementById('proj-podium-view-container');
+    const a = document.getElementById('proj-all-students-container');
+    const l = document.getElementById('proj-livewall-view-container');
+    if (p) p.style.display = 'none';
+    if (a) a.style.display = 'none';
+    if (l) l.style.display = 'none';
+  },
+
+  restoreDefaultViews() {
+    const wc = document.getElementById('proj-wordcloud-view-container');
+    const kh = document.getElementById('proj-kahoot-view-container');
+    if (wc) wc.style.display = 'none';
+    if (kh) kh.style.display = 'none';
+    refreshProjectionData(true);
+  },
+
+  onWordCloudStart(payload) {
+    this.activeWordCloudSession = payload;
+    this.wordCloudWords.clear();
+    this.hideDefaultViews();
+
+    const wcContainer = document.getElementById('proj-wordcloud-view-container');
+    const wcTitle = document.getElementById('proj-wordcloud-title');
+    const stage = document.getElementById('proj-wordcloud-stage');
+
+    if (wcContainer) wcContainer.style.display = 'flex';
+    if (wcTitle) wcTitle.textContent = payload.title ? `☁️ ${payload.title}` : '☁️ 課堂即時文字雲';
+    if (stage) stage.innerHTML = '<div style="text-align: center; color: #94a3b8; font-size: 1.5rem; font-weight: 800; padding: 120px 20px;">請同學們使用手機/平板輸入詞彙，詞彙將即時在此飛入！</div>';
+  },
+
+  onWordCloudNewWord(payload) {
+    const word = payload.word;
+    this.wordCloudWords.set(word, (this.wordCloudWords.get(word) || 0) + 1);
+    this.renderWordCloud();
+  },
+
+  renderWordCloud() {
+    const stage = document.getElementById('proj-wordcloud-stage');
+    if (!stage) return;
+
+    const width = stage.clientWidth || 1000;
+    const height = stage.clientHeight || 600;
+    const entries = Array.from(this.wordCloudWords.entries()).sort((a, b) => b[1] - a[1]);
+    const maxCount = entries[0]?.[1] || 1;
+
+    const placedRects = [];
+    const placedWords = [];
+
+    entries.forEach(([word, count], idx) => {
+      const rel = count / maxCount;
+      const fontSize = Math.round(24 + rel * 56);
+      const color = this.colors[Math.abs(word.charCodeAt(0) * 17) % this.colors.length];
+      const estWidth = word.length * (fontSize * 0.95) + 20;
+      const estHeight = fontSize * 1.3;
+
+      let found = false;
+      let x = 0, y = 0;
+
+      if (idx === 0) {
+        x = (width - estWidth) / 2;
+        y = (height - estHeight) / 2;
+        found = true;
+      } else {
+        let radius = Math.min(estWidth, estHeight) * 0.5 + 30;
+        const maxRadius = Math.max(width, height);
+        const angleOffset = (word.charCodeAt(0) * 23) % 360;
+
+        while (!found && radius < maxRadius) {
+          for (let a = 0; a < 360; a += 15) {
+            const rad = ((angleOffset + a) * Math.PI) / 180;
+            x = width / 2 + radius * Math.cos(rad) - estWidth / 2;
+            y = height / 2 + radius * Math.sin(rad) - estHeight / 2;
+
+            const pad = 8;
+            const rect = { left: x - pad, top: y - pad, right: x + estWidth + pad, bottom: y + estHeight + pad };
+            if (rect.left > 15 && rect.top > 15 && rect.right < width - 15 && rect.bottom < height - 15) {
+              const overlaps = placedRects.some(p => !(rect.right < p.left || rect.left > p.right || rect.bottom < p.top || rect.top > p.bottom));
+              if (!overlaps) {
+                found = true;
+                break;
+              }
+            }
+          }
+          radius += 12;
+        }
+      }
+
+      if (found) {
+        placedRects.push({ left: x, top: y, right: x + estWidth, bottom: y + estHeight });
+        placedWords.push({ word, count, x, y, fontSize, color, isTop: idx === 0 });
+      }
+    });
+
+    stage.innerHTML = placedWords.map(w => `
+      <div class="wordcloud-item" style="
+        position: absolute;
+        left: ${Math.round(w.x)}px;
+        top: ${Math.round(w.y)}px;
+        font-size: ${w.fontSize}px;
+        color: ${w.color};
+        font-weight: 900;
+        line-height: 1.2;
+        text-shadow: 0 4px 16px rgba(0,0,0,0.8)${w.isTop ? ', 0 0 30px ' + w.color : ''};
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      ">
+        <span>${w.word}</span>
+        ${w.count > 1 ? `<span style="font-size: ${Math.max(14, Math.round(w.fontSize * 0.45))}px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 9999px;">${w.count}</span>` : ''}
+      </div>
+    `).join('');
+  },
+
+  onWordCloudEnd() {
+    this.activeWordCloudSession = null;
+    this.restoreDefaultViews();
+  },
+
+  onKahootQuestion(payload) {
+    this.activeKahootQuestion = payload;
+    this.hideDefaultViews();
+
+    const khContainer = document.getElementById('proj-kahoot-view-container');
+    if (khContainer) khContainer.style.display = 'flex';
+
+    document.getElementById('proj-kahoot-q-badge').textContent = `第 ${payload.questionIndex} / ${payload.totalQuestions} 題 (${payload.mode === 'group' ? '小組賽' : '個人賽'})`;
+    document.getElementById('proj-kahoot-prompt').textContent = payload.prompt;
+    document.getElementById('proj-kahoot-timer').textContent = payload.timeLimitSec;
+    document.getElementById('proj-kahoot-answered-badge').textContent = '已答題：0 人';
+
+    const options = payload.options || [];
+    for (let i = 0; i < 4; i++) {
+      const card = document.getElementById(`proj-kahoot-opt-${i}`);
+      const text = document.getElementById(`proj-kahoot-text-${i}`);
+      const stat = document.getElementById(`proj-kahoot-stat-${i}`);
+      if (!card) continue;
+      if (i < options.length) {
+        card.style.display = 'flex';
+        card.style.opacity = '1';
+        card.style.border = 'none';
+        card.style.boxShadow = '0 6px 16px rgba(0, 0, 0, 0.25)';
+        if (text) text.textContent = options[i].text || `選項 ${['A','B','C','D'][i]}`;
+        if (stat) stat.style.display = 'none';
+      } else {
+        card.style.display = 'none';
+      }
+    }
+
+    const expBox = document.getElementById('proj-kahoot-explanation-box');
+    if (expBox) expBox.style.display = 'none';
+
+    this.kahootTimeLeft = payload.timeLimitSec;
+    if (this.kahootTimer) clearInterval(this.kahootTimer);
+    this.kahootTimer = setInterval(() => {
+      this.kahootTimeLeft--;
+      const timerEl = document.getElementById('proj-kahoot-timer');
+      if (timerEl) timerEl.textContent = Math.max(0, this.kahootTimeLeft);
+      if (this.kahootTimeLeft <= 0) {
+        clearInterval(this.kahootTimer);
+        this.kahootTimer = null;
+      }
+    }, 1000);
+  },
+
+  onKahootStudentAnswered(payload) {
+    const badge = document.getElementById('proj-kahoot-answered-badge');
+    if (badge) badge.textContent = `已答題：${payload.answeredCount} 人`;
+  },
+
+  onKahootAnswerRevealed(payload) {
+    if (this.kahootTimer) {
+      clearInterval(this.kahootTimer);
+      this.kahootTimer = null;
+    }
+
+    const correctIdx = payload.correctOptionIndex;
+    const stats = payload.optionStats || [];
+
+    for (let i = 0; i < 4; i++) {
+      const card = document.getElementById(`proj-kahoot-opt-${i}`);
+      const stat = document.getElementById(`proj-kahoot-stat-${i}`);
+      if (!card) continue;
+
+      if (stat) {
+        stat.textContent = `${stats[i] || 0} 票`;
+        stat.style.display = 'inline-block';
+      }
+
+      if (i === correctIdx) {
+        card.style.opacity = '1';
+        card.style.border = '5px solid #facc15';
+        card.style.boxShadow = '0 0 30px rgba(250, 204, 21, 0.7)';
+      } else {
+        card.style.opacity = '0.35';
+      }
+    }
+
+    if (payload.explanation) {
+      const expBox = document.getElementById('proj-kahoot-explanation-box');
+      const expText = document.getElementById('proj-kahoot-explanation-text');
+      if (expBox && expText) {
+        expText.textContent = payload.explanation;
+        expBox.style.display = 'block';
+      }
+    }
+  },
+
+  onKahootFinished(payload) {
+    if (this.kahootTimer) {
+      clearInterval(this.kahootTimer);
+      this.kahootTimer = null;
+    }
+    setTimeout(() => {
+      this.restoreDefaultViews();
+    }, 3000);
+  }
+};
+
 document.addEventListener('DOMContentLoaded', initProjectionPage);
