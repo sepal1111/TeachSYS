@@ -35,6 +35,80 @@
   const selectedItems = () => S.plan.filter((id) => S.selected.has(id));
   const isPaneActive = () => $('pane-hwscan')?.classList.contains('active');
 
+  let bc = null;
+  try {
+    bc = new BroadcastChannel('teachsys-hwscan');
+    bc.onmessage = async (e) => {
+      if (e.data?.courseId === S.courseId && e.data?.date === S.date) {
+        await loadDay();
+        if (S.view === 'scan') {
+          renderChips();
+          renderGrid();
+        }
+      }
+    };
+  } catch (_) {}
+
+  function notifySync() {
+    try {
+      if (bc) bc.postMessage({ type: 'hwscan-updated', courseId: S.courseId, date: S.date });
+    } catch (_) {}
+  }
+
+  function openPopup(courseId) {
+    const cid = courseId || S.courseId || window.AppState?.currentCourseId;
+    const url = `/homework-scan${cid ? `?course_id=${cid}` : ''}`;
+    const w = Math.min(1240, (screen.availWidth || 1280) - 40);
+    const h = Math.min(920, (screen.availHeight || 960) - 60);
+    const left = Math.max(0, Math.floor(((screen.availWidth || 1280) - w) / 2));
+    const top = Math.max(0, Math.floor(((screen.availHeight || 960) - h) / 2));
+    const features = `popup=yes,width=${w},height=${h},left=${left},top=${top},menubar=no,toolbar=no,location=no,status=no,resizable=yes,scrollbars=yes`;
+    const win = window.open(url, 'KYPS_HomeworkScan_Window', features);
+    if (win) {
+      win.focus();
+    }
+    return win;
+  }
+
+  function openModal(courseId) {
+    const cid = courseId || S.courseId || window.AppState?.currentCourseId;
+    const old = $('modal-hwscan-popup-wrapper');
+    if (old) old.remove();
+
+    const wrap = document.createElement('div');
+    wrap.id = 'modal-hwscan-popup-wrapper';
+    wrap.className = 'modal-overlay open';
+    wrap.style.cssText = 'display:flex;align-items:center;justify-content:center;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(15,23,42,0.65);backdrop-filter:blur(6px);z-index:100030;padding:16px;';
+
+    wrap.innerHTML = `
+      <div class="glass-card" style="width:100%;max-width:1160px;height:90vh;max-height:860px;display:flex;flex-direction:column;padding:0;overflow:hidden;border-radius:18px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.35);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(255,255,255,0.95);border-bottom:1.5px solid var(--card-border);">
+          <div style="font-weight:900;font-size:1.15rem;display:flex;align-items:center;gap:8px;">
+            <span>📥 作業掃描登記</span>
+            <span style="font-size:0.75rem;padding:2px 8px;background:#4f46e5;color:#fff;border-radius:100px;">浮動彈窗模式</span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="btn btn-secondary" id="btn-hwmodal-popout" title="轉為獨立視窗" style="padding:5px 12px;font-size:0.85rem;">↗ 轉為獨立視窗</button>
+            <button type="button" class="btn btn-secondary" id="btn-hwmodal-close" style="padding:4px 10px;font-size:1.1rem;line-height:1;">✕</button>
+          </div>
+        </div>
+        <iframe src="/homework-scan?course_id=${cid || ''}" style="width:100%;flex:1;border:none;background:#f8fafc;"></iframe>
+      </div>
+    `;
+
+    document.body.appendChild(wrap);
+
+    const close = () => wrap.remove();
+    wrap.querySelector('#btn-hwmodal-close').addEventListener('click', close);
+    wrap.querySelector('#btn-hwmodal-popout').addEventListener('click', () => {
+      close();
+      openPopup(cid);
+    });
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap) close();
+    });
+  }
+
   let audioCtx = null;
   function beep(kind) {
     try {
@@ -90,6 +164,7 @@
       <div class="glass-card" style="margin-bottom:14px;padding:12px 16px;">
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           ${tabs.map(([k, t]) => `<button type="button" class="btn ${S.view === k ? '' : 'btn-secondary'}" data-hw-view="${k}" style="font-size:0.95rem;padding:8px 16px;">${t}</button>`).join('')}
+          <button type="button" class="btn" id="hw-top-popup-btn" style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;font-weight:700;padding:8px 16px;box-shadow:0 3px 10px rgba(79,70,229,0.3);display:inline-flex;align-items:center;gap:6px;">🚀 開啟小助手獨立掃描視窗</button>
           <span style="margin-left:auto;font-size:0.8rem;color:var(--text-muted);">🔒 僅限教師本機使用，資料不會傳到其他裝置</span>
         </div>
       </div>
@@ -97,6 +172,7 @@
     root.querySelectorAll('[data-hw-view]').forEach((b) =>
       b.addEventListener('click', () => { S.view = b.dataset.hwView; render(); })
     );
+    root.querySelector('#hw-top-popup-btn')?.addEventListener('click', () => openPopup());
     ({ scan: renderScan, items: renderItems, labels: renderLabels, export: renderExport })[S.view]();
   }
 
@@ -113,6 +189,30 @@
       return;
     }
     body.innerHTML = `
+      <!-- 小助手專屬獨立彈出視窗工作區推薦卡片 -->
+      <div class="glass-card" style="background:linear-gradient(135deg, rgba(79, 70, 229, 0.08) 0%, rgba(99, 102, 241, 0.04) 100%);border:1.5px solid rgba(79, 70, 229, 0.28);padding:18px 20px;margin-bottom:14px;border-radius:14px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:1.15rem;font-weight:900;color:#3730a3;display:flex;align-items:center;gap:8px;">
+              <span>👩‍🎓</span>
+              <span>小助手作業掃描登記（獨立彈出視窗）</span>
+              <span style="font-size:0.75rem;padding:2px 8px;background:#4f46e5;color:#fff;border-radius:100px;font-weight:700;">推薦</span>
+            </div>
+            <div style="font-size:0.88rem;color:var(--text-muted);margin-top:4px;max-width:700px;">
+              作業掃描登記已全面支援「獨立彈出視窗」！可將獨立彈窗拖曳至第二螢幕或交由小助手刷條碼登記，具備超大反饋看板、自動對焦與音效，不影響老師主畫面操作。
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button type="button" class="btn" id="hw-hero-open-popup" style="background:linear-gradient(135deg,#4f46e5,#6366f1);color:#fff;font-weight:800;padding:10px 18px;font-size:0.95rem;box-shadow:0 4px 14px rgba(79,70,229,0.35);display:inline-flex;align-items:center;gap:6px;">
+              🚀 開啟獨立彈出視窗（推薦）
+            </button>
+            <button type="button" class="btn btn-secondary" id="hw-hero-open-modal" style="font-weight:700;padding:10px 16px;font-size:0.92rem;display:inline-flex;align-items:center;gap:6px;">
+              🪟 在頁面浮動彈窗開啟
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div class="glass-card">
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <label for="hw-date" style="font-weight:700;">日期</label>
@@ -151,6 +251,8 @@
         <div id="hw-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;"></div>
       </div>`;
 
+    $('hw-hero-open-popup')?.addEventListener('click', () => openPopup());
+    $('hw-hero-open-modal')?.addEventListener('click', () => openModal());
     $('hw-date').addEventListener('change', async (e) => {
       if (!e.target.value) return;
       S.date = e.target.value;
@@ -224,6 +326,7 @@
     await loadDay();
     renderChips();
     renderGrid();
+    notifySync();
     $('hw-input')?.focus();
   }
 
@@ -332,6 +435,7 @@
       feedback('warn', `${st.name} 已經登記過了`, r.dup.map(itemName).join('、'));
     }
     renderGrid(st.id);
+    notifySync();
   }
 
   async function sendMark(studentId, itemId, status, extra = {}) {
@@ -356,6 +460,7 @@
     }
     updateUndoBtn();
     renderGrid();
+    notifySync();
     $('hw-input')?.focus();
   }
 
@@ -406,6 +511,7 @@
       updateUndoBtn();
       close();
       renderGrid(studentId);
+      notifySync();
     }));
   }
 
@@ -561,10 +667,11 @@
   // ---------- 列印 QR 標籤 ----------
 
   const PRESETS = [
-    { id: 'a4-24', name: 'A4 24 格（3×8，70×37 mm）', cols: 3, rows: 8, w: 70, h: 37, top: 0.5 },
-    { id: 'a4-21', name: 'A4 21 格（3×7，70×42.3 mm）', cols: 3, rows: 7, w: 70, h: 42.3, top: 0.4 },
-    { id: 'a4-40', name: 'A4 40 格（4×10，48.5×25.4 mm）', cols: 4, rows: 10, w: 48.5, h: 25.4, top: 21.5 },
-    { id: 'a4-10', name: 'A4 10 格（2×5，105×57 mm）', cols: 2, rows: 5, w: 105, h: 57, top: 6 },
+    { id: 'a4-24', name: 'A4 24 格（3×8，約 63×34 mm）- 推薦', cols: 3, rows: 8 },
+    { id: 'a4-21', name: 'A4 21 格（3×7，約 63×39 mm）', cols: 3, rows: 7 },
+    { id: 'a4-18', name: 'A4 18 格（3×6，約 63×46 mm，大字清晰）', cols: 3, rows: 6 },
+    { id: 'a4-40', name: 'A4 40 格（4×10，約 47×27 mm，小貼紙）', cols: 4, rows: 10 },
+    { id: 'a4-10', name: 'A4 10 格（2×5，約 95×55 mm，大貼紙）', cols: 2, rows: 5 },
   ];
 
   function renderLabels() {
@@ -586,9 +693,21 @@
           <div id="hw-lbl-items"><label style="font-weight:700;">作業項目</label><br>
             ${checks(activeItems(), 'hw-itm', (i) => i.name)}</div>
           <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
-            <label>貼紙規格 <select id="hw-preset" class="input-control" style="width:auto;">${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select></label>
+            <label>貼紙版型規格 <select id="hw-preset" class="input-control" style="width:auto;">${PRESETS.map((p) => `<option value="${p.id}">${p.name}</option>`).join('')}</select></label>
+            <label>紙張邊緣留白 <select id="hw-margin" class="input-control" style="width:auto;">
+              <option value="10" selected>保留 10 mm（推薦，防印表機裁切）</option>
+              <option value="12">保留 12 mm（超大安全邊距）</option>
+              <option value="8">保留 8 mm</option>
+              <option value="5">保留 5 mm</option>
+            </select></label>
             <label>每張份數 <input type="number" id="hw-copies" class="input-control" style="width:80px;" min="1" max="10" value="1"></label>
             <label>從第幾格開始 <input type="number" id="hw-start" class="input-control" style="width:80px;" min="1" value="1"></label>
+            <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:0.9rem;">
+              <input type="checkbox" id="hw-cutlines" checked> 顯示裁切輔助虛線
+            </label>
+          </div>
+          <div style="font-size:0.85rem;color:var(--text-muted);background:rgba(79,70,229,0.06);padding:8px 12px;border-radius:8px;border-left:3px solid #4f46e5;">
+            💡 系統已預設為紙張四周保留 <strong>10 mm 安全邊距</strong>，確保各廠牌印表機均能完整印出邊緣的 QR Code，不會因硬體極限而遭到裁切。
           </div>
           <div><button type="button" class="btn" id="hw-print">🖨️ 預覽並列印</button></div>
         </div>
@@ -611,9 +730,21 @@
   async function printLabels() {
     const val = (name) => [...document.querySelectorAll(`input[name="${name}"]:checked`)].map((b) => b.value).join(',');
     const kind = $('hw-kind').value;
-    const preset = PRESETS.find((p) => p.id === $('hw-preset').value);
+    const preset = PRESETS.find((p) => p.id === $('hw-preset').value) || PRESETS[0];
+    const margin = Number($('hw-margin')?.value || 10);
+    const showCutlines = $('hw-cutlines')?.checked ?? true;
     const copies = Number($('hw-copies').value) || 1;
     const start = Math.max(1, Number($('hw-start').value) || 1);
+
+    // 依邊緣留白計算可用列印範圍（A4 標準尺寸：210mm × 297mm）
+    const availW = Math.max(100, 210 - margin * 2);
+    const availH = Math.max(100, 297 - margin * 2);
+    const cellW = (availW / preset.cols).toFixed(2);
+    const cellH = (availH / preset.rows).toFixed(2);
+    const qrSize = Math.max(18, Math.min(Number(cellH) - 6, 26));
+    const fontSize = Math.max(7.5, Math.min(10.5, Number(cellH) / 3.8));
+    const titleSize = (fontSize + 2.5).toFixed(1);
+
     // 先同步開啟視窗，避免等待網路後被瀏覽器當成彈出視窗擋下
     const win = window.open('', '_blank');
     if (!win) return toast('瀏覽器擋住了預覽視窗，請允許此網站的彈出視窗後再按一次', 'error');
@@ -637,17 +768,35 @@
       ? `<div class="lb"><div class="qr">${l.svg}</div><div class="tx">${l.lines.filter(Boolean).map((t, i) => `<div class="${i === 0 ? 'ln1' : ''}">${esc(t)}</div>`).join('')}</div></div>`
       : '<div class="lb"></div>';
     win.document.open();
-    win.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>QR 標籤預覽</title><style>
-      @page{size:A4;margin:0}body{margin:0;font-family:"Noto Sans TC","Microsoft JhengHei",sans-serif}
-      .bar{padding:10px 16px;background:#eef2ff}.bar button{font-size:16px;padding:6px 16px}
-      .page{width:210mm;height:297mm;padding-top:${preset.top}mm;box-sizing:border-box;page-break-after:always;display:grid;
-        grid-template-columns:repeat(${preset.cols},${preset.w}mm);grid-auto-rows:${preset.h}mm;justify-content:center;align-content:start}
-      .lb{box-sizing:border-box;display:flex;align-items:center;gap:2mm;padding:2mm;overflow:hidden}
-      .qr{height:${Math.min(preset.h - 5, 28)}mm;width:${Math.min(preset.h - 5, 28)}mm;flex:none}.qr svg{width:100%;height:100%}
-      .tx{font-size:9pt;line-height:1.25;min-width:0}.ln1{font-weight:700;font-size:11pt}
-      @media print{.bar{display:none}}</style></head><body>
-      <div class="bar">共 ${data.labels.length} 張標籤、${pages.length} 頁。列印時請選擇「實際大小 / 100%」，不要縮放。 <button onclick="print()">🖨️ 列印</button></div>
-      ${pages.map((p) => `<div class="page">${p.map(cell).join('')}</div>`).join('')}</body></html>`);
+    win.document.write(`<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><title>QR 標籤列印預覽</title><style>
+      @page{size:A4 portrait;margin:${margin}mm}
+      *{box-sizing:border-box}
+      body{margin:0;padding:0;font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+      .bar{padding:12px 20px;background:#eef2ff;border-bottom:1.5px solid #c7d2fe;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 2px 10px rgba(0,0,0,0.06)}
+      .bar-info{font-size:14px;color:#3730a3;font-weight:600}
+      .bar-btn{font-size:15px;font-weight:800;padding:8px 22px;background:#4f46e5;color:#fff;border:none;border-radius:8px;cursor:pointer;box-shadow:0 2px 8px rgba(79,70,229,0.3)}
+      .bar-btn:hover{background:#4338ca}
+      .page-container{padding:20px 0;display:flex;flex-direction:column;align-items:center;gap:20px}
+      .page{width:${availW}mm;height:${availH}mm;max-width:${availW}mm;max-height:${availH}mm;background:#ffffff;box-shadow:0 4px 20px rgba(0,0,0,0.1);page-break-after:always;break-after:page;display:grid;grid-template-columns:repeat(${preset.cols},${cellW}mm);grid-auto-rows:${cellH}mm;justify-content:center;align-content:start;overflow:hidden}
+      .lb{box-sizing:border-box;display:flex;align-items:center;gap:2.5mm;padding:2mm 3mm;overflow:hidden;${showCutlines ? 'border:0.5px dashed #cbd5e1;border-radius:2mm;' : ''}}
+      .qr{height:${qrSize}mm;width:${qrSize}mm;flex:none;display:flex;align-items:center;justify-content:center}.qr svg{width:100%;height:100%}
+      .tx{font-size:${fontSize.toFixed(1)}pt;line-height:1.25;min-width:0;word-break:break-all}
+      .ln1{font-weight:800;font-size:${titleSize}pt;color:#0f172a;margin-bottom:1.5px}
+      @media print{
+        body{background:transparent !important}
+        .bar{display:none !important}
+        .page-container{padding:0 !important;gap:0 !important}
+        .page{margin:0 !important;box-shadow:none !important;page-break-after:always !important;break-after:page !important}
+      }</style></head><body>
+      <div class="bar">
+        <div class="bar-info">
+          ✅ 共 ${data.labels.length} 張標籤、${pages.length} 頁 ｜ 四邊已保留 <strong>${margin} mm 安全邊距</strong>（避免印表機邊緣裁切）。列印時請在印表機設定中確認縮放選「實際大小 / 100%」，邊界選擇「預設」或「無」。
+        </div>
+        <button class="bar-btn" onclick="print()">🖨️ 列印標籤</button>
+      </div>
+      <div class="page-container">
+        ${pages.map((p) => `<div class="page">${p.map(cell).join('')}</div>`).join('')}
+      </div></body></html>`);
     win.document.close();
     if (data.skipped.length) toast(`這些學生沒有借書證條碼，已略過：${data.skipped.join('、')}`, 'error');
   }
@@ -723,6 +872,8 @@
     }
   }
 
-  window.HomeworkScan = { load, init };
+  window.HomeworkScan = { load, init, openPopup, openModal };
+  window.openHomeworkScanPopup = openPopup;
+  window.openHomeworkScanModal = openModal;
   document.addEventListener('DOMContentLoaded', init);
 })();

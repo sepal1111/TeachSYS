@@ -55,7 +55,6 @@
       <button id="btn-mobile-remote" class="btn-icon" title="遙控教室大螢幕" style="display: none;">🎮</button>
       <button id="btn-add-course" class="btn-icon" title="新增課程" data-i18n-title="btn_add_course">➕</button>
       <button id="btn-delete-course" class="btn-icon danger-icon" title="刪除目前班級" data-i18n-title="btn_delete_course" style="color: var(--accent-negative);">🗑️</button>
-      <button id="btn-qr-modal" class="btn-icon" title="手機評分連線 QR Code" data-i18n-title="btn_qr_code">📱</button>
       <button id="btn-toggle-lang" class="btn btn-secondary btn-lang-toggle" title="切換語系 / Switch Language" style="font-size: 0.85rem; padding: 6px 10px; gap: 4px;">🌐 繁中 / EN</button>
       <button id="btn-toggle-name-mode" class="btn btn-secondary btn-name-mode-toggle" title="切換姓名顯示 (中文/英文)" style="font-size: 0.85rem; padding: 6px 10px; gap: 4px;">👤 姓名: 中文</button>
       <a href="/guide" target="_blank" class="btn btn-secondary" title="教師操作說明與使用手冊" style="text-decoration: none; font-size: 0.85rem; padding: 6px 10px; gap: 4px; display: inline-flex; align-items: center;" data-i18n="btn_guide">📖 操作說明</a>
@@ -94,13 +93,13 @@
 
         <!-- Subtabs for "Learning Logs" (學習歷程) -->
         <div class="context-subtab-group" data-context="logs" id="subtabs-group-logs" style="display: none;">
-          <button class="nav-tab" data-tab="notes" data-i18n="nav_notes">📝 特殊表現紀錄</button>
-          <button class="nav-tab" data-tab="journal" data-i18n="nav_journal">📓 教學日誌</button>
-          <button class="nav-tab" data-tab="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</button>
-          <button class="nav-tab" data-tab="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</button>
           <button class="nav-tab" data-tab="materials" data-i18n="nav_materials">📚 課程素材(LMS)</button>
           <button class="nav-tab" data-tab="filecollect" data-i18n="tab_filecollect">📁 檔案蒐集</button>
           <button class="nav-tab" data-tab="hwscan" hidden style="display:none;" title="僅限教師本機使用">📥 作業掃描登記</button>
+          <button class="nav-tab" data-tab="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</button>
+          <button class="nav-tab" data-tab="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</button>
+          <button class="nav-tab" data-tab="notes" data-i18n="nav_notes">📝 特殊表現紀錄</button>
+          <button class="nav-tab" data-tab="journal" data-i18n="nav_journal">📓 教學日誌</button>
         </div>
 
         <!-- Subtabs for "Classroom Setup" (班級管理) -->
@@ -118,6 +117,14 @@
           <button class="nav-tab" data-tab="pointcards">🎫 實體點數卡管理</button>
           <button class="nav-tab" data-tab="appearance">🖼️ 標誌設定</button>
           <button class="nav-tab" data-tab="security">🔐 密碼安全與手冊</button>
+          <div style="margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+            <button type="button" id="btn-admin-show-mobile-scoring-qr" class="btn btn-secondary btn-show-mobile-qr-action" style="font-size: 0.82rem; padding: 5px 12px; font-weight: 700; color: #0284c7; border-color: rgba(14, 165, 233, 0.4); background: rgba(14, 165, 233, 0.08); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: var(--radius-md);" title="顯示教師手機即時評分連線 QR Code" onclick="if(window.showQRModal){window.showQRModal();}else if(typeof showQRModal==='function'){showQRModal();}">
+              📱 手機評分連線 QR Code
+            </button>
+            <button type="button" id="btn-admin-show-student-qr" class="btn btn-secondary btn-show-student-qr-action" style="font-size: 0.82rem; padding: 5px 12px; font-weight: 700; color: #4f46e5; border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.08); display: inline-flex; align-items: center; gap: 6px; cursor: pointer; border-radius: var(--radius-md);" title="顯示學生手機/平板登入連線 QR Code" onclick="if(window.showStudentQrModal){window.showStudentQrModal();}else if(typeof showStudentQrModal==='function'){showStudentQrModal();}">
+              🎓 學生連線 QR Code
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -140,13 +147,13 @@
             <option value="toolkit">🧰 教學小工具</option>
           </optgroup>
           <optgroup label="📖 學習歷程 (Learning Logs)" data-i18n-label="nav_context_logs">
-            <option value="notes" data-i18n="nav_notes">📝 特殊表現紀錄</option>
-            <option value="journal" data-i18n="nav_journal">📓 教學日誌</option>
-            <option value="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</option>
-            <option value="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</option>
             <option value="materials" data-i18n="nav_materials">📚 課程素材(LMS)</option>
             <option value="filecollect" data-i18n="tab_filecollect">📁 檔案蒐集</option>
             <option value="hwscan" hidden style="display:none;">📥 作業掃描登記（僅限本機）</option>
+            <option value="paperQuiz" data-i18n="nav_paper_quiz">📝 紙本測驗</option>
+            <option value="dashboard" data-i18n="nav_dashboard">📊 儀表板與排行榜</option>
+            <option value="notes" data-i18n="nav_notes">📝 特殊表現紀錄</option>
+            <option value="journal" data-i18n="nav_journal">📓 教學日誌</option>
           </optgroup>
           <optgroup label="🏫 班級管理 (Classroom Setup)" data-i18n-label="nav_context_manage">
             <option value="seating">🪑 座位表編排</option>
@@ -1259,19 +1266,23 @@
             <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
               <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="ptcard_filter_series_label">系列篩選：</span>
               <select id="ptcard-filter-series" class="input-control" style="width: auto; min-width: 170px; padding: 5px 10px; font-size: 0.88rem;">
-                <option value="all" data-i18n="ptcard_filter_all_series">全部卡片</option>
+                <option value="overview">📁 風格系列總覽</option>
               </select>
 
-              <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted); margin-left: 8px;" data-i18n="ptcard_sort_label">排序：</span>
-              <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
-                <button type="button" class="btn btn-secondary btn-ptcard-sort active" data-sort="card_no" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none;" data-i18n="ptcard_sort_no">序號</button>
-                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="score" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_score">分數</button>
-                <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="redemption_count" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_rate">使用率</button>
+              <input type="text" id="ptcard-search-input" class="input-control" placeholder="🔍 搜尋卡號 (如 #D_001) 或代碼..." style="width: auto; min-width: 220px; font-size: 0.85rem; padding: 5px 12px;">
+
+              <div id="ptcard-sort-group" style="display: inline-flex; align-items: center; gap: 8px;">
+                <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-muted);" data-i18n="ptcard_sort_label">排序：</span>
+                <div class="btn-group" style="display: inline-flex; border: 1px solid var(--card-border); border-radius: var(--radius-md); overflow: hidden;">
+                  <button type="button" class="btn btn-secondary btn-ptcard-sort active" data-sort="card_no" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none;" data-i18n="ptcard_sort_no">序號</button>
+                  <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="score" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_score">分數</button>
+                  <button type="button" class="btn btn-secondary btn-ptcard-sort" data-sort="redemption_count" style="font-size: 0.8rem; padding: 5px 10px; border-radius: 0; border: none; border-left: 1px solid var(--card-border);" data-i18n="ptcard_sort_rate">使用率</button>
+                </div>
               </div>
             </div>
 
             <div style="display: flex; align-items: center; gap: 10px;">
-              <label style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; color: var(--text-main); font-weight: 600;">
+              <label id="ptcard-select-all-label" style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.88rem; cursor: pointer; color: var(--text-main); font-weight: 600;">
                 <input type="checkbox" id="ptcard-select-all" style="width: 17px; height: 17px; accent-color: var(--primary);">
                 <span data-i18n="ptcard_select_all">全選本系列</span>
               </label>
@@ -1358,6 +1369,32 @@
           </div>
           <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text-main);" data-i18n="admin_manual_desc">
             包含「3 步驟快速上手、即時評分、5 大出缺席假別、座位拖曳與梅花座編排、彈性分組、質性影音筆記、大螢幕奧運頒獎台投影」等全功能詳細步驟圖文說明。
+          </div>
+        </div>
+
+        <!-- Teacher Mobile Connection Scoring QR Code Card -->
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(14, 165, 233, 0.08), rgba(99, 102, 241, 0.08)); border-color: rgba(14, 165, 233, 0.3);">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title">📱 教師手機即時評分連線 QR Code</div>
+            <button type="button" id="btn-security-show-mobile-scoring-qr" class="btn btn-show-mobile-qr-action" style="background: linear-gradient(135deg, #0284c7, #0ea5e9); color: #fff; font-size: 0.88rem; padding: 7px 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.25); border: none; cursor: pointer;" onclick="if(window.showQRModal){window.showQRModal();}else if(typeof showQRModal==='function'){showQRModal();}">
+              📱 顯示手機評分 QR Code
+            </button>
+          </div>
+          <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text-main); margin-bottom: 4px;">
+            教師可使用隨身手機或平板掃描此 QR Code，即可直接開啟純淨即時評分介面（免再次輸入密碼），於教室中走動評分，分數即時同步至本系統與投影大螢幕！
+          </div>
+        </div>
+
+        <!-- Student Connection QR Code Card -->
+        <div class="glass-card" style="background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(16, 185, 129, 0.08)); border-color: rgba(99, 102, 241, 0.3);">
+          <div class="glass-card-header" style="flex-wrap: wrap; gap: 10px;">
+            <div class="glass-card-title">📱 學生手機 / 平板登入連線 QR Code</div>
+            <button type="button" id="btn-security-show-student-qr" class="btn btn-show-student-qr-action" style="background: linear-gradient(135deg, #4f46e5, #6366f1); color: #fff; font-size: 0.88rem; padding: 7px 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25); border: none; cursor: pointer;" onclick="if(window.showStudentQrModal){window.showStudentQrModal();}else if(typeof showStudentQrModal==='function'){showStudentQrModal();}">
+              📱 顯示學生連線 QR Code
+            </button>
+          </div>
+          <div style="font-size: 0.92rem; line-height: 1.6; color: var(--text-main); margin-bottom: 4px;">
+            點擊即可開啟學生連線專用 QR Code 與登入連結網址。學生使用手機或平板掃描後即可直接進入學生端；亦可點擊 QR Code 圖片放大至全螢幕投影，方便全班學生在課堂中快速掃碼登入！
           </div>
         </div>
 

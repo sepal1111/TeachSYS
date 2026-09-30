@@ -652,14 +652,14 @@ const TAB_TO_CONTEXT_MAP = {
 
 const CONTEXT_DEFAULT_TAB_MAP = {
   live: 'scoring',
-  logs: 'notes',
+  logs: 'materials',
   manage: 'seating',
   admin: 'pointcards'
 };
 
 const lastActiveTabPerContext = {
   live: 'scoring',
-  logs: 'notes',
+  logs: 'materials',
   manage: 'seating',
   admin: 'pointcards'
 };
@@ -828,10 +828,8 @@ function refreshActiveTab(tabName, force = false) {
       loadPaperQuizData(force);
       break;
     case 'dashboard':
-      // force=true bypasses the fingerprint cache in loadDashboardData: a language
-      // or name-display-mode switch changes nothing in the fetched data itself, so
-      // without forcing, the unchanged fingerprint would skip re-rendering names.
-      loadDashboardData(force);
+      // Force refresh on tab switch so all dashboard sections always reflect latest scores
+      loadDashboardData(true);
       break;
     case 'materials':
       if (window.LmsMaterials) window.LmsMaterials.load();
@@ -3277,6 +3275,8 @@ async function saveNote() {
 let projectionTimerId = null;
 let prevStudentScoresMap = {};
 let prevGroupScoresMap = {};
+let prevDashStudentScoresMap = {};
+let prevDashGroupScoresMap = {};
 let lastRosterDisplaySignature = '';
 let lastDashboardFingerprint = null;
 let lastProjectionFingerprint = null;
@@ -3290,6 +3290,7 @@ function computeDataFingerprint(data, context) {
 }
 
 function notifyScoreUpdates() {
+  lastDashboardFingerprint = null;
   // If Dashboard tab is active, reload immediately
   if (getActiveTabName() === 'dashboard') {
     loadDashboardData(true);
@@ -3396,7 +3397,7 @@ function renderLeaderboards(data) {
         const rankClass = s.rank === 1 ? 'rank-1' : s.rank === 2 ? 'rank-2' : s.rank === 3 ? 'rank-3' : '';
         const badgeEmoji = s.rank === 1 ? '🥇' : s.rank === 2 ? '🥈' : s.rank === 3 ? '🥉' : `${s.rank}`;
 
-        const prev = prevStudentScoresMap[s.id];
+        const prev = prevDashStudentScoresMap[s.id];
         let animClass = '';
         if (prev !== undefined && prev !== null) {
           if (s.score > prev) animClass = 'score-animate-up';
@@ -3453,7 +3454,7 @@ function renderLeaderboards(data) {
         const rankClass = g.rank === 1 ? 'rank-1' : g.rank === 2 ? 'rank-2' : g.rank === 3 ? 'rank-3' : '';
         const badgeEmoji = g.rank === 1 ? '🥇' : g.rank === 2 ? '🥈' : g.rank === 3 ? '🥉' : `${g.rank}`;
 
-        const prevGrp = prevGroupScoresMap[g.group_name];
+        const prevGrp = prevDashGroupScoresMap[g.group_name];
         let animClass = '';
         if (prevGrp !== undefined && prevGrp !== null) {
           if (g.total_score > prevGrp) animClass = 'score-animate-up';
@@ -3501,7 +3502,8 @@ function renderLeaderboards(data) {
         allGrid.innerHTML = '';
         students.forEach(s => {
           const card = document.createElement('div');
-          const scoreType = s.score > 0 ? 'positive' : s.score < 0 ? 'negative' : 'neutral';
+          const scoreVal = s.score ?? 0;
+          const scoreType = scoreVal > 0 ? 'positive' : scoreVal < 0 ? 'negative' : 'neutral';
           const absentClass = s.is_absent ? 'absent' : '';
           const leaveLabel = isEn ? '(Leave)' : '(請假)';
           const absentBadge = s.is_absent ? `<span style="color:#d9807e; font-size:0.72rem; margin-left:4px;">${leaveLabel}</span>` : '';
@@ -3523,7 +3525,7 @@ function renderLeaderboards(data) {
               </div>
               <div class="student-score-val-sec">
                 <div id="dash-student-score-${s.id}" class="student-score-badge ${scoreType}">
-                  ${s.score}
+                  ${scoreVal}
                 </div>
               </div>
             </div>
@@ -3537,34 +3539,48 @@ function renderLeaderboards(data) {
           allGrid.appendChild(card);
         });
       } else {
-        // In-Place Update: 只原地更新有分數變化的學生，其他學生卡片 100% 保持不動、不重建 DOM
+        // In-Place Update: 原地更新學生分數與請假狀態，避免整頁重繪
         students.forEach(s => {
-          const prev = prevStudentScoresMap[s.id];
           const scoreEl = document.getElementById(`dash-student-score-${s.id}`);
-          if (scoreEl && prev !== undefined && prev !== null && s.score !== prev) {
-            const scoreType = s.score > 0 ? 'positive' : s.score < 0 ? 'negative' : 'neutral';
-            const animClass = s.score > prev ? 'score-animate-up' : 'score-animate-down';
-            
-            scoreEl.textContent = `${s.score}`;
-            scoreEl.className = `student-score-badge ${scoreType} ${animClass}`;
-            
-            setTimeout(() => {
-              if (scoreEl) {
-                scoreEl.className = `student-score-badge ${scoreType}`;
+          const cardEl = document.getElementById(`dash-student-card-${s.id}`);
+          const scoreVal = s.score ?? 0;
+          const prev = prevDashStudentScoresMap[s.id];
+          const scoreType = scoreVal > 0 ? 'positive' : scoreVal < 0 ? 'negative' : 'neutral';
+
+          if (cardEl) {
+            cardEl.classList.toggle('absent', Boolean(s.is_absent));
+          }
+
+          if (scoreEl) {
+            const currentText = scoreEl.textContent.trim();
+            // 當 DOM 數值與當前時段分數不一致，或分數有變動時，即刻同步更新
+            if (currentText !== String(scoreVal) || (prev !== undefined && prev !== null && scoreVal !== prev)) {
+              const hasPrev = prev !== undefined && prev !== null;
+              const animClass = hasPrev && scoreVal > prev ? 'score-animate-up' : (hasPrev && scoreVal < prev ? 'score-animate-down' : '');
+              
+              scoreEl.textContent = `${scoreVal}`;
+              scoreEl.className = `student-score-badge ${scoreType} ${animClass}`.trim();
+              
+              if (animClass) {
+                setTimeout(() => {
+                  if (scoreEl) {
+                    scoreEl.className = `student-score-badge ${scoreType}`;
+                  }
+                }, 850);
               }
-            }, 850);
+            }
           }
         });
       }
     }
   }
 
-  // Update previous scores map
+  // Update previous dashboard scores map
   (data.students || []).forEach(s => {
-    prevStudentScoresMap[s.id] = s.score;
+    prevDashStudentScoresMap[s.id] = s.score ?? 0;
   });
   (data.group_leaderboard || []).forEach(g => {
-    prevGroupScoresMap[g.group_name] = g.total_score;
+    prevDashGroupScoresMap[g.group_name] = g.total_score ?? 0;
   });
 }
 
@@ -4828,6 +4844,7 @@ async function showQRModal() {
     alert(`獲取 QR Code 失敗：${err.message}`);
   }
 }
+window.showQRModal = showQRModal;
 
 // 主登入畫面「📱 學生連線 QR Code」按鈕：這個 API 不需要登入即可呼叫（見 system.ts 的
 // GET /api/system/info 沒有掛 requireAuth），所以在 auth-overlay 階段也能直接使用。
@@ -4841,6 +4858,7 @@ async function showStudentQrModal() {
     alert(`獲取 QR Code 失敗：${err.message}`);
   }
 }
+window.showStudentQrModal = showStudentQrModal;
 
 // 點擊「學生連線 QR Code」圖片：以彈出視窗放大顯示，方便全班快速掃描登入
 function openQrFullscreenTab(imgSrc, urlText) {
@@ -6013,7 +6031,12 @@ function initEventListeners() {
   document.getElementById('btn-add-course').addEventListener('click', () => openModal('modal-add-course'));
   document.getElementById('btn-delete-course')?.addEventListener('click', startDeleteCourseFlow);
   document.getElementById('btn-pane-delete-course')?.addEventListener('click', startDeleteCourseFlow);
-  document.getElementById('btn-qr-modal').addEventListener('click', showQRModal);
+  document.getElementById('btn-qr-modal')?.addEventListener('click', showQRModal);
+  document.getElementById('btn-admin-show-mobile-scoring-qr')?.addEventListener('click', showQRModal);
+  document.getElementById('btn-security-show-mobile-scoring-qr')?.addEventListener('click', showQRModal);
+  document.querySelectorAll('.btn-show-mobile-qr-action').forEach((btn) => {
+    btn.addEventListener('click', showQRModal);
+  });
 
   const btnToggleLang = document.getElementById('btn-toggle-lang');
   if (btnToggleLang) {
@@ -6356,7 +6379,8 @@ function initEventListeners() {
       } else {
         if (rangeInputs) rangeInputs.style.display = 'none';
         if (projRangeInputs) projRangeInputs.style.display = 'none';
-        loadDashboardData();
+        lastDashboardFingerprint = null;
+        loadDashboardData(true);
         refreshProjectionData();
       }
     });
@@ -6595,6 +6619,8 @@ function initEventListeners() {
     if (secDashInd) secDashInd.style.display = mode === 'individual' ? 'block' : 'none';
     if (secDashGrp) secDashGrp.style.display = mode === 'group' ? 'block' : 'none';
     if (secDashAll) secDashAll.style.display = mode === 'all' ? 'block' : 'none';
+
+    loadDashboardData(true);
   }
 
   if (btnDashInd) btnDashInd.addEventListener('click', () => setDashboardMode('individual'));
@@ -6608,7 +6634,18 @@ function initEventListeners() {
   });
   document.getElementById('btn-open-forgot-password-modal').addEventListener('click', openForgotConfirmModal);
   document.getElementById('student-login-form').addEventListener('submit', submitStudentLogin);
-  document.getElementById('btn-show-student-qr').addEventListener('click', showStudentQrModal);
+  const btnShowStudentQr = document.getElementById('btn-show-student-qr');
+  if (btnShowStudentQr) btnShowStudentQr.addEventListener('click', showStudentQrModal);
+
+  const btnAdminShowStudentQr = document.getElementById('btn-admin-show-student-qr');
+  if (btnAdminShowStudentQr) btnAdminShowStudentQr.addEventListener('click', showStudentQrModal);
+
+  const btnSecurityShowStudentQr = document.getElementById('btn-security-show-student-qr');
+  if (btnSecurityShowStudentQr) btnSecurityShowStudentQr.addEventListener('click', showStudentQrModal);
+
+  document.querySelectorAll('.btn-show-student-qr-action').forEach((btn) => {
+    btn.addEventListener('click', showStudentQrModal);
+  });
   document.getElementById('qr-student-image').addEventListener('click', () => {
     openQrFullscreenTab(
       document.getElementById('qr-student-image').src,

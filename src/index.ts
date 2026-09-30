@@ -211,6 +211,25 @@ app.get("/projection", async (req, res) => {
   }
 });
 
+// --- 作業掃描登記：小助手獨立彈出視窗（僅限教師本機） ---
+app.get("/homework-scan", requireLocalOnly, async (req, res) => {
+  if (!(await isRequestAuthenticated(req))) {
+    const redirectTarget = req.originalUrl.includes("?") ? req.originalUrl : "/homework-scan";
+    res.redirect(307, `/?redirect=${encodeURIComponent(redirectTarget)}`);
+    return;
+  }
+  const scanFile = path.join(staticDir, "homework-scan.html");
+  const indexFile = path.join(staticDir, "index.html");
+  if (fs.existsSync(scanFile)) {
+    renderCachedHtml(res, scanFile);
+  } else if (fs.existsSync(indexFile)) {
+    renderCachedHtml(res, indexFile);
+  } else {
+    res.json({ message: "Homework scan page is missing" });
+  }
+});
+
+
 // --- LMS 學生入口頁（Phase 2）：公開頁面，不需要教師系統密碼登入。
 // 使用者不再直接輸入這個網址——教師與學生一律從 http://localhost:8000 進入，學生登入成功後
 // 由 static/js/app.js 的 enterStudentMode() 把這個頁面載進一個同源全螢幕 iframe 顯示，

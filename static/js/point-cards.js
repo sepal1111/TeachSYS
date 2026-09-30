@@ -3,7 +3,7 @@
   let currentCards = [];
   let currentSeries = [];
   let availableCourses = [];
-  let activeFilterSeries = 'all';
+  let activeFilterSeries = 'overview'; // 預設進入風格系列總覽，不直接展開顯示全部卡片
   let sortBy = 'card_no';
   let sortDesc = false;
   let selectedCardsMap = {};
@@ -88,56 +88,118 @@
     const filterSelect = document.getElementById('ptcard-filter-series');
     if (!filterSelect) return;
 
-    const prevVal = activeFilterSeries;
+    const uncatCount = currentCards.filter((c) => !c.series_id).length;
     let html = `
-      <option value="all">🃏 全部卡片 (${currentCards.length})</option>
-      <option value="uncategorized">📁 未分類卡片 (${currentCards.filter(c => !c.series_id).length})</option>
+      <option value="overview">📁 風格系列總覽 (預設)</option>
+      <option value="all">🃏 檢視全部卡片清單 (${currentCards.length})</option>
+      <option value="uncategorized">📁 未分類卡片 (${uncatCount})</option>
     `;
 
     currentSeries.forEach((s) => {
-      const count = currentCards.filter(c => c.series_id === s.id).length;
+      const count = currentCards.filter((c) => c.series_id === s.id).length;
       html += `<option value="${s.id}">🏷️ ${escapeHtml(s.name)} (${count})</option>`;
     });
 
     filterSelect.innerHTML = html;
-    filterSelect.value = prevVal;
-    if (filterSelect.value !== prevVal) {
-      activeFilterSeries = 'all';
-      filterSelect.value = 'all';
+
+    const validValues = ['overview', 'all', 'uncategorized', ...currentSeries.map((s) => String(s.id))];
+    if (!validValues.includes(String(activeFilterSeries))) {
+      activeFilterSeries = 'overview';
+    }
+    filterSelect.value = activeFilterSeries;
+
+    // 同步更新批次移動目標下拉選單
+    const batchTargetSelect = document.getElementById('ptcard-batch-target-series');
+    if (batchTargetSelect) {
+      let bHtml = `<option value="null">未分類</option>`;
+      currentSeries.forEach((s) => {
+        bHtml += `<option value="${s.id}">🏷️ ${escapeHtml(s.name)}</option>`;
+      });
+      batchTargetSelect.innerHTML = bHtml;
     }
   }
 
-  // 4. 渲染卡片列表
-  function renderCardsList() {
-    const container = document.getElementById('ptcard-items-container');
-    const emptyState = document.getElementById('ptcard-empty-state');
-    if (!container) return;
+  // 排序比較函式
+  function sortCardsComparator(a, b) {
+    let valA = a[sortBy] ?? '';
+    let valB = b[sortBy] ?? '';
 
-    // 篩選
-    let filtered = currentCards.filter((c) => {
+    if (sortBy === 'score' || sortBy === 'redemption_count') {
+      const numA = Number(valA) || 0;
+      const numB = Number(valB) || 0;
+      return sortDesc ? numB - numA : numA - numB;
+    }
+
+    const strA = String(valA);
+    const strB = String(valB);
+    const cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+    return sortDesc ? -cmp : cmp;
+  }
+
+  // 取得目前視野內的卡片 (供全選或批次操作使用)
+  function getCurrentVisibleCards() {
+    const searchInput = document.getElementById('ptcard-search-input');
+    const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+    if (query) {
+      return currentCards.filter((c) => {
+        const no = String(c.card_no || '').toLowerCase();
+        const label = String(c.label || '').toLowerCase();
+        const code = String(c.code || '').toLowerCase();
+        const series = String(c.series_name || '').toLowerCase();
+        return no.includes(query) || label.includes(query) || code.includes(query) || series.includes(query);
+      });
+    }
+
+    if (activeFilterSeries === 'overview') {
+      return [];
+    }
+
+    return currentCards.filter((c) => {
       if (activeFilterSeries === 'uncategorized') return !c.series_id;
       if (activeFilterSeries === 'all') return true;
       return String(c.series_id) === String(activeFilterSeries);
     });
+  }
 
-    // 排序
-    filtered.sort((a, b) => {
-      let valA = a[sortBy] ?? '';
-      let valB = b[sortBy] ?? '';
+  // 單張點數卡 HTML 生成輔助函式
+  function renderSingleCardItemHtml(card) {
+    const isChecked = !!selectedCardsMap[card.id];
+    const isPositive = card.score >= 0;
+    const scorePrefix = isPositive ? '+' : '';
+    const themeLabel = card.series_name || t('ptcard_batch_unclassified', '未分類');
 
-      if (sortBy === 'score' || sortBy === 'redemption_count') {
-        const numA = Number(valA) || 0;
-        const numB = Number(valB) || 0;
-        return sortDesc ? numB - numA : numA - numB;
-      }
+    return `
+      <div class="ptcard-item-card glass-card ${isChecked ? 'selected' : ''}" data-id="${card.id}" style="margin-bottom:0; padding:16px; border:1.5px solid ${isChecked ? 'var(--primary)' : 'var(--card-border)'}; border-radius:var(--radius-lg); position:relative; transition:all 0.15s ease; background:${isChecked ? 'rgba(91, 124, 214, 0.05)' : 'var(--card-bg)'};">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:700; color:var(--text-main);">
+            <input type="checkbox" class="ptcard-select-cb" data-id="${card.id}" ${isChecked ? 'checked' : ''} style="width:17px; height:17px; accent-color:var(--primary); cursor:pointer;">
+            <span>${card.card_no ? `<span style="background:var(--nav-tab-hover-bg); padding:2px 6px; border-radius:6px; font-size:0.8rem; margin-right:4px;">#${escapeHtml(card.card_no)}</span>` : ''}${escapeHtml(card.label)}</span>
+          </label>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="badge" style="font-size:0.95rem; font-weight:900; padding:3px 10px; border-radius:var(--radius-full); background:${isPositive ? 'rgba(79, 174, 130, 0.15)' : 'rgba(217, 128, 126, 0.15)'}; color:${isPositive ? 'var(--accent-positive)' : 'var(--accent-negative)'};">
+              ${scorePrefix}${card.score} ${t('pts', '分')}
+            </span>
+            <button type="button" class="btn-icon btn-delete-single-card" data-id="${card.id}" title="${t('ptcard_btn_delete_single', '刪除此卡')}" style="color:var(--text-subtle); padding:4px; font-size:0.9rem; cursor:pointer; background:none; border:none;">🗑️</button>
+          </div>
+        </div>
 
-      const strA = String(valA);
-      const strB = String(valB);
-      const cmp = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
-      return sortDesc ? -cmp : cmp;
-    });
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text-muted); padding-top:8px; border-top:1px dashed var(--card-border);">
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span style="background:rgba(91, 124, 214, 0.1); color:var(--primary); padding:2px 8px; border-radius:12px; font-weight:600;">🏷️ ${escapeHtml(themeLabel)}</span>
+            <span style="font-family:ui-monospace, monospace; color:var(--text-subtle);" title="QR">🔑 ${escapeHtml(card.code)}</span>
+          </div>
+          <div style="font-size:0.8rem;">
+            ${t('ptcard_scanned_count', `已刷 ${card.redemption_count || 0} 次`, { count: card.redemption_count || 0 })}
+          </div>
+        </div>
+      </div>
+    `;
+  }
 
-    if (filtered.length === 0) {
+  // 風格系列總覽視圖渲染
+  function renderSeriesOverview(container, emptyState) {
+    if (currentCards.length === 0 && currentSeries.length === 0) {
       container.innerHTML = '';
       if (emptyState) emptyState.style.display = 'block';
       updateBatchToolbar();
@@ -146,43 +208,268 @@
 
     if (emptyState) emptyState.style.display = 'none';
 
-    container.innerHTML = filtered
-      .map((card) => {
-        const isChecked = !!selectedCardsMap[card.id];
-        const isPositive = card.score >= 0;
-        const scoreBadgeClass = isPositive ? 'accent-positive' : 'accent-negative';
-        const scorePrefix = isPositive ? '+' : '';
-        const themeLabel = card.series_name || t('ptcard_batch_unclassified', '未分類');
+    let html = `
+      <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:8px; padding:4px 2px;">
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <span style="font-weight:800; font-size:1.05rem; color:var(--text-main);">📁 風格系列與卡片相簿總覽</span>
+          <span style="font-size:0.82rem; color:var(--text-muted); background:var(--nav-bg); padding:3px 12px; border-radius:12px; border:1px solid var(--card-border);">
+            共 ${currentSeries.length} 個系列 · ${currentCards.length} 張實體卡
+          </span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary btn-view-all-cards-direct" style="font-size:0.82rem; padding:6px 12px; font-weight:700;">
+            🃏 瀏覽全部卡片清單 (${currentCards.length})
+          </button>
+          <button type="button" class="btn btn-secondary btn-create-series-direct" style="font-size:0.82rem; padding:6px 12px; font-weight:700;">
+            ➕ 新建系列
+          </button>
+        </div>
+      </div>
+    `;
 
-        return `
-          <div class="ptcard-item-card glass-card ${isChecked ? 'selected' : ''}" data-id="${card.id}" style="margin-bottom:0; padding:16px; border:1.5px solid ${isChecked ? 'var(--primary)' : 'var(--card-border)'}; border-radius:var(--radius-lg); position:relative; transition:all 0.15s ease; background:${isChecked ? 'rgba(91, 124, 214, 0.05)' : 'var(--card-bg)'};">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px;">
-              <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:0.88rem; font-weight:700; color:var(--text-main);">
-                <input type="checkbox" class="ptcard-select-cb" data-id="${card.id}" ${isChecked ? 'checked' : ''} style="width:17px; height:17px; accent-color:var(--primary); cursor:pointer;">
-                <span>${card.card_no ? `<span style="background:var(--nav-tab-hover-bg); padding:2px 6px; border-radius:6px; font-size:0.8rem; margin-right:4px;">#${escapeHtml(card.card_no)}</span>` : ''}${escapeHtml(card.label)}</span>
-              </label>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span class="badge" style="font-size:0.95rem; font-weight:900; padding:3px 10px; border-radius:var(--radius-full); background:${isPositive ? 'rgba(79, 174, 130, 0.15)' : 'rgba(217, 128, 126, 0.15)'}; color:${isPositive ? 'var(--accent-positive)' : 'var(--accent-negative)'};">
-                  ${scorePrefix}${card.score} ${t('pts', '分')}
-                </span>
-                <button type="button" class="btn-icon btn-delete-single-card" data-id="${card.id}" title="${t('ptcard_btn_delete_single', '刪除此卡')}" style="color:var(--text-subtle); padding:4px; font-size:0.9rem; cursor:pointer; background:none; border:none;">🗑️</button>
+    // 渲染各風格系列卡片
+    currentSeries.forEach((s) => {
+      const sCards = currentCards.filter((c) => c.series_id === s.id);
+      const totalScans = sCards.reduce((acc, c) => acc + (c.redemption_count || 0), 0);
+
+      // 分數分佈
+      const uniqueScores = Array.from(new Set(sCards.map((c) => c.score))).sort((a, b) => a - b);
+      const scoreLabels = uniqueScores.length > 0
+        ? uniqueScores.map((sc) => `${sc >= 0 ? '+' : ''}${sc}分`).join(', ')
+        : '未設定';
+
+      // 卡號範圍
+      const numberedCards = sCards.filter((c) => c.card_no).map((c) => c.card_no);
+      let rangeText = '無序號';
+      if (numberedCards.length > 0) {
+        rangeText = numberedCards.length === 1
+          ? `#${numberedCards[0]}`
+          : `#${numberedCards[0]} ~ #${numberedCards[numberedCards.length - 1]}`;
+      }
+
+      // 底圖風格數量
+      const customImgCount = s.custom_images ? Object.keys(s.custom_images).filter((k) => !!s.custom_images[k]).length : 0;
+      const themeLabel = customImgCount > 0 ? `🎨 自訂圖卡 (${customImgCount} 款底圖)` : '🎨 標準預設風格';
+
+      html += `
+        <div class="glass-card ptcard-series-album-card" data-series-id="${s.id}" style="margin-bottom:0; padding:18px; border:1.5px solid var(--card-border); border-radius:var(--radius-lg); display:flex; flex-direction:column; justify-content:space-between; background:var(--card-bg); transition:all 0.18s ease; cursor:pointer;" onmouseenter="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.borderColor='var(--card-border)'; this.style.transform='none';">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+              <div style="font-weight:800; font-size:1.05rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.25rem;">🏷️</span>
+                <span>${escapeHtml(s.name)}</span>
               </div>
+              <span class="badge" style="background:rgba(91, 124, 214, 0.12); color:var(--primary); font-size:0.82rem; font-weight:800; padding:4px 10px; border-radius:12px;">
+                ${sCards.length} 張卡片
+              </span>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.82rem; color:var(--text-muted); padding-top:8px; border-top:1px dashed var(--card-border);">
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span style="background:rgba(91, 124, 214, 0.1); color:var(--primary); padding:2px 8px; border-radius:12px; font-weight:600;">🏷️ ${escapeHtml(themeLabel)}</span>
-                <span style="font-family:ui-monospace, monospace; color:var(--text-subtle);" title="QR">🔑 ${escapeHtml(card.code)}</span>
+            <div style="display:flex; flex-direction:column; gap:7px; font-size:0.83rem; color:var(--text-muted); margin-bottom:16px; padding:12px; background:var(--nav-bg); border-radius:var(--radius-md); border:1px solid var(--card-border);">
+              <div style="display:flex; justify-content:space-between;">
+                <span>⚡ 累計兌換：</span>
+                <strong style="color:var(--text-main);">${totalScans} 次</strong>
               </div>
-              <div style="font-size:0.8rem;">
-                ${t('ptcard_scanned_count', `已刷 ${card.redemption_count || 0} 次`, { count: card.redemption_count || 0 })}
+              <div style="display:flex; justify-content:space-between;">
+                <span>🔢 序號範圍：</span>
+                <strong style="color:var(--text-main); font-family:monospace;">${escapeHtml(rangeText)}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>💎 涵蓋點數：</span>
+                <strong style="color:var(--accent-positive);">${escapeHtml(scoreLabels)}</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>🎨 外觀設計：</span>
+                <span style="color:var(--text-main); font-weight:600;">${escapeHtml(themeLabel)}</span>
               </div>
             </div>
           </div>
-        `;
-      })
-      .join('');
 
+          <div style="display:flex; gap:6px; flex-wrap:wrap; padding-top:4px;">
+            <button type="button" class="btn btn-view-series-cards" data-id="${s.id}" style="flex:1; min-width:130px; font-size:0.84rem; padding:7px 12px; font-weight:700; display:flex; align-items:center; justify-content:center; gap:4px;">
+              🔍 查看系列卡片 (${sCards.length})
+            </button>
+            <button type="button" class="btn btn-secondary btn-design-series" data-id="${s.id}" title="製作與列印實體卡" style="font-size:0.82rem; padding:7px 10px; color:#4f46e5; border-color:#cbd5e1; font-weight:700;">
+              🎨 製作
+            </button>
+            <button type="button" class="btn btn-secondary btn-edit-series" data-id="${s.id}" title="編輯系列" style="font-size:0.82rem; padding:7px 8px;">
+              ✏️
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    // 渲染未分類卡片卡 (若有未分類卡片)
+    const uncatCards = currentCards.filter((c) => !c.series_id);
+    if (uncatCards.length > 0) {
+      const uncatScans = uncatCards.reduce((acc, c) => acc + (c.redemption_count || 0), 0);
+      html += `
+        <div class="glass-card ptcard-series-album-card" data-series-id="uncategorized" style="margin-bottom:0; padding:18px; border:1.5px dashed var(--card-border); border-radius:var(--radius-lg); display:flex; flex-direction:column; justify-content:space-between; background:var(--card-bg); transition:all 0.18s ease; cursor:pointer;" onmouseenter="this.style.borderColor='var(--primary)'; this.style.transform='translateY(-2px)';" onmouseleave="this.style.borderColor='var(--card-border)'; this.style.transform='none';">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+              <div style="font-weight:800; font-size:1.05rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.25rem;">📁</span>
+                <span>未分類點數卡</span>
+              </div>
+              <span class="badge" style="background:rgba(148, 163, 184, 0.15); color:var(--text-muted); font-size:0.82rem; font-weight:800; padding:4px 10px; border-radius:12px;">
+                ${uncatCards.length} 張卡片
+              </span>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:7px; font-size:0.83rem; color:var(--text-muted); margin-bottom:16px; padding:12px; background:var(--nav-bg); border-radius:var(--radius-md); border:1px solid var(--card-border);">
+              <div style="display:flex; justify-content:space-between;">
+                <span>⚡ 累計兌換：</span>
+                <strong style="color:var(--text-main);">${uncatScans} 次</strong>
+              </div>
+              <div style="display:flex; justify-content:space-between;">
+                <span>ℹ️ 狀態說明：</span>
+                <span style="color:var(--text-muted);">尚未指定至特定風格系列</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:6px; flex-wrap:wrap; padding-top:4px;">
+            <button type="button" class="btn btn-secondary btn-view-series-cards" data-id="uncategorized" style="width:100%; font-size:0.84rem; padding:7px 12px; font-weight:700;">
+              🔍 查看未分類卡片 (${uncatCards.length})
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    // 快捷新增系列卡片
+    html += `
+      <div class="glass-card btn-create-series-direct" style="margin-bottom:0; padding:24px 18px; border:2px dashed var(--primary-light); border-radius:var(--radius-lg); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:rgba(91, 124, 214, 0.03); cursor:pointer; min-height:180px; transition:all 0.18s ease;" onmouseenter="this.style.background='rgba(91, 124, 214, 0.08)';" onmouseleave="this.style.background='rgba(91, 124, 214, 0.03)';">
+        <div style="font-size:2rem; margin-bottom:8px;">➕</div>
+        <div style="font-weight:800; font-size:1rem; color:var(--primary); margin-bottom:4px;">建立新風格系列</div>
+        <div style="font-size:0.8rem; color:var(--text-muted); max-width:200px;">建立風格系列以分類點數卡，套用專屬卡片底圖與列印排版</div>
+      </div>
+    `;
+
+    container.innerHTML = html;
+    updateBatchToolbar();
+  }
+
+  // 搜尋結果渲染
+  function renderSearchResults(query, container, emptyState) {
+    let filtered = currentCards.filter((c) => {
+      const no = String(c.card_no || '').toLowerCase();
+      const label = String(c.label || '').toLowerCase();
+      const code = String(c.code || '').toLowerCase();
+      const series = String(c.series_name || '').toLowerCase();
+      return no.includes(query) || label.includes(query) || code.includes(query) || series.includes(query);
+    });
+
+    filtered.sort(sortCardsComparator);
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    const headerHtml = `
+      <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:var(--card-bg); border:1.5px solid var(--primary-light); padding:10px 16px; border-radius:var(--radius-lg); margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-weight:800; font-size:0.95rem; color:var(--text-main);">🔍 搜尋「${escapeHtml(query)}」：共 ${filtered.length} 張卡片</span>
+        </div>
+        <button type="button" id="btn-clear-ptcard-search" class="btn btn-secondary" style="font-size:0.82rem; padding:5px 12px;">✕ 清除搜尋</button>
+      </div>
+    `;
+
+    if (filtered.length === 0) {
+      container.innerHTML = headerHtml + `
+        <div style="grid-column: 1 / -1; text-align:center; padding:36px 16px; color:var(--text-muted); font-size:0.9rem;">
+          查無符合「${escapeHtml(query)}」的點數卡
+        </div>
+      `;
+      updateBatchToolbar();
+      return;
+    }
+
+    const cardsHtml = filtered.map(renderSingleCardItemHtml).join('');
+    container.innerHTML = headerHtml + cardsHtml;
+    updateBatchToolbar();
+  }
+
+  // 4. 渲染卡片列表或系列總覽
+  function renderCardsList() {
+    const container = document.getElementById('ptcard-items-container');
+    const emptyState = document.getElementById('ptcard-empty-state');
+    const sortGroup = document.getElementById('ptcard-sort-group');
+    const selectAllLabel = document.getElementById('ptcard-select-all-label');
+    const searchInput = document.getElementById('ptcard-search-input');
+    if (!container) return;
+
+    const query = (searchInput ? searchInput.value : '').trim().toLowerCase();
+
+    // 1. 如果有搜尋關鍵字，渲染搜尋結果
+    if (query) {
+      if (sortGroup) sortGroup.style.display = 'inline-flex';
+      if (selectAllLabel) selectAllLabel.style.display = 'inline-flex';
+      renderSearchResults(query, container, emptyState);
+      return;
+    }
+
+    // 2. 預設模式：風格系列總覽，不直接展開顯示全部卡片
+    if (activeFilterSeries === 'overview') {
+      if (sortGroup) sortGroup.style.display = 'none';
+      if (selectAllLabel) selectAllLabel.style.display = 'none';
+      renderSeriesOverview(container, emptyState);
+      return;
+    }
+
+    // 3. 進入特定系列、未分類或全部卡片清單模式
+    if (sortGroup) sortGroup.style.display = 'inline-flex';
+    if (selectAllLabel) selectAllLabel.style.display = 'inline-flex';
+
+    let filtered = currentCards.filter((c) => {
+      if (activeFilterSeries === 'uncategorized') return !c.series_id;
+      if (activeFilterSeries === 'all') return true;
+      return String(c.series_id) === String(activeFilterSeries);
+    });
+
+    // 排序
+    filtered.sort(sortCardsComparator);
+
+    if (filtered.length === 0) {
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; margin-bottom: 8px;">
+          <button type="button" class="btn btn-secondary btn-back-to-ptcard-overview" style="font-size: 0.85rem; padding: 6px 14px; font-weight: 700; color: var(--primary);">
+            ⬅ 返回風格系列總覽
+          </button>
+        </div>
+      `;
+      if (emptyState) emptyState.style.display = 'block';
+      updateBatchToolbar();
+      return;
+    }
+
+    if (emptyState) emptyState.style.display = 'none';
+
+    // 取得當前系列標題資訊
+    let currentSeriesObj = currentSeries.find((s) => String(s.id) === String(activeFilterSeries));
+    let titleIcon = '🏷️';
+    let titleText = currentSeriesObj ? currentSeriesObj.name : (activeFilterSeries === 'uncategorized' ? '未分類卡片' : '全部點數卡清單');
+    if (activeFilterSeries === 'uncategorized') titleIcon = '📁';
+    if (activeFilterSeries === 'all') titleIcon = '🃏';
+
+    const headerHtml = `
+      <div style="grid-column: 1 / -1; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; background:var(--card-bg); border:1.5px solid var(--primary-light); padding:10px 16px; border-radius:var(--radius-lg); margin-bottom:6px;">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-back-to-ptcard-overview" style="font-size:0.85rem; padding:6px 14px; font-weight:700; color:var(--primary); border-color:var(--primary-light);">
+            ⬅ 返回風格系列總覽
+          </button>
+          <div style="font-weight:800; font-size:1rem; color:var(--text-main); display:flex; align-items:center; gap:8px;">
+            <span>${titleIcon} ${escapeHtml(titleText)}</span>
+            <span class="badge" style="background:rgba(91, 124, 214, 0.12); color:var(--primary); font-size:0.8rem; font-weight:800; padding:2px 8px; border-radius:12px;">${filtered.length} 張卡片</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          ${currentSeriesObj ? `<button type="button" class="btn btn-secondary btn-design-series" data-id="${currentSeriesObj.id}" style="font-size:0.82rem; padding:6px 12px; color:#4f46e5; border-color:#cbd5e1; font-weight:700;">🎨 製作此系列實體卡</button>` : ''}
+          <button type="button" class="btn btn-secondary btn-open-import-direct" style="font-size:0.82rem; padding:6px 12px;">📥 匯入卡片</button>
+        </div>
+      </div>
+    `;
+
+    const cardsHtml = filtered.map(renderSingleCardItemHtml).join('');
+    container.innerHTML = headerHtml + cardsHtml;
     updateBatchToolbar();
   }
 
@@ -196,7 +483,7 @@
     if (selectedCountEl) selectedCountEl.textContent = checkedIds.length;
 
     if (batchBar) {
-      if (checkedIds.length > 0) {
+      if (checkedIds.length > 0 && activeFilterSeries !== 'overview') {
         batchBar.style.display = 'flex';
       } else {
         batchBar.style.display = 'none';
@@ -204,12 +491,33 @@
     }
 
     if (selectAllCb) {
-      const visibleCards = currentCards.filter((c) => {
-        if (activeFilterSeries === 'uncategorized') return !c.series_id;
-        if (activeFilterSeries === 'all') return true;
-        return String(c.series_id) === String(activeFilterSeries);
-      });
+      const visibleCards = getCurrentVisibleCards();
       selectAllCb.checked = visibleCards.length > 0 && visibleCards.every((c) => selectedCardsMap[c.id]);
+    }
+  }
+
+  // 單張卡片刪除
+  async function deleteSingleCard(cardId) {
+    const courseId = getActiveCourseId();
+    if (!courseId || !cardId) return;
+
+    const card = currentCards.find((c) => c.id === Number(cardId));
+    const cardTitle = card ? (card.card_no ? `#${card.card_no} ${card.label}` : card.label) : '此卡片';
+
+    if (!(await window.showConfirmModal({
+      icon: '🗑️',
+      title: `確定要刪除點數卡「${cardTitle}」嗎？`,
+      desc: '被刪除的卡片將無法再被學生掃描兌換加分。',
+      danger: true,
+    }))) return;
+
+    try {
+      await API.delete(`/api/point-cards/${courseId}/${cardId}`);
+      delete selectedCardsMap[cardId];
+      await loadPointCardsData();
+      showToastSuccess('點數卡已刪除！');
+    } catch (err) {
+      alert('刪除失敗：' + err.message);
     }
   }
 
@@ -581,47 +889,53 @@
     if (selectAllCb) {
       selectAllCb.addEventListener('change', () => {
         const isChecked = selectAllCb.checked;
-        const currentCards = getFilteredCards();
-        currentCards.forEach((c) => {
+        const visibleCards = getCurrentVisibleCards();
+        visibleCards.forEach((c) => {
           selectedCardsMap[c.id] = isChecked;
         });
-        document.querySelectorAll('.ptcard-item-cb').forEach((cb) => {
+        document.querySelectorAll('.ptcard-select-cb').forEach((cb) => {
           cb.checked = isChecked;
+          const cardEl = cb.closest('.ptcard-item-card');
+          if (cardEl) {
+            cardEl.classList.toggle('selected', isChecked);
+            cardEl.style.borderColor = isChecked ? 'var(--primary)' : 'var(--card-border)';
+            cardEl.style.background = isChecked ? 'rgba(91, 124, 214, 0.05)' : 'var(--card-bg)';
+          }
         });
-        updateBatchActionBar();
+        updateBatchToolbar();
       });
     }
 
-    const cardsContainer = document.getElementById('ptcard-cards-container');
+    const cardsContainer = document.getElementById('ptcard-items-container');
     if (cardsContainer) {
       cardsContainer.addEventListener('change', (e) => {
         const target = e.target;
-        if (target.classList.contains('ptcard-item-cb')) {
+        if (target && target.classList.contains('ptcard-select-cb')) {
           const cardId = Number(target.getAttribute('data-id'));
           selectedCardsMap[cardId] = target.checked;
-          updateBatchActionBar();
+          const cardEl = target.closest('.ptcard-item-card');
+          if (cardEl) {
+            cardEl.classList.toggle('selected', target.checked);
+            cardEl.style.borderColor = target.checked ? 'var(--primary)' : 'var(--card-border)';
+            cardEl.style.background = target.checked ? 'rgba(91, 124, 214, 0.05)' : 'var(--card-bg)';
+          }
+          updateBatchToolbar();
         }
       });
     }
 
-    const btnCloseBatch = document.getElementById('btn-close-batch-bar');
-    if (btnCloseBatch) {
-      btnCloseBatch.addEventListener('click', () => {
-        selectedCardsMap = {};
-        if (selectAllCb) selectAllCb.checked = false;
-        document.querySelectorAll('.ptcard-item-cb').forEach((cb) => (cb.checked = false));
-        updateBatchActionBar();
+    const btnBatchMove = document.getElementById('btn-ptcard-batch-move');
+    if (btnBatchMove) {
+      btnBatchMove.addEventListener('click', () => {
+        const targetSelect = document.getElementById('ptcard-batch-target-series');
+        const targetVal = targetSelect ? targetSelect.value : null;
+        batchMoveCards(targetVal);
       });
     }
 
-    const btnBatchMove = document.getElementById('btn-submit-batch-move');
-    if (btnBatchMove) {
-      btnBatchMove.addEventListener('click', submitBatchMove);
-    }
-
-    const btnBatchDelete = document.getElementById('btn-submit-batch-delete');
+    const btnBatchDelete = document.getElementById('btn-ptcard-batch-delete');
     if (btnBatchDelete) {
-      btnBatchDelete.addEventListener('click', submitBatchDelete);
+      btnBatchDelete.addEventListener('click', batchDeleteCards);
     }
   }
 
@@ -637,7 +951,7 @@
       return;
     }
     const filterSelect = document.getElementById('ptcard-filter-series');
-    const selectedSeriesId = targetSeriesId || (filterSelect && filterSelect.value !== 'all' ? filterSelect.value : null);
+    const selectedSeriesId = targetSeriesId || (filterSelect && filterSelect.value !== 'all' && filterSelect.value !== 'overview' ? filterSelect.value : null);
     if (window.CardDesignerStudio && typeof window.CardDesignerStudio.open === 'function') {
       window.CardDesignerStudio.open(courseId, selectedSeriesId);
     }
@@ -751,42 +1065,28 @@
     const filterSeries = document.getElementById('ptcard-filter-series');
     if (filterSeries) {
       filterSeries.addEventListener('change', () => {
+        activeFilterSeries = filterSeries.value;
+        selectedCardsMap = {};
         renderCardsList();
       });
     }
 
-    // 4. 新增單張點數卡彈窗
-    const btnOpenAddSingle = document.getElementById('btn-open-add-ptcard-modal');
-    if (btnOpenAddSingle) {
-      btnOpenAddSingle.addEventListener('click', () => {
-        const codeInput = document.getElementById('ptcard-add-code');
-        const labelInput = document.getElementById('ptcard-add-label');
-        const scoreInput = document.getElementById('ptcard-add-score');
-        const cardNoInput = document.getElementById('ptcard-add-cardno');
-        if (codeInput) codeInput.value = '';
-        if (labelInput) labelInput.value = '';
-        if (scoreInput) scoreInput.value = '1';
-        if (cardNoInput) cardNoInput.value = '';
-        openModal('modal-add-point-card');
-      });
-    }
-
-    const btnSubmitAddSingle = document.getElementById('btn-submit-add-ptcard');
-    if (btnSubmitAddSingle) {
-      btnSubmitAddSingle.addEventListener('click', submitAddSingleCard);
-    }
-
-    // 5. 快速產生隨機卡號代碼
-    const btnGenCode = document.getElementById('btn-generate-ptcard-code');
-    if (btnGenCode) {
-      btnGenCode.addEventListener('click', () => {
-        const codeInput = document.getElementById('ptcard-add-code');
-        if (codeInput) {
-          const rand = Math.random().toString(36).substring(2, 8).toUpperCase();
-          codeInput.value = `CARD-${rand}`;
+    // 4. 排序按鈕群組監聽
+    const sortButtons = document.querySelectorAll('.btn-ptcard-sort');
+    sortButtons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const sortField = btn.getAttribute('data-sort');
+        if (sortBy === sortField) {
+          sortDesc = !sortDesc;
+        } else {
+          sortBy = sortField;
+          sortDesc = false;
         }
+        sortButtons.forEach((b) => b.classList.remove('active'));
+        btn.classList.add('active');
+        renderCardsList();
       });
-    }
+    });
 
     // 6. 批次匯入點數卡彈窗按鈕
     const btnOpenImport = document.getElementById('btn-open-ptcard-import-modal') || document.getElementById('btn-open-import-ptcard-modal');
@@ -851,11 +1151,118 @@
       });
     }
 
-
-
     // 全域事件委派：支援動態產生的新增按鈕與輸入框 Enter 鍵
     document.addEventListener('click', (e) => {
-      // 0. 點選批次匯入點數卡
+      // 0-1. 點擊返回風格系列總覽
+      const backOverviewBtn = e.target.closest('.btn-back-to-ptcard-overview, #btn-back-to-ptcard-overview');
+      if (backOverviewBtn) {
+        e.preventDefault();
+        activeFilterSeries = 'overview';
+        selectedCardsMap = {};
+        const filterSelect = document.getElementById('ptcard-filter-series');
+        if (filterSelect) filterSelect.value = 'overview';
+        renderCardsList();
+        return;
+      }
+
+      // 0-2. 點擊清除搜尋
+      const clearSearchBtn = e.target.closest('#btn-clear-ptcard-search');
+      if (clearSearchBtn) {
+        e.preventDefault();
+        const searchInput = document.getElementById('ptcard-search-input');
+        if (searchInput) searchInput.value = '';
+        renderCardsList();
+        return;
+      }
+
+      // 0-3. 點擊查看系列卡片 (按鈕或卡片本體)
+      const viewSeriesBtn = e.target.closest('.btn-view-series-cards');
+      if (viewSeriesBtn) {
+        e.preventDefault();
+        const sid = viewSeriesBtn.getAttribute('data-id');
+        activeFilterSeries = sid;
+        selectedCardsMap = {};
+        const filterSelect = document.getElementById('ptcard-filter-series');
+        if (filterSelect) filterSelect.value = sid;
+        renderCardsList();
+        return;
+      }
+
+      const albumCard = e.target.closest('.ptcard-series-album-card');
+      if (albumCard && !e.target.closest('button, input, a')) {
+        e.preventDefault();
+        const sid = albumCard.getAttribute('data-series-id');
+        if (sid) {
+          activeFilterSeries = sid;
+          selectedCardsMap = {};
+          const filterSelect = document.getElementById('ptcard-filter-series');
+          if (filterSelect) filterSelect.value = sid;
+          renderCardsList();
+          return;
+        }
+      }
+
+      // 0-4. 點擊瀏覽全部卡片
+      const viewAllBtn = e.target.closest('.btn-view-all-cards-direct');
+      if (viewAllBtn) {
+        e.preventDefault();
+        activeFilterSeries = 'all';
+        selectedCardsMap = {};
+        const filterSelect = document.getElementById('ptcard-filter-series');
+        if (filterSelect) filterSelect.value = 'all';
+        renderCardsList();
+        return;
+      }
+
+      // 0-5. 點擊快捷新增系列
+      const createSeriesBtn = e.target.closest('.btn-create-series-direct');
+      if (createSeriesBtn) {
+        e.preventDefault();
+        openSeriesModal();
+        showEditSeriesForm(null);
+        return;
+      }
+
+      // 0-6. 點擊匯入卡片 (捷徑按鈕)
+      const openImportDirect = e.target.closest('.btn-open-import-direct');
+      if (openImportDirect) {
+        e.preventDefault();
+        openImportModal();
+        return;
+      }
+
+      // 0-7. 點擊刪除單張卡片
+      const delSingleBtn = e.target.closest('.btn-delete-single-card');
+      if (delSingleBtn) {
+        e.preventDefault();
+        const cid = Number(delSingleBtn.getAttribute('data-id'));
+        if (cid) deleteSingleCard(cid);
+        return;
+      }
+
+      // 0-8. 點選實體卡排版製作
+      const designBtn = e.target.closest('.btn-design-series');
+      if (designBtn && !e.target.closest('#ptcard-series-modal-list')) {
+        e.preventDefault();
+        const sid = Number(designBtn.getAttribute('data-id'));
+        openDesignerStudio(sid);
+        return;
+      }
+
+      // 0-9. 點選編輯系列
+      const editSeriesBtn = e.target.closest('.btn-edit-series');
+      if (editSeriesBtn && !e.target.closest('#ptcard-series-modal-list')) {
+        e.preventDefault();
+        const sid = Number(editSeriesBtn.getAttribute('data-id'));
+        const sobj = currentSeries.find((s) => s.id === sid);
+        if (sobj) {
+          openSeriesModal();
+          showEditSeriesForm(sobj);
+        }
+        return;
+      }
+
+      // 0-10. 點選批次匯入點數卡
       const importBtn = e.target.closest('#btn-open-ptcard-import-modal, #btn-open-import-ptcard-modal');
       if (importBtn) {
         e.preventDefault();

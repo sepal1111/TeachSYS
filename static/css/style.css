@@ -2332,6 +2332,22 @@ body::before {
   box-shadow: 0 2px 10px rgba(123, 152, 224, 0.4);
 }
 
+/* 實時分數看板與排行榜時段切換按鈕 */
+.dashboard-period-btn {
+  border-radius: var(--radius-sm);
+  font-size: 0.85rem;
+  padding: 6px 14px;
+  font-weight: 700;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-period-btn.active {
+  background: linear-gradient(135deg, #7b98e0, #5b7cd6) !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px rgba(123, 152, 224, 0.35);
+}
+
 /* 即時評分介面時段切換按鈕 */
 .scoring-period-btn {
   border-radius: var(--radius-sm);

@@ -790,22 +790,35 @@ function renderProjAllStudentsGrid(students) {
       container.appendChild(card);
     });
   } else {
-    // In-Place Update: 只原地更新有分數變化的學生，其他學生卡片 100% 保持不動、不重建 DOM
+    // In-Place Update: 原地更新學生分數與請假狀態，避免整頁重繪
     students.forEach(s => {
-      const prev = prevStudentScoresMap[s.id];
       const scoreEl = document.getElementById(`proj-student-score-${s.id}`);
-      if (scoreEl && prev !== undefined && prev !== null && s.score !== prev) {
-        const scoreType = s.score > 0 ? 'positive' : s.score < 0 ? 'negative' : 'neutral';
-        const animClass = s.score > prev ? 'score-animate-up' : 'score-animate-down';
-        
-        scoreEl.textContent = `${s.score}`;
-        scoreEl.className = `proj-score-badge ${scoreType} ${animClass}`;
-        
-        setTimeout(() => {
-          if (scoreEl) {
-            scoreEl.className = `proj-score-badge ${scoreType}`;
+      const cardEl = document.getElementById(`proj-student-card-${s.id}`);
+      const scoreVal = s.score ?? 0;
+      const prev = prevStudentScoresMap[s.id];
+      const scoreType = scoreVal > 0 ? 'positive' : scoreVal < 0 ? 'negative' : 'neutral';
+
+      if (cardEl) {
+        cardEl.classList.toggle('absent', Boolean(s.is_absent));
+      }
+
+      if (scoreEl) {
+        const currentText = scoreEl.textContent.trim();
+        if (currentText !== String(scoreVal) || (prev !== undefined && prev !== null && scoreVal !== prev)) {
+          const hasPrev = prev !== undefined && prev !== null;
+          const animClass = hasPrev && scoreVal > prev ? 'score-animate-up' : (hasPrev && scoreVal < prev ? 'score-animate-down' : '');
+          
+          scoreEl.textContent = `${scoreVal}`;
+          scoreEl.className = `proj-score-badge ${scoreType} ${animClass}`.trim();
+          
+          if (animClass) {
+            setTimeout(() => {
+              if (scoreEl) {
+                scoreEl.className = `proj-score-badge ${scoreType}`;
+              }
+            }, 850);
           }
-        }, 850);
+        }
       }
     });
   }

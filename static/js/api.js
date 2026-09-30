@@ -16,9 +16,9 @@ const API = {
     localStorage.removeItem('auth_token');
     localStorage.removeItem('auth_date');
     
-    // If on standalone pages (projection or guide), redirect to login
+    // If on standalone pages (projection, guide, or homework-scan), redirect to login
     const path = window.location.pathname;
-    if (path.includes('/projection') || path.includes('/guide')) {
+    if (path.includes('/projection') || path.includes('/guide') || path.includes('/homework-scan')) {
       const target = window.location.pathname + window.location.search;
       window.location.href = `/?redirect=${encodeURIComponent(target)}`;
       return;
