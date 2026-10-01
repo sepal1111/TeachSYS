@@ -3219,7 +3219,6 @@
           gap: 6px;
         ">
           <span>${w.word}</span>
-          ${w.count > 1 ? `<span style="font-size: ${Math.max(12, Math.round(w.fontSize * 0.45))}px; background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 9999px; vertical-align: middle;">${w.count}</span>` : ''}
         </div>
       `).join('');
     },
@@ -3233,23 +3232,58 @@
       if (countEl) countEl.textContent = `共 ${entries.length} 詞（${this.totalWordsCount} 次提交）`;
 
       if (entries.length === 0) {
-        listEl.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; text-align: center; padding: 20px 0;">暫無數據</div>';
+        listEl.innerHTML = '<div style="color: var(--text-muted, #64748b); font-size: 0.85rem; text-align: center; padding: 20px 0;">暫無數據</div>';
         return;
       }
 
-      listEl.innerHTML = entries.map(([word, count], i) => `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgba(255,255,255,0.04); border-radius: var(--radius-sm); border: 1px solid var(--card-border);">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="font-weight: 800; font-size: 0.85rem; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: ${i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : 'rgba(255,255,255,0.1)'}; color: #fff;">
+      const maxCount = entries[0]?.[1] || 1;
+
+      listEl.innerHTML = entries.map(([word, count], i) => {
+        const rankBg = i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#b45309' : '#e2e8f0';
+        const rankColor = i < 3 ? '#ffffff' : '#475569';
+        // 語詞次數越多，大小越大（基礎 0.95rem 至最高 1.45rem）
+        const ratio = maxCount > 1 ? (count - 1) / (maxCount - 1) : 0;
+        const fontSize = (0.95 + ratio * 0.5).toFixed(2) + 'rem';
+
+        return `
+          <div title="${word}（${count} 次）" style="
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: var(--bg-main, #f8fafc);
+            border-radius: var(--radius-sm, 8px);
+            border: 1px solid var(--card-border, #e2e8f0);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
+          ">
+            <span style="
+              flex-shrink: 0;
+              font-weight: 800;
+              font-size: 0.85rem;
+              width: 22px;
+              height: 22px;
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              background: ${rankBg};
+              color: ${rankColor};
+            ">
               ${i + 1}
             </span>
-            <span style="font-weight: 700; font-size: 0.95rem; color: #f1f5f9;">${word}</span>
+            <span style="
+              font-weight: ${count > 1 ? 800 : 700};
+              font-size: ${fontSize};
+              color: var(--text-main, #1e293b);
+              line-height: 1.25;
+              word-break: break-word;
+            ">
+              ${word}
+            </span>
           </div>
-          <span style="font-size: 0.85rem; font-weight: 800; color: #60a5fa; background: rgba(96, 165, 250, 0.15); padding: 2px 8px; border-radius: 9999px;">
-            ${count} 次
-          </span>
-        </div>
-      `).join('');
+        `;
+      }).join('');
     },
 
     exportImage() {
@@ -3321,10 +3355,10 @@
         }
 
         listEl.innerHTML = sessions.map(s => `
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--bg-main, #f8fafc); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
             <div>
-              <div style="font-weight: 800; font-size: 1rem; color: #f1f5f9;">${s.title}</div>
-              <div style="font-size: 0.82rem; color: #94a3b8; margin-top: 4px;">
+              <div style="font-weight: 800; font-size: 1rem; color: var(--text-main, #1e293b);">${s.title}</div>
+              <div style="font-size: 0.82rem; color: var(--text-muted, #64748b); margin-top: 4px;">
                 狀態：${s.status === 'active' ? '🟢 進行中' : '⚪ 已關閉'} ｜ 總收集：${(s.words || []).length} 個詞 ｜ 時間：${s.created_at || ''}
               </div>
             </div>
@@ -3387,6 +3421,11 @@
     answers: new Map(),
     scores: new Map(),
     groupScores: new Map(),
+    importLmsQuizzes: [],
+    importQuestionsDraft: [],
+    importCsvQuestionsDraft: [],
+    importTab: 'lms',
+    importTargetMode: 'new',
 
     getCourseId() {
       if (window.AppState && window.AppState.currentCourseId) {
@@ -3432,6 +3471,26 @@
       document.getElementById('btn-kahoot-add-question')?.addEventListener('click', () => this.openEditQuestionModal());
       document.getElementById('btn-kahoot-delete-set')?.addEventListener('click', () => this.deleteCurrentSet());
       document.getElementById('form-kahoot-question')?.addEventListener('submit', (e) => this.handleSaveQuestion(e));
+
+      // 題庫匯入（LMS 線上測驗 / CSV 檔案）
+      document.getElementById('btn-close-kahoot-import')?.addEventListener('click', () => {
+        document.getElementById('modal-kahoot-import-quiz')?.classList.remove('open');
+      });
+      document.getElementById('btn-cancel-kahoot-import')?.addEventListener('click', () => {
+        document.getElementById('modal-kahoot-import-quiz')?.classList.remove('open');
+      });
+      document.getElementById('btn-kahoot-import-set')?.addEventListener('click', () => this.openImportModal('new'));
+      document.getElementById('btn-kahoot-import-to-current')?.addEventListener('click', () => this.openImportModal('append'));
+      document.getElementById('tab-kahoot-import-lms')?.addEventListener('click', () => this.switchImportTab('lms'));
+      document.getElementById('tab-kahoot-import-csv')?.addEventListener('click', () => this.switchImportTab('csv'));
+      document.getElementById('select-kahoot-import-lms-quiz')?.addEventListener('change', (e) => this.onSelectImportLmsQuiz(e.target.value));
+      document.getElementById('chk-kahoot-import-select-all')?.addEventListener('change', (e) => this.toggleSelectAllImportQuestions(e.target.checked));
+      document.getElementById('input-kahoot-import-csv-file')?.addEventListener('change', (e) => this.handleImportCsvFile(e.target.files?.[0]));
+      document.getElementById('btn-kahoot-download-csv-template')?.addEventListener('click', () => this.downloadImportCsvTemplate());
+      document.getElementById('btn-confirm-kahoot-import')?.addEventListener('click', () => this.handleConfirmImport());
+      document.querySelectorAll('input[name="kahoot-import-target-mode"]').forEach(r => {
+        r.addEventListener('change', (e) => this.onImportTargetModeChange(e.target.value));
+      });
     },
 
     async loadCourse(courseId) {
@@ -3856,23 +3915,27 @@
       if (!setsListEl) return;
 
       if (this.sets.length === 0) {
-        setsListEl.innerHTML = '<div style="color: #64748b; font-size: 0.85rem; padding: 12px 0;">暫無題庫</div>';
+        setsListEl.innerHTML = '<div style="color: var(--text-muted, #64748b); font-size: 0.85rem; padding: 12px 0;">暫無題庫</div>';
         this.renderManageQuestions(null);
         return;
       }
 
-      setsListEl.innerHTML = this.sets.map(s => `
-        <div class="kahoot-manage-set-item ${this.selectedSet?.id === s.id ? 'active' : ''}" onclick="TeachingToolkit.kahoot.manageSelectSet(${s.id})" style="
-          padding: 10px 12px;
-          border-radius: var(--radius-sm);
-          cursor: pointer;
-          background: ${this.selectedSet?.id === s.id ? 'rgba(59, 130, 246, 0.2)' : 'rgba(255,255,255,0.04)'};
-          border: 1px solid ${this.selectedSet?.id === s.id ? 'rgba(59, 130, 246, 0.5)' : 'var(--card-border)'};
-        ">
-          <div style="font-weight: 700; font-size: 0.95rem; color: #f1f5f9;">${s.title}</div>
-          <div style="font-size: 0.78rem; color: #94a3b8; margin-top: 3px;">共 ${s.question_count} 題</div>
-        </div>
-      `).join('');
+      setsListEl.innerHTML = this.sets.map(s => {
+        const isSelected = this.selectedSet?.id === s.id;
+        return `
+          <div class="kahoot-manage-set-item ${isSelected ? 'active' : ''}" onclick="TeachingToolkit.kahoot.manageSelectSet(${s.id})" style="
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            background: ${isSelected ? 'rgba(59, 130, 246, 0.12)' : 'var(--bg-main, #f8fafc)'};
+            border: 1px solid ${isSelected ? 'rgba(59, 130, 246, 0.45)' : 'var(--card-border, #e2e8f0)'};
+            transition: all 0.15s ease;
+          ">
+            <div style="font-weight: 800; font-size: 0.95rem; color: ${isSelected ? 'var(--primary-dark, #1d4ed8)' : 'var(--text-main, #1e293b)'};">${s.title}</div>
+            <div style="font-size: 0.8rem; color: ${isSelected ? 'var(--primary, #2563eb)' : 'var(--text-muted, #64748b)'}; margin-top: 3px; font-weight: 600;">共 ${s.question_count} 題</div>
+          </div>
+        `;
+      }).join('');
 
       this.renderManageQuestions(this.selectedSet || this.sets[0]);
     },
@@ -3890,12 +3953,14 @@
       const delSetBtn = document.getElementById('btn-kahoot-delete-set');
       const qListEl = document.getElementById('kahoot-questions-list');
 
+      const importToCurrentBtn = document.getElementById('btn-kahoot-import-to-current');
       if (!set) {
         if (titleEl) titleEl.textContent = '請先選擇題庫';
         if (countEl) countEl.textContent = '';
         if (addQBtn) addQBtn.style.display = 'none';
         if (delSetBtn) delSetBtn.style.display = 'none';
-        if (qListEl) qListEl.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 40px 0;">請由左側點選或新增題庫</div>';
+        if (importToCurrentBtn) importToCurrentBtn.style.display = 'none';
+        if (qListEl) qListEl.innerHTML = '<div style="color: var(--text-muted, #64748b); font-size: 0.9rem; text-align: center; padding: 40px 0;">請由左側點選或新增題庫</div>';
         return;
       }
 
@@ -3903,34 +3968,47 @@
       if (countEl) countEl.textContent = `(共 ${this.questions.length} 題)`;
       if (addQBtn) addQBtn.style.display = 'inline-flex';
       if (delSetBtn) delSetBtn.style.display = 'inline-flex';
+      if (importToCurrentBtn) importToCurrentBtn.style.display = 'inline-flex';
 
       if (this.questions.length === 0) {
-        qListEl.innerHTML = '<div style="color: #64748b; font-size: 0.9rem; text-align: center; padding: 40px 0;">題庫內尚無題目，請點擊「➕ 新增題目」</div>';
+        qListEl.innerHTML = '<div style="color: var(--text-muted, #64748b); font-size: 0.9rem; text-align: center; padding: 40px 0;">題庫內尚無題目，請點擊「➕ 新增題目」</div>';
         return;
       }
 
       qListEl.innerHTML = this.questions.map((q, idx) => {
         const opts = q.options || [];
         return `
-          <div style="padding: 12px 14px; background: rgba(255,255,255,0.04); border-radius: var(--radius-md); border: 1px solid var(--card-border);">
-            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;">
-              <div style="font-weight: 800; font-size: 0.95rem; color: #f1f5f9;">
-                <span style="color: #60a5fa; margin-right: 6px;">Q${idx + 1}.</span>${q.prompt}
+          <div style="padding: 14px 16px; background: var(--bg-main, #f8fafc); border-radius: var(--radius-md); border: 1px solid var(--card-border, #e2e8f0); box-shadow: 0 1px 3px rgba(0,0,0,0.03);">
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;">
+              <div style="font-weight: 800; font-size: 1rem; color: var(--text-main, #1e293b); line-height: 1.4;">
+                <span style="color: var(--primary, #2563eb); font-weight: 900; margin-right: 6px;">Q${idx + 1}.</span>${q.prompt}
               </div>
               <div style="display: flex; gap: 6px; flex-shrink: 0;">
-                <button type="button" class="btn btn-sm btn-secondary" onclick="TeachingToolkit.kahoot.openEditQuestionModal(${q.id})">✏️</button>
-                <button type="button" class="btn btn-sm btn-secondary" style="color: #f87171;" onclick="TeachingToolkit.kahoot.deleteQuestion(${q.id})">🗑️</button>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="TeachingToolkit.kahoot.openEditQuestionModal(${q.id})" title="編輯題目">✏️</button>
+                <button type="button" class="btn btn-sm btn-secondary" style="color: #ef4444;" onclick="TeachingToolkit.kahoot.deleteQuestion(${q.id})" title="刪除題目">🗑️</button>
               </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; font-size: 0.85rem;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; font-size: 0.88rem;">
               ${opts.map((o, oi) => `
-                <div style="color: ${o.isCorrect ? '#4ade80' : '#94a3b8'}; font-weight: ${o.isCorrect ? '800' : 'normal'};">
-                  ${['A','B','C','D'][oi]}. ${o.text} ${o.isCorrect ? '✓ (正解)' : ''}
+                <div style="
+                  color: ${o.isCorrect ? '#15803d' : 'var(--text-main, #334155)'};
+                  font-weight: ${o.isCorrect ? '800' : '600'};
+                  background: ${o.isCorrect ? '#ecfdf5' : 'rgba(0,0,0,0.02)'};
+                  border: 1px solid ${o.isCorrect ? '#a7f3d0' : 'transparent'};
+                  padding: 4px 8px;
+                  border-radius: 6px;
+                ">
+                  <span style="font-weight: 800; color: ${o.isCorrect ? '#16a34a' : 'var(--text-muted, #64748b)'}; margin-right: 4px;">${['A','B','C','D'][oi]}.</span>
+                  <span>${o.text}</span>
+                  ${o.isCorrect ? '<span style="margin-left: 4px; font-size: 0.82rem;">✓ (正解)</span>' : ''}
                 </div>
               `).join('')}
             </div>
-            <div style="font-size: 0.78rem; color: #64748b; margin-top: 6px;">
-              ⏱️ ${q.time_limit_sec} 秒 ｜ 🌟 ${q.points} 分 ${q.explanation ? '｜ 💡 含解析' : ''}
+            <div style="font-size: 0.8rem; color: var(--text-muted, #64748b); margin-top: 8px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
+              <span>⏱️ ${q.time_limit_sec} 秒</span>
+              <span>｜</span>
+              <span>🌟 ${q.points} 分</span>
+              ${q.explanation ? `<span>｜</span><span style="color: #d97706;">💡 解析：${q.explanation}</span>` : ''}
             </div>
           </div>
         `;
@@ -4100,6 +4178,420 @@
         }
       } catch (err) {
         alert(err.message);
+      }
+    },
+
+    // --- 題庫匯入相關方法（調用 LMS 線上測驗是非題/選擇題、CSV 檔案） ---
+    async openImportModal(defaultMode = 'new') {
+      const modal = document.getElementById('modal-kahoot-import-quiz');
+      if (!modal) return;
+
+      this.importTab = 'lms';
+      this.switchImportTab('lms');
+
+      const appendRadio = document.querySelector('input[name="kahoot-import-target-mode"][value="append"]');
+      const newRadio = document.querySelector('input[name="kahoot-import-target-mode"][value="new"]');
+      const appendLabel = document.getElementById('kahoot-import-target-append-label');
+      const appendText = document.getElementById('kahoot-import-target-append-text');
+      const titleInput = document.getElementById('input-kahoot-import-set-title');
+      const titleWrap = document.getElementById('kahoot-import-new-title-wrap');
+
+      if (this.selectedSet) {
+        if (appendLabel) appendLabel.style.display = 'inline-flex';
+        if (appendText) appendText.textContent = `匯入至當前題庫「${this.selectedSet.title}」`;
+        if (defaultMode === 'append') {
+          if (appendRadio) appendRadio.checked = true;
+          this.importTargetMode = 'append';
+          if (titleWrap) titleWrap.style.display = 'none';
+        } else {
+          if (newRadio) newRadio.checked = true;
+          this.importTargetMode = 'new';
+          if (titleWrap) titleWrap.style.display = 'flex';
+        }
+      } else {
+        if (appendLabel) appendLabel.style.display = 'none';
+        if (newRadio) newRadio.checked = true;
+        this.importTargetMode = 'new';
+        if (titleWrap) titleWrap.style.display = 'flex';
+      }
+
+      modal.classList.add('open');
+      await this.loadLmsQuizzesForImport();
+    },
+
+    onImportTargetModeChange(mode) {
+      this.importTargetMode = mode;
+      const titleWrap = document.getElementById('kahoot-import-new-title-wrap');
+      if (titleWrap) {
+        titleWrap.style.display = mode === 'new' ? 'flex' : 'none';
+      }
+    },
+
+    switchImportTab(tab) {
+      this.importTab = tab;
+      const tabLms = document.getElementById('tab-kahoot-import-lms');
+      const tabCsv = document.getElementById('tab-kahoot-import-csv');
+      const paneLms = document.getElementById('pane-kahoot-import-lms');
+      const paneCsv = document.getElementById('pane-kahoot-import-csv');
+
+      if (tab === 'lms') {
+        tabLms?.classList.replace('btn-secondary', 'btn-primary');
+        tabCsv?.classList.replace('btn-primary', 'btn-secondary');
+        if (paneLms) paneLms.style.display = 'flex';
+        if (paneCsv) paneCsv.style.display = 'none';
+      } else {
+        tabCsv?.classList.replace('btn-secondary', 'btn-primary');
+        tabLms?.classList.replace('btn-primary', 'btn-secondary');
+        if (paneCsv) paneCsv.style.display = 'flex';
+        if (paneLms) paneLms.style.display = 'none';
+      }
+      this.updateImportCounts();
+    },
+
+    async loadLmsQuizzesForImport() {
+      const select = document.getElementById('select-kahoot-import-lms-quiz');
+      const preview = document.getElementById('kahoot-import-questions-preview');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">載入 LMS 線上測驗中...</option>';
+      const courseId = this.getCourseId();
+      if (!courseId) return;
+
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}/lms-quizzes`);
+        if (!res.ok) throw new Error('讀取 LMS 測驗失敗');
+        this.importLmsQuizzes = await res.json();
+
+        if (this.importLmsQuizzes.length === 0) {
+          select.innerHTML = '<option value="">此課程尚未建立任何 LMS 線上測驗</option>';
+          if (preview) preview.innerHTML = '<div style="color: var(--text-muted, #64748b); text-align: center; padding: 30px 0;">此課程尚未建立任何 LMS 線上測驗，請至「學習內容 (LMS)」建立測驗或由 CSV 檔案匯入。</div>';
+          this.importQuestionsDraft = [];
+          this.updateImportCounts();
+          return;
+        }
+
+        select.innerHTML = this.importLmsQuizzes.map((q, idx) => `
+          <option value="${idx}">【${q.unit_title}】${q.quiz_title} (${q.question_count} 題)</option>
+        `).join('');
+
+        const firstWithQ = this.importLmsQuizzes.findIndex(q => q.question_count > 0);
+        const selIdx = firstWithQ >= 0 ? firstWithQ : 0;
+        select.value = String(selIdx);
+        this.onSelectImportLmsQuiz(selIdx);
+      } catch (err) {
+        select.innerHTML = `<option value="">載入失敗：${err.message}</option>`;
+        if (preview) preview.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 20px 0;">載入失敗：${err.message}</div>`;
+      }
+    },
+
+    onSelectImportLmsQuiz(idxStr) {
+      const idx = Number(idxStr);
+      const quiz = this.importLmsQuizzes[idx];
+      const titleInput = document.getElementById('input-kahoot-import-set-title');
+      if (titleInput && quiz && !titleInput.value) {
+        titleInput.value = `${quiz.quiz_title}（競賽題庫）`;
+      }
+
+      if (!quiz || !quiz.questions || quiz.questions.length === 0) {
+        this.importQuestionsDraft = [];
+        this.renderImportPreview([], 'lms');
+        return;
+      }
+
+      this.importQuestionsDraft = quiz.questions.map((q, qi) => {
+        const isTrueFalse = q.type === 'true_false';
+        let options = [];
+        if (isTrueFalse) {
+          const ca = String(q.correct_answer || '').toLowerCase();
+          const isTrue = ca === 'true' || ca === '1' || ca === 'o' || ca === '正確' || ca === '是';
+          options = [
+            { id: 'A', text: '⭕ 正確', isCorrect: isTrue },
+            { id: 'B', text: '❌ 錯誤', isCorrect: !isTrue },
+          ];
+        } else {
+          const rawOpts = Array.isArray(q.options) ? q.options : [];
+          const correctAns = String(q.correct_answer ?? '').trim();
+          options = rawOpts.map((optText, oi) => {
+            const str = String(optText).trim();
+            const isMatch = correctAns === String(oi) || correctAns === str;
+            return {
+              id: ['A', 'B', 'C', 'D'][oi] || String(oi + 1),
+              text: str,
+              isCorrect: isMatch,
+            };
+          });
+          if (!options.some(o => o.isCorrect)) {
+            const num = parseInt(correctAns, 10);
+            if (!isNaN(num) && num >= 1 && num <= options.length) {
+              options[num - 1].isCorrect = true;
+            } else if (options.length > 0) {
+              options[0].isCorrect = true;
+            }
+          }
+        }
+
+        return {
+          _selected: true,
+          type: isTrueFalse ? 'true_false' : 'single',
+          typeLabel: isTrueFalse ? '是非題' : '選擇題',
+          prompt: q.question_text || q.prompt || `第 ${qi + 1} 題`,
+          options,
+          time_limit_sec: 20,
+          points: 1000,
+          explanation: q.explanation || '',
+        };
+      });
+
+      this.renderImportPreview(this.importQuestionsDraft, 'lms');
+    },
+
+    renderImportPreview(questions, source = 'lms') {
+      const containerId = source === 'lms' ? 'kahoot-import-questions-preview' : 'kahoot-import-csv-preview';
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      if (!questions || questions.length === 0) {
+        container.innerHTML = '<div style="color: var(--text-muted, #64748b); text-align: center; padding: 30px 0;">此測驗內無題目</div>';
+        this.updateImportCounts();
+        return;
+      }
+
+      container.innerHTML = questions.map((q, idx) => `
+        <div style="padding: 10px 12px; background: var(--bg-main, #f8fafc); border-radius: var(--radius-sm); border: 1px solid var(--card-border, #e2e8f0); display: flex; align-items: flex-start; gap: 10px;">
+          <input type="checkbox" class="kahoot-import-q-chk" data-idx="${idx}" ${q._selected ? 'checked' : ''} style="cursor: pointer; margin-top: 4px; width: 16px; height: 16px;">
+          <div style="flex: 1;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+              <span style="font-weight: 800; font-size: 0.8rem; background: ${q.type === 'true_false' ? 'rgba(168, 85, 247, 0.15)' : 'rgba(59, 130, 246, 0.15)'}; color: ${q.type === 'true_false' ? '#9333ea' : '#2563eb'}; padding: 1px 8px; border-radius: 4px;">
+                ${q.typeLabel || (q.type === 'true_false' ? '是非題' : '選擇題')}
+              </span>
+              <span style="font-weight: 800; font-size: 0.92rem; color: var(--text-main, #1e293b);">
+                Q${idx + 1}. ${q.prompt}
+              </span>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px; font-size: 0.82rem; margin-top: 6px;">
+              ${(q.options || []).map(o => `
+                <span style="
+                  padding: 2px 8px;
+                  border-radius: 4px;
+                  background: ${o.isCorrect ? '#ecfdf5' : 'rgba(0,0,0,0.03)'};
+                  color: ${o.isCorrect ? '#15803d' : 'var(--text-main, #475569)'};
+                  font-weight: ${o.isCorrect ? '800' : '500'};
+                  border: 1px solid ${o.isCorrect ? '#a7f3d0' : 'transparent'};
+                ">
+                  ${o.id}. ${o.text} ${o.isCorrect ? '✓' : ''}
+                </span>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('.kahoot-import-q-chk').forEach(chk => {
+        chk.addEventListener('change', (e) => {
+          const i = Number(e.target.dataset.idx);
+          if (questions[i]) questions[i]._selected = e.target.checked;
+          this.updateImportCounts();
+        });
+      });
+
+      this.updateImportCounts();
+    },
+
+    toggleSelectAllImportQuestions(checked) {
+      const questions = this.importTab === 'lms' ? this.importQuestionsDraft : this.importCsvQuestionsDraft;
+      (questions || []).forEach(q => { q._selected = checked; });
+      const containerId = this.importTab === 'lms' ? 'kahoot-import-questions-preview' : 'kahoot-import-csv-preview';
+      document.querySelectorAll(`#${containerId} .kahoot-import-q-chk`).forEach(chk => {
+        chk.checked = checked;
+      });
+      this.updateImportCounts();
+    },
+
+    updateImportCounts() {
+      const questions = this.importTab === 'lms' ? this.importQuestionsDraft : this.importCsvQuestionsDraft;
+      const total = (questions || []).length;
+      const selected = (questions || []).filter(q => q._selected).length;
+
+      const selCountEl = document.getElementById('kahoot-import-selected-count');
+      const totalCountEl = document.getElementById('kahoot-import-total-count');
+      const confirmBtn = document.getElementById('btn-confirm-kahoot-import');
+      const selectAllChk = document.getElementById('chk-kahoot-import-select-all');
+
+      if (selCountEl) selCountEl.textContent = selected;
+      if (totalCountEl) totalCountEl.textContent = total;
+      if (selectAllChk) selectAllChk.checked = total > 0 && selected === total;
+
+      if (confirmBtn) {
+        confirmBtn.disabled = selected === 0;
+        confirmBtn.textContent = `📥 確認匯入 (${selected} 題)`;
+      }
+    },
+
+    handleImportCsvFile(file) {
+      if (!file) return;
+      const filenameEl = document.getElementById('kahoot-import-csv-filename');
+      if (filenameEl) filenameEl.textContent = file.name;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const text = e.target.result || '';
+        const cleaned = text.replace(/^\uFEFF/, '');
+        const lines = cleaned.split(/\r\n|\r|\n/).filter(l => l.trim());
+        const dataLines = lines.slice(1);
+        const parsed = [];
+
+        for (const line of dataLines) {
+          const row = this.parseCsvLine(line);
+          const [typeLabel, questionText, opt1, opt2, opt3, opt4, correctAnswerRaw, pointsRaw] = row;
+          if (!questionText || !questionText.trim()) continue;
+
+          const isTf = String(typeLabel || '').includes('是非');
+          const correctText = String(correctAnswerRaw || '').trim();
+          let options = [];
+
+          if (isTf) {
+            const isTrue = correctText === '正確' || correctText === 'true' || correctText === '1' || correctText === 'O' || correctText === '是';
+            options = [
+              { id: 'A', text: '⭕ 正確', isCorrect: isTrue },
+              { id: 'B', text: '❌ 錯誤', isCorrect: !isTrue }
+            ];
+          } else {
+            const rawOpts = [opt1, opt2, opt3, opt4].map(o => String(o || '').trim()).filter(Boolean);
+            if (rawOpts.length < 2) continue;
+            options = rawOpts.map((text, oi) => {
+              const isMatch = correctText === text || correctText === String(oi) || correctText === ['A', 'B', 'C', 'D'][oi];
+              return {
+                id: ['A', 'B', 'C', 'D'][oi] || String(oi + 1),
+                text,
+                isCorrect: isMatch
+              };
+            });
+            if (!options.some(o => o.isCorrect)) {
+              options[0].isCorrect = true;
+            }
+          }
+
+          parsed.push({
+            _selected: true,
+            type: isTf ? 'true_false' : 'single',
+            typeLabel: isTf ? '是非題' : '選擇題',
+            prompt: questionText.trim(),
+            options,
+            time_limit_sec: 20,
+            points: Number(pointsRaw) || 1000,
+            explanation: '',
+          });
+        }
+
+        this.importCsvQuestionsDraft = parsed;
+        const titleInput = document.getElementById('input-kahoot-import-set-title');
+        if (titleInput && !titleInput.value) {
+          titleInput.value = file.name.replace(/\.[^/.]+$/, '') + '（競賽題庫）';
+        }
+        this.renderImportPreview(this.importCsvQuestionsDraft, 'csv');
+      };
+      reader.readAsText(file);
+    },
+
+    downloadImportCsvTemplate() {
+      const headers = ['題型', '題目內容', '選項1', '選項2', '選項3', '選項4', '正確答案', '配分'];
+      const sampleRows = [
+        ['選擇題', '正三角形的三個內角度數均為多少度？', '60 度', '90 度', '45 度', '180 度', '60 度', '1000'],
+        ['是非題', '光合作用產生的主要氣體產物為氧氣。', '', '', '', '', '正確', '1000'],
+        ['選擇題', '太陽系中體積最大的行星是哪一顆？', '木星', '土星', '地球', '火星', '木星', '1000'],
+        ['是非題', '地球繞太陽公轉一週約為一個月。', '', '', '', '', '錯誤', '1000']
+      ];
+      const csv = [headers, ...sampleRows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '答題競賽題目匯入範本.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    },
+
+    parseCsvLine(line) {
+      const cells = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"') {
+            if (line[i + 1] === '"') { cur += '"'; i++; } else { inQuotes = false; }
+          } else {
+            cur += ch;
+          }
+        } else if (ch === '"') {
+          inQuotes = true;
+        } else if (ch === ',') {
+          cells.push(cur.trim());
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      cells.push(cur.trim());
+      return cells;
+    },
+
+    async handleConfirmImport() {
+      const questions = this.importTab === 'lms' ? this.importQuestionsDraft : this.importCsvQuestionsDraft;
+      const selectedQuestions = (questions || []).filter(q => q._selected);
+
+      if (selectedQuestions.length === 0) {
+        alert('請至少勾選一道要匯入的題目');
+        return;
+      }
+
+      const courseId = this.getCourseId();
+      if (!courseId) return;
+
+      const isAppend = this.importTargetMode === 'append' && this.selectedSet;
+      const targetSetId = isAppend ? this.selectedSet.id : null;
+      let title = document.getElementById('input-kahoot-import-set-title')?.value.trim();
+      if (!isAppend && !title) {
+        title = '匯入競賽題庫';
+      }
+
+      const confirmBtn = document.getElementById('btn-confirm-kahoot-import');
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '匯入處理中...';
+      }
+
+      try {
+        const res = await fetch(`/api/quiz-sets/${courseId}/import`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            target_set_id: targetSetId,
+            title,
+            questions: selectedQuestions
+          })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || '匯入失敗');
+
+        document.getElementById('modal-kahoot-import-quiz')?.classList.remove('open');
+        alert(data.message || '匯入成功！');
+
+        await this.loadCourse(courseId);
+        if (data.quiz_set_id) {
+          await this.selectSet(data.quiz_set_id);
+        }
+        this.renderManageModal();
+      } catch (err) {
+        alert('匯入失敗：' + err.message);
+      } finally {
+        if (confirmBtn) {
+          confirmBtn.disabled = false;
+          confirmBtn.textContent = `📥 確認匯入 (${selectedQuestions.length} 題)`;
+        }
       }
     }
   };

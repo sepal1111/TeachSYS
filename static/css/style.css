@@ -5188,7 +5188,11 @@ body.mobile-scoring-only #quick-group-bar .btn {
 }
 
 .kahoot-manage-set-item:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
+  background: var(--nav-tab-hover-bg, #f1f5f9) !important;
+}
+
+.kahoot-manage-set-item.active:hover {
+  background: rgba(59, 130, 246, 0.18) !important;
 }
 
 @media (max-width: 768px) {

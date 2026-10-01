@@ -1098,7 +1098,6 @@ window.Projection = {
         gap: 8px;
       ">
         <span>${w.word}</span>
-        ${w.count > 1 ? `<span style="font-size: ${Math.max(14, Math.round(w.fontSize * 0.45))}px; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 9999px;">${w.count}</span>` : ''}
       </div>
     `).join('');
   },
