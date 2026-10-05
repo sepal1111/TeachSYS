@@ -2859,6 +2859,285 @@
     btnRefreshFileCollect.addEventListener('click', loadStudentFileCollections);
   }
 
+  // 高畫質拍攝：以 getUserMedia 要求最高解析度 + MediaRecorder 高位元率，避開瀏覽器內建拍攝（<input capture>）的低畫質壓縮。
+  // onDone(file) 於使用者確認後回傳 File（錄影或照片）。
+  const FC_CAM_MAX_BYTES = 240 * 1024 * 1024; // 單檔上限 250MB，預留餘裕自動停止
+  const FC_CAM_VIDEO_BPS = 12_000_000;
+
+  function openFileCollectCamera(onDone) {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showToast('此瀏覽器或連線不支援網頁拍攝（需 HTTPS），請改用「選擇檔案上傳」。', 'error');
+      return;
+    }
+
+    let stream = null;
+    let facing = 'environment';
+    let deviceId = null; // 使用者從下拉選單指定的相機（null 時以 facing 自動選擇）
+    let quality = 'max';
+    let devices = []; // 偵測到的視訊裝置
+    let caps = null; // 目前相機的 getCapabilities()
+    let recorder = null;
+    let chunks = [];
+    let recBytes = 0;
+    let timer = null;
+    let startedAt = 0;
+    let result = null; // { blob, name, type, url }
+
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#000;display:flex;flex-direction:column;';
+    overlay.innerHTML = `
+      <div style="flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;">
+        <video class="fc-cam-live" autoplay playsinline muted style="max-width:100%;max-height:100%;"></video>
+        <video class="fc-cam-review" controls playsinline style="max-width:100%;max-height:100%;display:none;"></video>
+        <img class="fc-cam-photo" alt="" style="max-width:100%;max-height:100%;display:none;">
+        <div class="fc-cam-info" style="position:absolute;top:10px;left:10px;right:10px;color:#fff;font-size:0.85rem;font-weight:700;text-shadow:0 1px 3px #000;"></div>
+      </div>
+      <div class="fc-cam-bar" style="display:flex;gap:10px;justify-content:center;align-items:center;flex-wrap:wrap;padding:12px;background:#111;"></div>
+    `;
+    document.body.appendChild(overlay);
+
+    const live = overlay.querySelector('.fc-cam-live');
+    const review = overlay.querySelector('.fc-cam-review');
+    const photoImg = overlay.querySelector('.fc-cam-photo');
+    const info = overlay.querySelector('.fc-cam-info');
+    const bar = overlay.querySelector('.fc-cam-bar');
+
+    const btnHtml = (id, label, extra = '') =>
+      `<button type="button" data-act="${id}" class="btn btn-secondary" style="padding:9px 16px;font-weight:800;${extra}">${label}</button>`;
+
+    const stopStream = () => {
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      stream = null;
+    };
+
+    const close = () => {
+      clearInterval(timer);
+      if (recorder && recorder.state !== 'inactive') {
+        recorder.onstop = null;
+        try { recorder.stop(); } catch (_) { /* ignore */ }
+      }
+      stopStream();
+      if (result && result.url) URL.revokeObjectURL(result.url);
+      overlay.remove();
+    };
+
+    const fmtTime = (ms) => {
+      const s = Math.floor(ms / 1000);
+      return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+    };
+
+    const QUALITY_PRESETS = {
+      max: { label: '最高（自動）', w: 7680, h: 4320 },
+      '2160': { label: '4K (3840×2160)', w: 3840, h: 2160 },
+      '1080': { label: '1080p (1920×1080)', w: 1920, h: 1080 },
+      '720': { label: '720p (1280×720)', w: 1280, h: 720 },
+    };
+
+    const camLabel = (d, i) => d.label || `相機 ${i + 1}`;
+
+    const showLive = () => {
+      live.style.display = '';
+      review.style.display = 'none';
+      photoImg.style.display = 'none';
+      if (result && result.url) URL.revokeObjectURL(result.url);
+      result = null;
+      const track = stream && stream.getVideoTracks()[0];
+      const st = track ? track.getSettings() : {};
+      const capMaxW = caps && caps.width ? Math.max(caps.width.max || 0, (caps.height && caps.height.max) || 0) : 0;
+      const capMaxText = caps && caps.width && caps.height ? `｜此相機最高支援 ${caps.width.max}×${caps.height.max}${caps.frameRate ? ' @' + Math.round(caps.frameRate.max) + 'fps' : ''}` : '';
+      info.textContent = st.width
+        ? `偵測到 ${devices.length || 1} 個相機｜目前 ${st.width}×${st.height}${st.frameRate ? ' @' + Math.round(st.frameRate) + 'fps' : ''}${capMaxText}`
+        : '';
+
+      const curId = st.deviceId || deviceId || '';
+      const camOpts = devices.map((d, i) =>
+        `<option value="${escapeHtml(d.deviceId)}" ${d.deviceId === curId ? 'selected' : ''}>${escapeHtml(camLabel(d, i))}</option>`).join('');
+      const qOpts = Object.entries(QUALITY_PRESETS).map(([k, v]) => {
+        // 已知相機上限時，停用超出能力的畫質選項（最高選項永遠可用）
+        const unsupported = k !== 'max' && capMaxW > 0 && Math.max(v.w, v.h) > capMaxW;
+        return `<option value="${k}" ${k === quality ? 'selected' : ''} ${unsupported ? 'disabled' : ''}>${v.label}${unsupported ? '（不支援）' : ''}</option>`;
+      }).join('');
+      const selStyle = 'padding:7px 8px;border-radius:6px;font-size:0.85rem;max-width:46vw;';
+      bar.innerHTML =
+        `<div style="width:100%;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          ${devices.length > 1 ? `<select data-sel="camera" style="${selStyle}">${camOpts}</select>` : ''}
+          <select data-sel="quality" style="${selStyle}">${qOpts}</select>
+        </div>` +
+        btnHtml('photo', '📸 拍照') +
+        btnHtml('rec', '⏺ 開始錄影', 'background:#dc2626;color:#fff;border-color:#dc2626;') +
+        btnHtml('flip', '🔄 切換鏡頭') +
+        btnHtml('cancel', '✖ 關閉');
+    };
+
+    const startStream = async () => {
+      stopStream();
+      // ideal 向裝置要求目標解析度，由瀏覽器自動降到實際支援的最大值
+      const q = QUALITY_PRESETS[quality];
+      const video = { width: { ideal: q.w }, height: { ideal: q.h }, frameRate: { ideal: 30 } };
+      if (deviceId) video.deviceId = { exact: deviceId };
+      else video.facingMode = { ideal: facing };
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video, audio: true });
+      } catch (err) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video, audio: false });
+          showToast('未取得麥克風權限，僅能無聲錄影。', 'error');
+        } catch (err2) {
+          if (deviceId) {
+            // 指定的相機無法使用時，回到自動選擇
+            deviceId = null;
+            showToast('指定的相機無法使用，已改為自動選擇。', 'error');
+            return startStream();
+          }
+          showToast(`無法開啟相機：${err2.message || err2.name}`, 'error');
+          close();
+          return;
+        }
+      }
+      live.srcObject = stream;
+      const track = stream.getVideoTracks()[0];
+      caps = track && track.getCapabilities ? track.getCapabilities() : null;
+      // 取得權限後才能讀到相機名稱
+      try {
+        devices = (await navigator.mediaDevices.enumerateDevices()).filter((d) => d.kind === 'videoinput');
+      } catch (_) {
+        devices = [];
+      }
+      if (!stream) return; // 偵測期間使用者已關閉視窗
+      showLive();
+    };
+
+    const showReview = () => {
+      live.style.display = 'none';
+      if (result.type.startsWith('video/')) {
+        review.src = result.url;
+        review.style.display = '';
+        photoImg.style.display = 'none';
+      } else {
+        photoImg.src = result.url;
+        photoImg.style.display = '';
+        review.style.display = 'none';
+      }
+      info.textContent = `${result.name}（${formatBytes(result.blob.size)}）`;
+      bar.innerHTML =
+        btnHtml('upload', '✅ 上傳', 'background:#059669;color:#fff;border-color:#059669;') +
+        btnHtml('retake', '↩ 重拍') +
+        btnHtml('cancel', '✖ 取消');
+    };
+
+    const stamp = () => {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    };
+
+    const takePhoto = async () => {
+      const track = stream.getVideoTracks()[0];
+      let blob = null;
+      // 支援 ImageCapture 的瀏覽器（Android Chrome）可取得感光元件全解析度照片
+      if (window.ImageCapture && track) {
+        try { blob = await new ImageCapture(track).takePhoto(); } catch (_) { blob = null; }
+      }
+      if (!blob) {
+        const c = document.createElement('canvas');
+        c.width = live.videoWidth;
+        c.height = live.videoHeight;
+        c.getContext('2d').drawImage(live, 0, 0);
+        blob = await new Promise((resolve) => c.toBlob(resolve, 'image/jpeg', 0.95));
+      }
+      if (!blob) { showToast('拍照失敗，請重試。', 'error'); return; }
+      const ext = blob.type === 'image/png' ? 'png' : 'jpg';
+      result = { blob, type: blob.type || 'image/jpeg', name: `拍照_${stamp()}.${ext}`, url: URL.createObjectURL(blob) };
+      stopStream();
+      showReview();
+    };
+
+    const startRecording = () => {
+      if (typeof MediaRecorder === 'undefined') {
+        showToast('此瀏覽器不支援網頁錄影，請改用「選擇檔案上傳」。', 'error');
+        return;
+      }
+      const candidates = [
+        'video/mp4;codecs=avc1.640028,mp4a.40.2', 'video/mp4;codecs=avc1', 'video/mp4',
+        'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm',
+      ];
+      const mimeType = candidates.find((m) => MediaRecorder.isTypeSupported(m)) || '';
+      try {
+        recorder = new MediaRecorder(stream, mimeType
+          ? { mimeType, videoBitsPerSecond: FC_CAM_VIDEO_BPS, audioBitsPerSecond: 128_000 }
+          : { videoBitsPerSecond: FC_CAM_VIDEO_BPS });
+      } catch (err) {
+        showToast(`無法開始錄影：${err.message}`, 'error');
+        return;
+      }
+      chunks = [];
+      recBytes = 0;
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) {
+          chunks.push(e.data);
+          recBytes += e.data.size;
+        }
+      };
+      recorder.onstop = () => {
+        clearInterval(timer);
+        const type = (recorder.mimeType || mimeType || 'video/webm').split(';')[0];
+        const blob = new Blob(chunks, { type });
+        const ext = type.includes('mp4') ? 'mp4' : 'webm';
+        result = { blob, type, name: `錄影_${stamp()}.${ext}`, url: URL.createObjectURL(blob) };
+        stopStream();
+        showReview();
+      };
+      recorder.start(1000);
+      startedAt = Date.now();
+      bar.innerHTML = btnHtml('stop', '⏹ 停止錄影', 'background:#dc2626;color:#fff;border-color:#dc2626;');
+      timer = setInterval(() => {
+        info.textContent = `🔴 錄影中 ${fmtTime(Date.now() - startedAt)}　${formatBytes(recBytes)}`;
+        if (recBytes >= FC_CAM_MAX_BYTES && recorder.state === 'recording') {
+          showToast('已接近單檔 250MB 上限，自動停止錄影。', 'error');
+          recorder.stop();
+        }
+      }, 500);
+    };
+
+    bar.addEventListener('click', (e) => {
+      const act = e.target.closest('button')?.dataset.act;
+      if (!act) return;
+      if (act === 'photo') takePhoto();
+      else if (act === 'rec') startRecording();
+      else if (act === 'stop') { if (recorder && recorder.state === 'recording') recorder.stop(); }
+      else if (act === 'flip') { deviceId = null; facing = facing === 'environment' ? 'user' : 'environment'; startStream(); }
+      else if (act === 'retake') startStream();
+      else if (act === 'upload') {
+        const file = new File([result.blob], result.name, { type: result.type });
+        close();
+        onDone(file);
+      } else if (act === 'cancel') close();
+    });
+
+    bar.addEventListener('change', (e) => {
+      const sel = e.target.dataset.sel;
+      if (sel === 'camera') { deviceId = e.target.value || null; startStream(); }
+      else if (sel === 'quality') { quality = e.target.value; startStream(); }
+    });
+
+    startStream();
+  }
+
+  // 以明確副檔名列表作為 accept（不使用 image/*、video/*），避免 iOS/Android 選取器出現「拍照或錄影」選項，強制先拍後上傳以保留原始畫質
+  function fileCollectAcceptAttr(allowedExtensions) {
+    const custom = String(allowedExtensions || '')
+      .split(/[,\s;，、]+/)
+      .map((e) => e.trim().toLowerCase().replace(/^\./, ''))
+      .filter(Boolean)
+      .map((e) => `.${e}`);
+    if (custom.length > 0) return custom.join(',');
+    return [
+      '.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif',
+      '.mp4', '.mov', '.m4v', '.webm', '.mp3', '.m4a', '.wav', '.aac', '.ogg',
+      '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx', '.csv', '.txt', '.zip',
+    ].join(',');
+  }
+
   function formatBytes(bytes) {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
@@ -2916,10 +3195,16 @@
         if (isOpen) {
           uploadSectionHtml = `
             <div class="filecollect-upload-box" style="margin: 14px 0; padding: 16px; border: 2px dashed var(--student-primary-border, #0284c7); border-radius: 10px; background: rgba(2, 132, 199, 0.04); text-align: center;">
-              <input type="file" multiple id="stu-file-input-${topic.id}" style="display: none;">
+              <input type="file" multiple id="stu-file-input-${topic.id}" accept="${escapeHtml(fileCollectAcceptAttr(topic.allowed_extensions))}" style="display: none;">
               <button type="button" class="btn btn-primary btn-choose-files" style="font-weight: 800; padding: 9px 20px; font-size: 0.92rem;">
-                📤 選擇檔案 / 錄音錄影上傳
+                📤 選擇檔案上傳
               </button>
+              <button type="button" class="btn btn-secondary btn-camera-capture" style="font-weight: 800; padding: 9px 20px; font-size: 0.92rem; margin-left: 6px;">
+                🎥 高畫質拍攝
+              </button>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">
+                拍攝請使用「高畫質拍攝」（以裝置最高解析度錄製）；也可先用相機 App 拍好，再按「選擇檔案上傳」。
+              </div>
               <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 8px;">
                 ${topic.allowed_extensions ? `僅支援格式：<code>${escapeHtml(topic.allowed_extensions)}</code>` : '支援影片、錄音、照片或一般檔案 (可多選，單檔上限 250MB)'}
               </div>
@@ -3082,41 +3367,52 @@
           const btnChoose = card.querySelector('.btn-choose-files');
           const progressWrap = card.querySelector('.upload-progress-wrap');
 
+          const btnCamera = card.querySelector('.btn-camera-capture');
+
+          const uploadFiles = async (files) => {
+            if (!files || files.length === 0) return;
+
+            btnChoose.disabled = true;
+            if (btnCamera) btnCamera.disabled = true;
+            if (progressWrap) progressWrap.style.display = 'block';
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+              formData.append('files', files[i]);
+            }
+
+            try {
+              const token = localStorage.getItem(TOKEN_KEY);
+              const res = await fetch(`/api/student/file-collections/${topic.id}/upload`, {
+                method: 'POST',
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.detail || '上傳失敗');
+
+              showToast(data.message || '檔案上傳成功！', 'positive');
+              studentTopicFoldState.set(topic.id, true);
+              loadStudentFileCollections();
+            } catch (err) {
+              showToast(`上傳失敗：${err.message}`, 'error');
+            } finally {
+              btnChoose.disabled = false;
+              if (btnCamera) btnCamera.disabled = false;
+              if (progressWrap) progressWrap.style.display = 'none';
+            }
+          };
+
           if (btnChoose && fileInput) {
             btnChoose.addEventListener('click', () => fileInput.click());
             fileInput.addEventListener('change', async () => {
-              const files = fileInput.files;
-              if (!files || files.length === 0) return;
-
-              btnChoose.disabled = true;
-              if (progressWrap) progressWrap.style.display = 'block';
-
-              const formData = new FormData();
-              for (let i = 0; i < files.length; i++) {
-                formData.append('files', files[i]);
-              }
-
-              try {
-                const token = localStorage.getItem(TOKEN_KEY);
-                const res = await fetch(`/api/student/file-collections/${topic.id}/upload`, {
-                  method: 'POST',
-                  headers: token ? { Authorization: `Bearer ${token}` } : {},
-                  body: formData,
-                });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.detail || '上傳失敗');
-
-                showToast(data.message || '檔案上傳成功！', 'positive');
-                studentTopicFoldState.set(topic.id, true);
-                loadStudentFileCollections();
-              } catch (err) {
-                showToast(`上傳失敗：${err.message}`, 'error');
-              } finally {
-                btnChoose.disabled = false;
-                if (progressWrap) progressWrap.style.display = 'none';
-                fileInput.value = '';
-              }
+              const files = Array.from(fileInput.files || []);
+              fileInput.value = '';
+              await uploadFiles(files);
             });
+          }
+          if (btnCamera) {
+            btnCamera.addEventListener('click', () => openFileCollectCamera((file) => uploadFiles([file])));
           }
         }
 
