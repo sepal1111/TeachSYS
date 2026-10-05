@@ -494,6 +494,10 @@
         </a>
       </div>
       <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="/quick-guide" class="guide-nav-pill" style="font-weight: 800;">
+          <span data-lang="zh">🎞️ 簡易版簡報</span>
+          <span data-lang="en">🎞️ Quick Slides (zh)</span>
+        </a>
         <button id="btn-guide-toggle-theme" class="guide-nav-pill" style="background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); font-weight: 800; font-size: 0.92rem;">
           <span data-lang="zh" id="guide-theme-label-zh">☀️ 淺色模式</span>
           <span data-lang="en" id="guide-theme-label-en">☀️ Light Mode</span>
@@ -567,6 +571,7 @@
           <a href="#quiz" class="guide-nav-pill"><span data-lang="zh">✅ 11. 線上測驗與自動批改</span><span data-lang="en">✅ 11. Online Quizzes</span></a>
           <a href="#grading" class="guide-nav-pill"><span data-lang="zh">📋 12. 作業批改與師生互動</span><span data-lang="en">📋 12. Grading & Feedback Q&A</span></a>
           <a href="#filecollect" class="guide-nav-pill"><span data-lang="zh">📁 13. 課堂臨時檔案蒐集</span><span data-lang="en">📁 13. Ad-Hoc File Collection</span></a>
+          <a href="#hwscan" class="guide-nav-pill"><span data-lang="zh">📥 13-2. 作業掃描登記</span><span data-lang="en">📥 13-2. Homework Scan Check-in</span></a>
         </div>
       </div>
 
@@ -850,6 +855,54 @@
             • <b>🎵 Background Music (BGM)</b>: Automatically selects a <b>random looping track</b> upon entering the timer, complete with Play/Pause, "🔀 Next Track", and volume controls; automatically pauses when switching away or closing the page.<br>
             • <b>Stopwatch</b>: Centisecond precision with lap time records.<br>
             • <b>Mini Floating Widget & Fullscreen</b>: Pin a mini widget on the bottom-right corner or project in fullscreen mode with giant digits.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success"><span data-lang="zh">☁️ 文字雲</span><span data-lang="en">☁️ WORD CLOUD</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">課堂即時文字雲（學生手機投稿、大螢幕同步顯示）</span>
+              <span data-lang="en">Live Word Cloud (Student Submissions & Projector Sync)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">在工具箱次導航列切換到 <b>☁️ 文字雲</b>：教師輸入題目主題後啟動，學生手機／平板會自動彈出作答卡片，送出的詞彙即時彈入畫布。<br>
+            • <b>題目與限制</b>：可自訂題目、是否允許同一學生重複提交相同詞彙，以及每人提交上限（1~5 個詞）。<br>
+            • <b>字級代表頻率</b>：出現次數越多的詞彙字級越大、越居中（最高頻詞置中放大並有光暈）；畫布不顯示次數數字，滑鼠移到詞彙上可查看確切次數。<br>
+            • <b>詞頻排行榜</b>：右側即時彙整排行榜，詞頻越高字級越大，方便快速掌握全班討論重點。<br>
+            • <b>匯出與歷史場次</b>：可一鍵將文字雲匯出為高解析度 PNG 圖片；歷史場次可回顧、清空或切換狀態。<br>
+            • <b>大螢幕同步</b>：開啟大螢幕投影視窗時，文字雲會同步全螢幕顯示，全班一起看詞彙長出來。</span>
+            <span data-lang="en">Switch to <b>☁️ Word Cloud</b> in the Toolkit sub-nav: enter a prompt and start, and a response card pops up on students' phones/tablets; submitted words animate onto the canvas in real time.<br>
+            • <b>Prompt & Limits</b>: set the prompt, whether a student may submit the same word more than once, and the per-student limit (1~5 words).<br>
+            • <b>Size = Frequency</b>: the more often a word appears, the larger and more central it is (the top word is centered with a glow). The canvas shows no count badges; hover a word to see its exact count.<br>
+            • <b>Frequency Ranking</b>: a live ranking on the right, with higher-frequency words shown in larger type.<br>
+            • <b>Export & History</b>: export the cloud as a high-resolution PNG; review, clear, or toggle past sessions.<br>
+            • <b>Projector Sync</b>: with the projector window open, the cloud is mirrored full-screen as it grows.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">🎮 答題競賽</span><span data-lang="en">🎮 QUIZ BATTLE</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">Kahoot 式答題競賽（個人賽／小組賽、題庫管理與 LMS／CSV 匯入）</span>
+              <span data-lang="en">Kahoot-Style Quiz Battle (Individual / Team Modes, Question Bank & LMS/CSV Import)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">切換到 <b>🎮 答題競賽</b>，先在 <b>題庫管理</b> 建立題庫與題目，再選擇模式開始競賽：<br>
+            • <b>題庫與題目</b>：支援多個題庫；每題可設定題幹、2~4 個選項（藍／紅／綠／紫四色按鈕）、倒數秒數（10~60 秒）、基礎分值與題目詳解。<br>
+            • <b>📥 匯入題目</b>：可 <b>調用 LMS 線上測驗</b>（自動載入本課程所有線上測驗小單元，是非題轉為二選一、選擇題轉為 2~4 選項，可全選或逐題勾選預覽），或匯入 <b>CSV 檔案</b>（頁面提供「答題競賽題目匯入範本.csv」可下載）。匯入目標可選「建立為新題庫」或「附加至目前題庫」。<br>
+            • <b>個人賽 vs 小組賽</b>：個人賽依「基礎分＋答題速度加權」累計；小組賽依既有常態分組，小組分數為成員即時加總。<br>
+            • <b>即時作答與防作弊</b>：學生手機即時彈出四色觸控按鈕，送出後鎖定；題目選項推送給學生時已移除正解標記，無法從開發者工具偷看答案。<br>
+            • <b>揭曉與頒獎</b>：公佈正解與各選項得票分佈，賽後顯示 3D 頒獎台；按 <b>🎁 一鍵發放獎勵加分</b> 依前三名名次寫入全班記分板。大螢幕投影視窗會同步顯示題目、作答人數與結果。</span>
+            <span data-lang="en">Switch to <b>🎮 Quiz Battle</b>. Build a question bank and questions in <b>Manage Question Bank</b>, then pick a mode and start:<br>
+            • <b>Banks & Questions</b>: multiple banks; each question has a stem, 2~4 options (blue / red / green / purple buttons), a countdown (10~60 s), base points, and an explanation.<br>
+            • <b>📥 Import Questions</b>: <b>pull from LMS online quizzes</b> (all quiz units of the course are loaded; true/false becomes two options, multiple-choice becomes 2~4 options; select all or pick individually with a preview), or import a <b>CSV file</b> (a "Quiz Battle import template.csv" is available to download). Import into a <b>new bank</b> or <b>append to the current bank</b>.<br>
+            • <b>Individual vs Team</b>: individual mode accumulates base points plus a speed bonus; team mode follows your existing regular grouping and sums members' scores live.<br>
+            • <b>Live Answering & Anti-Cheat</b>: students get touch-friendly colored buttons on their phones and are locked after submitting; correct-answer flags are stripped before options are sent to students.<br>
+            • <b>Reveal & Podium</b>: the correct option and vote distribution are revealed, followed by a 3D podium; click <b>🎁 Award Bonus Points</b> to write top-3 rewards to the class scoreboard. The projector window mirrors questions, answer counts, and results.</span>
           </div>
         </div>
       </div>
@@ -1310,6 +1363,105 @@
             Students see the matching topic card on their own page and upload according to the rules; if the teacher set an extension restriction, the app blocks mismatched files at upload time with an inline warning.</span>
           </div>
         </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">高畫質拍攝</span><span data-lang="en">HQ CAMERA</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">學生端上傳與「🎥 高畫質拍攝」（改善拍照／錄影被壓縮的問題）</span>
+              <span data-lang="en">Student Upload & "🎥 HQ Capture" (Fixes Compressed Photos/Videos)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">學生在檔案蒐集卡片中有兩個按鈕：<b>📤 選擇檔案上傳</b> 與 <b>🎥 高畫質拍攝</b>。<br>
+            • <b>為什麼要有高畫質拍攝</b>：平板／手機的瀏覽器內建「拍照或錄影」會先把影片、照片壓成低畫質再交給網頁，且無法由網頁調整。因此「選擇檔案上傳」的選單已不再提供內建拍攝，拍攝請改用 <b>🎥 高畫質拍攝</b>，或先用裝置的相機 App 拍好再選檔上傳。<br>
+            • <b>拍攝視窗功能</b>：要求裝置最高解析度（理想 4K、30fps），以高位元率錄影（優先 MP4，不支援時為 WebM）；可 📸 拍照、⏺ 錄影、🔄 切換前後鏡頭；拍完先預覽，再選擇 ✅ 上傳或 ↩ 重拍；檔案自動命名為「錄影_日期時間」或「拍照_日期時間」。<br>
+            • <b>相機偵測與畫質選擇</b>：視窗上方顯示「偵測到 N 個相機」、目前實際解析度與 fps，以及該相機最高支援規格（部分瀏覽器如 iPad Safari 無法取得最高規格）；多鏡頭裝置可用下拉選單指定相機，並可選擇畫質（最高／4K／1080p／720p），超出相機能力的選項會自動停用。<br>
+            • <b>注意事項</b>：網頁拍攝需 <b>HTTPS</b> 與相機／麥克風授權；實際解析度受裝置限制（iPad 網頁錄影通常最高 1080p）。單檔上限 250MB，錄影接近 240MB 會自動停止（約可錄 4 分鐘），較長內容請學生分段錄製。若教師設定了「限制副檔名」，拍攝檔（mp4／webm／jpg）也須符合，否則會被擋下。</span>
+            <span data-lang="en">Each file-collection card on the student page has two buttons: <b>📤 Choose File</b> and <b>🎥 HQ Capture</b>.<br>
+            • <b>Why HQ Capture</b>: the browser's built-in "Take Photo or Video" on tablets/phones compresses media to low quality before handing it to the page, and the page cannot change that. So the file picker no longer offers built-in capture; use <b>🎥 HQ Capture</b>, or shoot with the device's Camera app first and then choose the file.<br>
+            • <b>Capture Window</b>: requests the device's highest resolution (ideal 4K, 30 fps) and records at a high bitrate (MP4 preferred, WebM as fallback); supports 📸 photo, ⏺ video, 🔄 front/back switching; preview before choosing ✅ Upload or ↩ Retake; files are auto-named "錄影_datetime" or "拍照_datetime".<br>
+            • <b>Camera Detection & Quality</b>: the window shows "N cameras detected," the actual resolution and fps, and the camera's maximum supported spec (some browsers, such as iPad Safari, cannot report it); multi-camera devices offer a camera dropdown and a quality picker (Max / 4K / 1080p / 720p), with options beyond the camera's ability disabled automatically.<br>
+            • <b>Notes</b>: web capture requires <b>HTTPS</b> and camera/microphone permission; actual resolution is device-limited (iPad web recording usually tops out at 1080p). The per-file limit is 250 MB; recording auto-stops near 240 MB (about 4 minutes), so ask students to record longer content in segments. If the teacher set an extension restriction, captured files (mp4/webm/jpg) must match it or they will be rejected.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Section 13-2: Homework Scan -->
+    <section id="hwscan" class="guide-section">
+      <div class="guide-section-header">
+        <div class="guide-section-icon">📥</div>
+        <h2 class="guide-section-title">
+          <span data-lang="zh">13-2. 作業掃描登記 (Homework Scan Check-in)</span>
+          <span data-lang="en">13-2. Homework Scan Check-in</span>
+        </h2>
+      </div>
+      <div class="guide-item-list">
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary"><span data-lang="zh">全新功能</span><span data-lang="en">NEW</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">以作業專屬 QR Code 掃描收作業、每日收件計畫與未交名單</span>
+              <span data-lang="en">Collect Homework by Scanning Per-Assignment QR Codes, Daily Plans & Missing List</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">切換到 <b>📖 學習歷程 ➔ 📥 作業掃描登記</b>（位於「檔案蒐集」之後、「紙本測驗」之前）。此功能<b>只能在教師本機電腦使用</b>：區網內的學生手機／平板無法存取，非本機瀏覽時選單也不會顯示。<br>
+            • <b>作業項目與每日計畫</b>：先建立作業項目，再設定「這天要收哪些作業」。<br>
+            • <b>以作業專屬 QR Code 收件（主要方式）</b>：每張貼紙 QR Code 綁定「一位學生＋一項作業」，掃描即自動記錄「誰交了什麼」，並顯示最近 5 筆登記。支援條碼掃描槍、手動輸入或電腦鏡頭掃描。<br>
+            • <b>備援方式</b>：作業上沒有 QR Code 時，展開「作業上沒有 QR Code？」，改以掃描借書證條碼並勾選作業登記。<br>
+            • <b>手動補登與復原</b>：可補繳、請假、改回未交，並可復原上一筆；提供未交名單與全班收件進度。<br>
+            • <b>匯出</b>：可匯出 Excel／CSV（CSV 為 UTF-8 含 BOM，Excel 開啟不亂碼）。</span>
+            <span data-lang="en">Go to <b>📖 Learning Logs ➔ 📥 Homework Scan</b> (after "File Collection," before "Paper Quiz"). This feature works <b>only on the teacher's own computer</b>: students' phones/tablets on the LAN cannot reach it, and the menu is hidden when browsing from a non-local device.<br>
+            • <b>Items & Daily Plan</b>: create homework items, then set "which assignments are due today."<br>
+            • <b>Per-assignment QR Codes (primary)</b>: each sticker QR code binds <b>one student + one assignment</b>; scanning records "who handed in what" automatically and shows the latest 5 entries. Works with barcode scanner guns, manual entry, or the computer's webcam.<br>
+            • <b>Fallback</b>: if homework has no QR code, expand "No QR Code on the homework?" and scan the library-card barcode, then tick the assignments.<br>
+            • <b>Manual Entry & Undo</b>: mark late-submitted, on leave, or back to missing; undo the last scan; view the missing list and class-wide progress.<br>
+            • <b>Export</b>: Excel / CSV (CSV is UTF-8 with BOM so Excel opens it without garbled text).</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-success"><span data-lang="zh">小助手模式</span><span data-lang="en">HELPER MODE</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">小助手獨立掃描視窗，教師主畫面可同時做其他事</span>
+              <span data-lang="en">Standalone Helper Window — Keep Teaching While Students Scan</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>🚀 開啟小助手獨立掃描視窗</b>：開啟純淨的獨立視窗，可拖到第二螢幕交給學生幹部刷條碼，老師的主畫面仍可繼續即時評分、點名或使用計時器，互不干擾。<br>
+            • <b>小助手友善介面</b>：掃描槍輸入框自動回焦、大字體結果看板、正常／重複／異常三種提示音（可關閉）、全班收件百分比進度條、只看未交篩選、全螢幕切換與電腦鏡頭掃描。<br>
+            • <b>🪟 在頁面浮動彈窗開啟</b>：瀏覽器封鎖新視窗時的備援，功能相同。<br>
+            • <b>即時同步</b>：小助手在獨立視窗登記的每一筆，教師主畫面都會即時更新。</span>
+            <span data-lang="en">• <b>🚀 Open Helper Scan Window</b>: opens a clean standalone window you can drag to a second monitor for a student helper, while your main screen stays free for live scoring, attendance, or timers.<br>
+            • <b>Helper-Friendly UI</b>: scanner input auto-refocuses, large result display, normal / duplicate / error sounds (can be muted), class-wide percentage bar, "show missing only" filter, fullscreen toggle, and webcam scanning.<br>
+            • <b>🪟 Open as In-Page Popup</b>: a fallback with the same features if the browser blocks new windows.<br>
+            • <b>Live Sync</b>: every entry made in the helper window updates the teacher's main screen instantly.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-warning"><span data-lang="zh">標籤列印</span><span data-lang="en">LABEL PRINT</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">A4 標籤貼紙列印與 10mm 安全邊距（防止 QR Code 被印表機裁切）</span>
+              <span data-lang="en">A4 Sticker Label Printing with 10mm Safe Margin (Prevents QR Codes Being Cropped)</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>預設四邊保留 10mm</b>：A4 紙張四邊預設留白 10mm（可印範圍 190×277mm），避免各校印表機的非列印區裁掉最外圈的 QR Code 與姓名導致無法掃描。<br>
+            • <b>多種版型自動換算</b>：24 格、21 格、18 格、40 格、10 格貼紙版型會依留白自動分配欄寬與列高，選單標註尺寸。<br>
+            • <b>可調整</b>：「紙張邊緣留白」可選 10mm（推薦）、12mm、8mm、5mm；可勾選「顯示裁切輔助虛線」，使用普通 A4 紙或未裁切貼紙時方便剪裁。<br>
+            • <b>列印提醒</b>：列印時請將縮放設為 <b>100% 實際大小</b>，預覽頂部提示列有說明。</span>
+            <span data-lang="en">• <b>10mm Margins by Default</b>: A4 keeps 10 mm on all four sides (printable area 190×277 mm) so printers' non-printable edges don't clip outer-edge QR codes and names.<br>
+            • <b>Auto-Sized Layouts</b>: 24-, 21-, 18-, 40-, and 10-label sheets recompute column widths and row heights from the margin; sizes are shown in the menu.<br>
+            • <b>Adjustable</b>: choose the "Paper Edge Margin" of 10 mm (recommended), 12 mm, 8 mm, or 5 mm; tick "Show cutting guide lines" to help trim plain A4 paper or uncut sticker sheets.<br>
+            • <b>Print Tip</b>: set print scaling to <b>100% (actual size)</b>; the banner at the top of the preview reminds you.</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1668,6 +1820,26 @@
             <b>Each card's point value is fixed at import time</b> (there's no separate scoring rule to pick), and <b>a student can scan the same card only once per day</b>. If the card's series restricts authorized classes, students outside those classes cannot redeem points from it.</span>
           </div>
         </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary"><span data-lang="zh">系列總覽</span><span data-lang="en">SERIES OVERVIEW</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">預設「風格系列總覽」、全域搜尋與批次操作</span>
+              <span data-lang="en">Series Overview by Default, Global Search & Batch Actions</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>預設總覽模式</b>：進入 <b>系統與後台 ➔ 實體點數卡管理</b> 時，先顯示各「風格系列」的相簿式總覽，不再一次展開全部卡片。每張系列卡片顯示系列名稱、卡片總數、累計兌換加分次數、序號範圍（例如 <code>#D_001 ~ #D_135</code>）、點數分佈與外觀設計狀態；有未分類卡片時會有專屬收納夾。<br>
+            • <b>穿透瀏覽</b>：點擊系列卡片或「🔍 查看系列卡片」（亦可用系列下拉選單）展開該系列的卡片清單，頂部有「⬅ 返回風格系列總覽」。<br>
+            • <b>全域搜尋</b>：在搜尋框輸入卡號或代碼（如 <code>#D_001</code>）即時過濾全班卡片，按「✕ 清除搜尋」恢復。<br>
+            • <b>工具列智慧切換</b>：總覽模式自動收合排序按鈕、全選與批次工具列；進入卡片清單或搜尋結果時展開，可批次移動系列或批次刪除。</span>
+            <span data-lang="en">• <b>Overview First</b>: opening <b>System & Admin ➔ Physical Point Cards</b> now shows an album-style overview of each "style series" instead of expanding every card. Each series card shows its name, total cards, cumulative redemption count, serial range (e.g. <code>#D_001 ~ #D_135</code>), point distribution, and design status; uncategorized cards get a dedicated folder.<br>
+            • <b>Drill Down</b>: click a series card or "🔍 View Series Cards" (or use the series dropdown) to open its card list, which has a "⬅ Back to Series Overview" button.<br>
+            • <b>Global Search</b>: type a card number or code (e.g. <code>#D_001</code>) to filter all cards instantly; click "✕ Clear Search" to restore.<br>
+            • <b>Smart Toolbar</b>: overview mode hides sort buttons, select-all, and the batch toolbar; they appear in card lists or search results, where you can batch-move series or batch-delete.</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1746,6 +1918,24 @@
             • <b>👤 姓名顯示切換</b>：在中文語系下，教師可點擊按鈕自由切換顯示「中文姓名」或「英文姓名」；在英文語系下系統預設優先顯示學生的英文姓名。</span>
             <span data-lang="en">• <b>🌐 Traditional Chinese / English</b>: Click the language toggle button to switch all UI labels, rules, modals, projector screens, and this manual into English.<br>
             • <b>👤 Name Display Mode</b>: In Chinese mode, toggle between Chinese and English student names; in English mode, English names are displayed by default.</span>
+          </div>
+        </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary"><span data-lang="zh">連線 QR Code</span><span data-lang="en">CONNECT QR</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">「📱 學生連線」與「📱 手機評分連線」QR Code 快捷按鈕</span>
+              <span data-lang="en">"📱 Student Connect" & "📱 Mobile Scoring Connect" QR Code Shortcuts</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>位置</b>：<b>⚙️ 系統與後台</b> 次導航列右側有兩顆常駐按鈕——<b>📱 學生連線 QR Code</b> 與 <b>📱 手機評分連線 QR Code</b>，無論目前在哪個後台分頁都能一鍵叫出；頂部標題列已不再放手機評分按鈕。「🔐 密碼安全與手冊」面板也有對應的說明卡片與按鈕。<br>
+            • <b>學生連線</b>：顯示學生專屬登入網址與 QR Code，點擊 QR Code 可彈出全螢幕投影視窗，方便全班用手機／平板掃碼登入。<br>
+            • <b>手機評分連線</b>：教師用手機掃碼即可免密碼走動評分，並與大螢幕投影同步。</span>
+            <span data-lang="en">• <b>Location</b>: the right side of the <b>⚙️ System & Admin</b> sub-nav has two persistent buttons — <b>📱 Student Connect QR Code</b> and <b>📱 Mobile Scoring QR Code</b> — available from any admin tab. The top header no longer carries the mobile-scoring button. The "🔐 Security & Manual" panel also has matching explainer cards and buttons.<br>
+            • <b>Student Connect</b>: shows the student login URL and QR code; click the QR code to open a fullscreen projection window so the whole class can scan to log in.<br>
+            • <b>Mobile Scoring Connect</b>: the teacher scans with a phone to score on the move without typing a password, synced with the projector.</span>
           </div>
         </div>
       </div>

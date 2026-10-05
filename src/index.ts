@@ -72,7 +72,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (
     p.startsWith("/static") ||
     /\.(html|js|css|json)$/.test(p) ||
-    ["", "/", "/projection", "/guide", "/student", "/favicon.ico"].includes(p)
+    ["", "/", "/projection", "/guide", "/student", "/student-guide", "/quick-guide", "/student-quick-guide", "/favicon.ico"].includes(p)
   ) {
     res.set({
       "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
@@ -242,6 +242,40 @@ app.get("/student", (_req, res) => {
     renderCachedHtml(res, studentFile);
   } else {
     res.json({ message: "Student page is missing" });
+  }
+});
+
+// --- 學生使用說明頁：公開頁面（學生端不需要教師登入），與 /student 相同 ---
+app.get("/student-guide", (_req, res) => {
+  const guideFile = path.join(staticDir, "student-guide.html");
+  if (fs.existsSync(guideFile)) {
+    renderCachedHtml(res, guideFile);
+  } else {
+    res.json({ message: "Student guide page is missing" });
+  }
+});
+
+// --- 簡易版簡報說明：教師版需登入（比照 /guide），學生版為公開頁 ---
+app.get("/quick-guide", async (req, res) => {
+  if (!(await isRequestAuthenticated(req))) {
+    const redirectTarget = req.originalUrl.includes("?") ? req.originalUrl : "/quick-guide";
+    res.redirect(307, `/?redirect=${encodeURIComponent(redirectTarget)}`);
+    return;
+  }
+  const file = path.join(staticDir, "quick-guide.html");
+  if (fs.existsSync(file)) {
+    renderCachedHtml(res, file);
+  } else {
+    res.json({ message: "Quick guide page is missing" });
+  }
+});
+
+app.get("/student-quick-guide", (_req, res) => {
+  const file = path.join(staticDir, "student-quick-guide.html");
+  if (fs.existsSync(file)) {
+    renderCachedHtml(res, file);
+  } else {
+    res.json({ message: "Student quick guide page is missing" });
   }
 });
 
