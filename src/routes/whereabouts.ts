@@ -145,7 +145,8 @@ const serializeTrip = (r: TripRow) => ({
 
 /** 某班某天的狀態：每位學生每個時段「目前外出」的那一筆（沒有＝在教室），以及當天所有外出紀錄。 */
 async function dayState(courseId: number, date: string, withTrips: boolean) {
-  const [students, records, reasons] = await Promise.all([
+  const [course, students, records, reasons] = await Promise.all([
+    prisma.course.findUnique({ where: { id: courseId }, select: { seatRows: true, seatCols: true, blackboardPosition: true } }),
     prisma.student.findMany({ where: { courseId, isActive: 1 }, orderBy: { studentNumber: "asc" } }),
     prisma.whereaboutsRecord.findMany({ where: { courseId, date }, include: { reason: true }, orderBy: { outAt: "asc" } }),
     prisma.whereaboutsReason.findMany({ where: { isActive: 1 }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
@@ -161,8 +162,14 @@ async function dayState(courseId: number, date: string, withTrips: boolean) {
     const last = open[open.length - 1];
     return last ? serializeTrip(last) : null;
   };
+  const rows = course?.seatRows || 5;
+  const cols = course?.seatCols || 6;
+  const inSeat = (s: (typeof students)[number]) =>
+    s.seatRow != null && s.seatCol != null && s.seatRow >= 1 && s.seatRow <= rows && s.seatCol >= 1 && s.seatCol <= cols;
   return {
     date,
+    // 座位表（與「班級管理 ➔ 座位表」同一份設定），供「座位表檢視」使用
+    seat: { rows, cols, blackboard_position: course?.blackboardPosition || "top" },
     reasons: reasons.map(serializeReason),
     students: students.map((s) => {
       const list = byStudent.get(s.id) ?? [];
@@ -170,15 +177,15 @@ async function dayState(courseId: number, date: string, withTrips: boolean) {
         student_id: s.id,
         student_number: s.studentNumber,
         name: s.name,
+        seat_row: inSeat(s) ? s.seatRow : null,
+        seat_col: inSeat(s) ? s.seatCol : null,
         morning: current(list, "morning"),
         noon: current(list, "noon"),
       };
       if (!withTrips) return base;
       return {
         ...base,
-        student_code: s.studentCode,
         english_name: s.englishName,
-        gender: s.gender,
         trips: {
           morning: list.filter((t) => t.slot === "morning").map(serializeTrip),
           noon: list.filter((t) => t.slot === "noon").map(serializeTrip),
@@ -529,17 +536,20 @@ whereaboutsPublicRouter.put("/:courseId/record", async (req, res) => {
     res.status(400).json({ detail: "時段不正確" });
     return;
   }
-  const studentId = Number(req.body?.student_id);
-  const student = await prisma.student.findFirst({ where: { id: studentId, courseId, isActive: 1 }, select: { id: true } });
-  if (!student) {
-    res.status(400).json({ detail: "找不到這位學生" });
+  // 支援一次登記多位學生（student_ids），也相容舊的單人欄位 student_id；單次最多 60 人。
+  const rawIds: unknown[] = Array.isArray(req.body?.student_ids) ? req.body.student_ids : [req.body?.student_id];
+  const wanted = [...new Set(rawIds.map(Number).filter((n) => Number.isInteger(n)))].slice(0, 60);
+  const found = await prisma.student.findMany({ where: { id: { in: wanted }, courseId, isActive: 1 }, select: { id: true } });
+  const studentIds = found.map((s) => s.id);
+  if (studentIds.length === 0) {
+    res.status(400).json({ detail: "找不到這些學生" });
     return;
   }
   const date = getTodayStrTaipei();
   const reasonId = req.body?.reason_id === null || req.body?.reason_id === undefined ? null : Number(req.body.reason_id);
 
   if (reasonId === null) {
-    await markReturned(courseId, date, slot, [studentId]);
+    await markReturned(courseId, date, slot, studentIds);
   } else {
     const note = text(req.body?.note, 100);
     const err = await validateReason(reasonId, note);
@@ -547,8 +557,8 @@ whereaboutsPublicRouter.put("/:courseId/record", async (req, res) => {
       res.status(400).json({ detail: err });
       return;
     }
-    await markOut(courseId, date, slot, [studentId], reasonId, note);
+    await markOut(courseId, date, slot, studentIds, reasonId, note);
   }
   broadcastToCourse(courseId, "whereabouts_updated");
-  res.json({ message: "已更新" });
+  res.json({ message: "已更新", count: studentIds.length });
 });

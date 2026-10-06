@@ -17,6 +17,21 @@
     --out-bg: rgba(249, 115, 22, 0.14);
     --in: #2f8a62;
     --in-bg: rgba(79, 174, 130, 0.16);
+    --hero1: #0284c7;
+    --hero2: #0369a1;
+  }
+  /* 午休：暖色系背景，與早自修（藍色系）一眼區分 */
+  body.slot-noon {
+    --primary: #ea580c;
+    --primary-bg: #fff7ed;
+    --border: #fed7aa;
+    --bg: #fff3e0;
+    --hero1: #f59e0b;
+    --hero2: #ea580c;
+    /* 底色已是暖橘，「不在教室」改用紅色才分得出來 */
+    --out: #b91c1c;
+    --out-bg: rgba(220, 38, 38, 0.12);
+    --out-border: rgba(220, 38, 38, 0.55);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -25,11 +40,16 @@
       --out: #fdba74; --out-bg: rgba(249, 115, 22, 0.2);
       --in: #6ee7b7; --in-bg: rgba(79, 174, 130, 0.2);
     }
+    body.slot-noon {
+      --primary: #fb923c; --primary-bg: #3a2210; --border: #7c4a1e; --bg: #2a170a;
+      --hero1: #b45309; --hero2: #9a3412;
+      --out: #fca5a5; --out-bg: rgba(220, 38, 38, 0.22); --out-border: rgba(248, 113, 113, 0.6);
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif; font-size: 17px; line-height: 1.5; }
+  body { margin: 0; transition: background 0.3s ease; background: var(--bg); color: var(--text); font-family: "Microsoft JhengHei", "PingFang TC", "Noto Sans TC", system-ui, sans-serif; font-size: 17px; line-height: 1.5; }
   .wrap { max-width: 980px; margin: 0 auto; padding: 14px; }
-  header.hero { background: linear-gradient(135deg, #0284c7, #0369a1); color: #fff; border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
+  header.hero { background: linear-gradient(135deg, var(--hero1), var(--hero2)); color: #fff; border-radius: 16px; padding: 16px 18px; margin-bottom: 12px; }
   header.hero h1 { margin: 0; font-size: 1.4rem; }
   header.hero p { margin: 4px 0 0; opacity: 0.95; font-size: 0.92rem; }
   .bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
@@ -50,7 +70,24 @@
   .stu .nm { font-size: 1.12rem; font-weight: 900; word-break: break-all; text-align: center; }
   .stu .st { margin-top: 3px; font-size: 0.76rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; max-width: 100%; overflow-wrap: anywhere; text-align: center; }
   .stu .st.in { color: var(--in); background: var(--in-bg); }
-  .stu.out { border-color: rgba(249,115,22,0.6); background: var(--out-bg); }
+  .stu.sel { outline: 3px solid var(--primary); outline-offset: 1px; background: var(--primary-bg); }
+  .viewbar { display: flex; gap: 6px; margin-bottom: 10px; }
+  .view-btn { min-height: 40px; padding: 0 14px; border: 2px solid var(--border); background: var(--card); color: var(--text); border-radius: 10px; font-size: 0.95rem; font-weight: 800; cursor: pointer; font-family: inherit; }
+  .view-btn.on { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .seatwrap { display: flex; gap: 8px; flex-direction: column; }
+  .seatwrap.bottom { flex-direction: column-reverse; }
+  .seatwrap.left { flex-direction: row; }
+  .seatwrap.right { flex-direction: row-reverse; }
+  .board { background: linear-gradient(135deg, #2f5d46, #1f3d2b); color: #fff; font-weight: 900; letter-spacing: 0.3em; text-align: center; padding: 6px 10px; border-radius: 10px; flex: 0 0 auto; }
+  .seatwrap.left .board, .seatwrap.right .board { writing-mode: vertical-rl; padding: 10px 6px; }
+  .seatscroll { overflow-x: auto; flex: 1; min-width: 0; }
+  .seatgrid { display: grid; gap: 8px; }
+  .seatgrid .stu { min-height: 76px; padding: 6px 3px; }
+  .seatgrid .stu .nm { font-size: 0.98rem; }
+  .seatempty { border: 2px dashed var(--border); border-radius: 14px; min-height: 76px; opacity: 0.6; }
+  .hintbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+  .selbar { position: sticky; bottom: 10px; margin-top: 12px; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; background: var(--card); border: 2px solid var(--primary); border-radius: 14px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  .stu.out { border-color: var(--out-border, rgba(249,115,22,0.6)); background: var(--out-bg); }
   .stu.out .st { color: var(--out); background: var(--out-bg); }
   .msg { text-align: center; padding: 40px 16px; color: var(--muted); }
   .msg.err { color: #dc2626; font-weight: 800; }

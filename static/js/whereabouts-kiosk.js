@@ -12,6 +12,9 @@
     slot: new Date().getHours() >= 11 ? 'noon' : 'morning',
     data: null,
     sheetOpen: false,
+    selecting: false, // 多人一起登記模式
+    selected: new Set(),
+    view: (() => { try { return localStorage.getItem('wb_kiosk_view') === 'seat' ? 'seat' : 'grid'; } catch (_) { return 'grid'; } })(),
   };
 
   const $ = (id) => document.getElementById(id);
@@ -54,8 +57,42 @@
     }
   }
 
+  function stuButton(s) {
+    const r = recOf(s);
+    return `<button type="button" class="stu ${r ? 'out' : ''} ${S.selecting && S.selected.has(s.student_id) ? 'sel' : ''}" data-id="${s.student_id}">
+      <span class="n">${esc(s.student_number)} 號</span>
+      <span class="nm">${esc(s.name)}</span>
+      <span class="st ${r ? 'out' : 'in'}">${r ? `${esc(r.icon)} ${esc(r.reason_title)}` : '✅ 在教室'}</span>
+    </button>`;
+  }
+
+  // 名冊（依座號）或座位表（依教室座位，與教師設定的座位表相同）
+  function renderStudents(d) {
+    const list = `<div class="grid">${d.students.map(stuButton).join('')}</div>`;
+    const seat = d.seat;
+    const seated = d.students.filter((s) => s.seat_row != null);
+    if (S.view !== 'seat' || !seat) return list;
+    if (!seated.length) return `<p class="hint">這個班級老師還沒有安排座位，請先使用「名冊」。</p>${list}`;
+    const at = new Map(seated.map((s) => [`${s.seat_row},${s.seat_col}`, s]));
+    let cells = '';
+    for (let r = 1; r <= seat.rows; r++) {
+      for (let c = 1; c <= seat.cols; c++) {
+        const s = at.get(`${r},${c}`);
+        cells += s ? stuButton(s) : '<div class="seatempty"></div>';
+      }
+    }
+    const unseated = d.students.filter((s) => s.seat_row == null);
+    const bb = ['top', 'bottom', 'left', 'right'].includes(seat.blackboard_position) ? seat.blackboard_position : 'top';
+    return `<div class="seatwrap ${bb}">
+        <div class="board">講台／黑板</div>
+        <div class="seatscroll"><div class="seatgrid" style="grid-template-columns: repeat(${seat.cols}, minmax(84px, 1fr));">${cells}</div></div>
+      </div>
+      ${unseated.length ? `<p class="hint" style="margin-top:12px;">尚未安排座位的同學：</p><div class="grid">${unseated.map(stuButton).join('')}</div>` : ''}`;
+  }
+
   function render() {
     const d = S.data;
+    document.body.classList.toggle('slot-noon', S.slot === 'noon'); // 午休＝暖色系背景
     $('subTitle').textContent = `${d.course_name}　${d.date}`;
     document.title = `${d.course_name} 公出登記`; // 加入書籤時的預設名稱
     const out = d.students.filter((s) => recOf(s));
@@ -83,16 +120,19 @@
           </div>`).join('')}
       </div>
 
-      <p class="hint">要離開教室的同學，請點自己的名字，選擇原因。回來時再點一次自己的名字。</p>
-      <div class="grid">
-        ${d.students.map((s) => {
-          const r = recOf(s);
-          return `<button type="button" class="stu ${r ? 'out' : ''}" data-id="${s.student_id}">
-            <span class="n">${esc(s.student_number)} 號</span>
-            <span class="nm">${esc(s.name)}</span>
-            <span class="st ${r ? 'out' : 'in'}">${r ? `${esc(r.icon)} ${esc(r.reason_title)}` : '✅ 在教室'}</span>
-          </button>`;
-        }).join('')}
+      <div class="hintbar">
+        <p class="hint" style="margin:0; flex:1;">${S.selecting ? '☑️ 多人模式：點選要一起登記的同學（再點一次取消），選好後按下方「選擇原因」。' : '要離開教室的同學，請點自己的名字，選擇原因。回來時再點一次自己的名字。'}</p>
+        <button type="button" class="btn ${S.selecting ? 'primary' : 'ghost'}" id="btnMulti">${S.selecting ? '✖ 結束多人模式' : '☑️ 多人一起登記'}</button>
+      </div>
+      <div class="viewbar" id="viewBar">
+        <button type="button" class="view-btn ${S.view === 'grid' ? 'on' : ''}" data-view="grid">👥 名冊</button>
+        <button type="button" class="view-btn ${S.view === 'seat' ? 'on' : ''}" data-view="seat">🪑 座位表</button>
+      </div>
+      ${renderStudents(d)}
+      <div class="selbar" id="selBar" style="display:${S.selecting && S.selected.size ? 'flex' : 'none'};">
+        <b>已選 ${S.selected.size} 人</b>
+        <button type="button" class="btn primary" id="btnSelSet">📍 選擇原因</button>
+        <button type="button" class="btn ghost" id="btnSelClear">取消選取</button>
       </div>
     `;
 
@@ -100,16 +140,38 @@
       b.addEventListener('click', () => { S.slot = b.dataset.slot; render(); })
     );
     $('app').querySelectorAll('.stu').forEach((b) =>
-      b.addEventListener('click', () => openSheet(Number(b.dataset.id)))
+      b.addEventListener('click', () => onStudentClick(Number(b.dataset.id)))
     );
+    $('viewBar').querySelectorAll('button').forEach((b) =>
+      b.addEventListener('click', () => {
+        S.view = b.dataset.view;
+        try { localStorage.setItem('wb_kiosk_view', S.view); } catch (_) { /* ignore */ }
+        render();
+      })
+    );
+    $('btnMulti').addEventListener('click', () => { S.selecting = !S.selecting; S.selected.clear(); render(); });
+    const setBtn = $('btnSelSet');
+    if (setBtn) {
+      setBtn.addEventListener('click', () => openSheet([...S.selected]));
+      $('btnSelClear').addEventListener('click', () => { S.selected.clear(); render(); });
+    }
   }
 
-  async function save(studentId, reasonId, note) {
+  function onStudentClick(id) {
+    if (S.selecting) {
+      if (S.selected.has(id)) S.selected.delete(id); else S.selected.add(id);
+      render();
+    } else {
+      openSheet([id]);
+    }
+  }
+
+  async function save(studentIds, reasonId, note) {
     try {
       const res = await fetch(`${base}/record`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key, slot: S.slot, student_id: studentId, reason_id: reasonId, note }),
+        body: JSON.stringify({ key, slot: S.slot, student_ids: studentIds, reason_id: reasonId, note }),
       });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.detail || '儲存失敗');
@@ -126,18 +188,19 @@
     if (S.data) render();
   }
 
-  function openSheet(studentId) {
+  function openSheet(ids) {
     const d = S.data;
-    const stu = d.students.find((s) => s.student_id === studentId);
-    if (!stu) return;
-    const cur = recOf(stu);
+    const stus = ids.map((id) => d.students.find((s) => s.student_id === id)).filter(Boolean);
+    if (!stus.length) return;
+    const multi = stus.length > 1;
+    const cur = multi ? null : recOf(stus[0]);
     S.sheetOpen = true;
 
     $('sheet').innerHTML = `
-      <h3>${esc(stu.student_number)} 號 ${esc(stu.name)}</h3>
-      <div class="sub">${slotLabel()}${cur ? `｜目前：${esc(cur.icon)} ${esc(cur.reason_title)}${cur.note ? `（${esc(cur.note)}）` : ''}` : '｜目前在教室'}</div>
-      ${cur ? '<button type="button" class="btn green" id="btnBack">✅ 我回到教室了</button>' : ''}
-      <div style="font-weight:800; margin-bottom:6px;">${cur ? '改成其他原因：' : '我要離開教室，原因是：'}</div>
+      <h3>${multi ? `已選 ${stus.length} 位同學` : `${esc(stus[0].student_number)} 號 ${esc(stus[0].name)}`}</h3>
+      <div class="sub">${slotLabel()}${multi ? `｜${stus.map((s) => `${esc(s.student_number)}號 ${esc(s.name)}`).join('、')}` : cur ? `｜目前：${esc(cur.icon)} ${esc(cur.reason_title)}${cur.note ? `（${esc(cur.note)}）` : ''}` : '｜目前在教室'}</div>
+      ${cur || multi ? `<button type="button" class="btn green" id="btnBack">${multi ? '✅ 大家都回到教室了' : '✅ 我回到教室了'}</button>` : ''}
+      <div style="font-weight:800; margin-bottom:6px;">${multi ? '大家一起離開教室，原因是：' : cur ? '改成其他原因：' : '我要離開教室，原因是：'}</div>
       <div class="reasons">
         ${d.reasons.map((r) => `<button type="button" class="btn" data-reason="${r.id}">${esc(r.icon)} ${esc(r.title)}${r.teacher_name ? `<small>👩‍🏫 ${esc(r.teacher_name)}</small>` : ''}</button>`).join('')}
       </div>
@@ -153,13 +216,14 @@
     const done = async (ok, msg) => {
       if (!ok) return;
       toast(msg);
+      if (multi) { S.selected.clear(); S.selecting = false; }
       closeSheet();
       load();
     };
 
     $('btnCancel').addEventListener('click', closeSheet);
     const back = $('btnBack');
-    if (back) back.addEventListener('click', async () => done(await save(studentId, null, ''), '歡迎回來！已登記在教室'));
+    if (back) back.addEventListener('click', async () => done(await save(ids, null, ''), multi ? `已登記 ${ids.length} 人回到教室` : '歡迎回來！已登記在教室'));
 
     let other = null;
     $('sheet').querySelectorAll('[data-reason]').forEach((b) =>
@@ -171,13 +235,13 @@
           $('otherTxt').focus();
           return;
         }
-        done(await save(studentId, r.id, ''), `已登記：${r.title}`);
+        done(await save(ids, r.id, ''), multi ? `已登記 ${ids.length} 人：${r.title}` : `已登記：${r.title}`);
       })
     );
     const submitOther = async () => {
       const note = $('otherTxt').value.trim();
       if (!note) { toast('請輸入原因', true); return; }
-      done(await save(studentId, other.id, note), `已登記：${note}`);
+      done(await save(ids, other.id, note), multi ? `已登記 ${ids.length} 人：${note}` : `已登記：${note}`);
     };
     $('otherOk').addEventListener('click', submitOther);
     $('otherTxt').addEventListener('keydown', (e) => { if (e.key === 'Enter') submitOther(); });

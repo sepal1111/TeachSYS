@@ -13,6 +13,8 @@
     reasons: [],
     selecting: false,
     selected: new Set(),
+    seat: null,
+    view: (() => { try { return localStorage.getItem('wb_view') === 'seat' ? 'seat' : 'grid'; } catch (_) { return 'grid'; } })(),
   };
 
   const $ = (id) => document.getElementById(id);
@@ -22,7 +24,6 @@
   const todayStr = () => (typeof getTaiwanTodayDateStr === 'function' ? getTaiwanTodayDateStr() : new Date().toISOString().slice(0, 10));
   const slotLabel = () => SLOTS.find((s) => s.key === S.slot).label;
   const nameOf = (s) => (typeof getStudentDisplayName === 'function' ? getStudentDisplayName(s) : s.name);
-  const avatarOf = (s) => (typeof getStudentAvatarImgHtml === 'function' ? getStudentAvatarImgHtml(s) : '');
   const recOf = (s) => s[S.slot];
   const hm = (t) => (t ? String(t).slice(11, 16) : '');
   const tripsOf = (s) => (s.trips && s.trips[S.slot]) || [];
@@ -42,6 +43,7 @@
       const data = await API.get(`/api/whereabouts/${courseId()}?date=${S.date}`);
       S.students = data.students;
       S.reasons = data.reasons;
+      S.seat = data.seat;
       // 離開的學生可能已被刪除或換班：清掉不存在的選取
       const ids = new Set(S.students.map((s) => s.student_id));
       S.selected.forEach((id) => { if (!ids.has(id)) S.selected.delete(id); });
@@ -55,6 +57,7 @@
   function render() {
     const root = $('whereabouts-root');
     if (!root) return;
+    root.classList.toggle('wb-noon', S.slot === 'noon'); // 午休＝暖色系
     const out = S.students.filter((s) => recOf(s));
     const inCount = S.students.length - out.length;
 
@@ -69,6 +72,10 @@
             <input type="date" id="wb-date" class="input-control" style="width: auto;" value="${esc(S.date)}">
             <div id="wb-slot-group" style="display: inline-flex; gap: 4px; background: rgba(0,0,0,0.05); padding: 3px; border-radius: 10px;">
               ${SLOTS.map((s) => `<button type="button" class="btn ${s.key === S.slot ? '' : 'btn-secondary'}" data-slot="${s.key}" style="font-size: 0.88rem; padding: 6px 14px;">${s.label}</button>`).join('')}
+            </div>
+            <div id="wb-view-group" style="display: inline-flex; gap: 4px; background: rgba(0,0,0,0.05); padding: 3px; border-radius: 10px;">
+              <button type="button" class="btn ${S.view === 'grid' ? '' : 'btn-secondary'}" data-view="grid" style="font-size: 0.85rem; padding: 6px 12px;">👥 名冊</button>
+              <button type="button" class="btn ${S.view === 'seat' ? '' : 'btn-secondary'}" data-view="seat" style="font-size: 0.85rem; padding: 6px 12px;">🪑 座位表</button>
             </div>
             <button type="button" id="wb-btn-clear" class="btn btn-secondary" style="font-size: 0.85rem; padding: 6px 12px;">✅ 全班都在教室</button>
             <button type="button" id="wb-btn-select" class="btn ${S.selecting ? '' : 'btn-secondary'}" style="font-size: 0.85rem; padding: 6px 12px;">${S.selecting ? '✖ 結束多選' : '☑️ 多選'}</button>
@@ -86,7 +93,7 @@
 
         ${renderOutPanel(out)}
 
-        <div id="wb-grid" class="student-grid">${S.students.map(renderCard).join('')}</div>
+        ${renderStudents()}
       </div>
 
       <div id="wb-select-bar" style="display: ${S.selecting && S.selected.size ? 'flex' : 'none'}; position: sticky; bottom: 12px; margin-top: 12px; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap; background: var(--card-bg, #fff); border: 1.5px solid var(--primary); border-radius: 14px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.18);">
@@ -133,13 +140,39 @@
       </div>`;
   }
 
+  // 名冊（依座號）或座位表（依教室座位）顯示學生卡片；兩種檢視的點選、多選行為相同。
+  function renderStudents() {
+    const seat = S.seat;
+    const seated = S.students.filter((s) => s.seat_row != null);
+    if (S.view !== 'seat' || !seat) return `<div id="wb-grid" class="student-grid">${S.students.map(renderCard).join('')}</div>`;
+    if (!seated.length) {
+      return `<div style="padding: 14px; color: var(--text-muted);">這個班級尚未安排座位，請先到「班級管理 ➔ 座位表」排座位，或改用「名冊」檢視。</div><div id="wb-grid" class="student-grid">${S.students.map(renderCard).join('')}</div>`;
+    }
+    const at = new Map(seated.map((s) => [`${s.seat_row},${s.seat_col}`, s]));
+    let cells = '';
+    for (let r = 1; r <= seat.rows; r++) {
+      for (let c = 1; c <= seat.cols; c++) {
+        const s = at.get(`${r},${c}`);
+        cells += s ? renderCard(s) : '<div class="wb-seat-empty"></div>';
+      }
+    }
+    const unseated = S.students.filter((s) => s.seat_row == null);
+    const bb = seat.blackboard_position || 'top';
+    return `<div id="wb-grid">
+      <div class="wb-seat-wrap ${esc(bb)}">
+        <div class="wb-board">講台／黑板</div>
+        <div class="wb-seat-grid" style="grid-template-columns: repeat(${seat.cols}, minmax(110px, 1fr));">${cells}</div>
+      </div>
+      ${unseated.length ? `<div class="wb-unseated-title">尚未安排座位（${unseated.length} 人）</div><div class="student-grid">${unseated.map(renderCard).join('')}</div>` : ''}
+    </div>`;
+  }
+
   function renderCard(s) {
     const r = recOf(s);
     const sel = S.selecting && S.selected.has(s.student_id);
     const numText = `${s.student_number} 號`;
     return `
       <div class="student-card wb-card ${r ? 'wb-out' : ''} ${sel ? 'selected' : ''}" data-id="${s.student_id}">
-        <div class="student-avatar gender-${esc(s.gender)}" style="overflow: hidden; padding: 0;">${avatarOf(s)}</div>
         <div class="student-number">${numText}</div>
         <div class="student-name" title="${esc(nameOf(s))}">${esc(nameOf(s))}</div>
         <div class="wb-status ${r ? 'out' : 'in'}">${r ? `${esc(r.icon)} ${esc(r.reason_title)}${r.note ? `：${esc(r.note)}` : ''}` : '✅ 在教室'}</div>
@@ -156,6 +189,13 @@
     });
     $('wb-slot-group').querySelectorAll('button').forEach((b) =>
       b.addEventListener('click', () => { S.slot = b.dataset.slot; S.selected.clear(); render(); })
+    );
+    $('wb-view-group').querySelectorAll('button').forEach((b) =>
+      b.addEventListener('click', () => {
+        S.view = b.dataset.view;
+        try { localStorage.setItem('wb_view', S.view); } catch (_) { /* ignore */ }
+        render();
+      })
     );
     $('wb-btn-clear').addEventListener('click', clearAll);
     $('wb-btn-select').addEventListener('click', () => { S.selecting = !S.selecting; S.selected.clear(); render(); });
