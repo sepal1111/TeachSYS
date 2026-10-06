@@ -9,13 +9,16 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import QRCode from "qrcode";
 
-import { initSchema } from "./db";
+import { initSchema, prisma } from "./db";
+import { backupBeforeUpgrade } from "./backup";
 import { getBinDir, getBundleDir, getUploadsDir } from "./paths";
 import { isRequestAuthenticated, requireAuth } from "./middleware/auth";
 import { getBearerToken, verifyStudentToken } from "./middleware/studentAuth";
 import { setupRealtime } from "./realtime";
 import { autoCatch } from "./asyncRoute";
 import { getOrCreateHttpsOptions } from "./tls";
+import { clearRuntimeInfo, findRunningInstance, newShutdownToken, readRuntimeInfo, registerShutdown, requestShutdown, writeRuntimeInfo } from "./runtime";
+import { isLocalRequest } from "./middleware/localOnly";
 
 import { systemRouter } from "./routes/system";
 import { coursesRouter } from "./routes/courses";
@@ -293,6 +296,17 @@ app.get("/whereabouts", (_req, res) => {
 // --- API Routers (each router self-wraps via autoCatch() at construction time,
 // in its own file, so a rejected promise in a handler reaches the error
 // middleware below instead of crashing the whole server) ---
+// 托盤程式（TeachSYS.exe）用來安全關閉伺服器：必須來自本機，且帶有 bin/runtime.json 內的權杖。
+app.post("/api/system/shutdown", (req, res) => {
+  const info = readRuntimeInfo();
+  const token = req.get("x-teachsys-token");
+  if (!isLocalRequest(req) || !info || info.pid !== process.pid || !token || token !== info.token) {
+    res.status(403).json({ detail: "不允許的操作" });
+    return;
+  }
+  res.json({ message: "伺服器即將關閉" });
+  setTimeout(requestShutdown, 200);
+});
 app.use("/api/system", systemRouter);
 app.use("/api/courses", requireAuth, coursesRouter);
 app.use("/api/attendance", requireAuth, attendanceRouter);
@@ -426,6 +440,19 @@ process.on("unhandledRejection", (err) => console.error("[Unhandled Rejection]",
 process.on("uncaughtException", (err) => console.error("[Uncaught Exception]", err));
 
 async function main() {
+  // --background（托盤程式啟動時使用）：不開瀏覽器、不印 QR Code 橫幅。
+  const background = process.argv.includes("--background") || process.env.TEACHSYS_BACKGROUND === "1";
+
+  // 同一份資料只允許一個伺服器：已經在執行時，直接開啟既有網址後結束。
+  const existing = await findRunningInstance();
+  if (existing) {
+    console.log(`[TeachSYS] 系統已在執行中（${existing.local_url}），不重複啟動。`);
+    if (!background) openBrowser(existing.local_url);
+    process.exit(0);
+  }
+
+  // 程式有更新時，先自動備份資料庫，再執行資料庫遷移（見 backup.ts）
+  await backupBeforeUpgrade();
   await initSchema();
 
   const port = await findAvailablePort(8000);
@@ -433,9 +460,35 @@ async function main() {
   const httpServer = https.createServer(httpsOptions, app);
   setupRealtime(httpServer);
 
+  registerShutdown(
+    () =>
+      new Promise<void>((resolve) => {
+        httpServer.close(() => resolve());
+        // 既有的長連線（Socket.io 等）不會自己斷，讓 close 不必等它們
+        (httpServer as unknown as { closeAllConnections?: () => void }).closeAllConnections?.();
+        prisma.$disconnect().catch(() => undefined);
+      })
+  );
+  process.on("exit", () => clearRuntimeInfo(process.pid));
+  process.on("SIGINT", () => requestShutdown());
+  process.on("SIGTERM", () => requestShutdown());
+
   httpServer.listen(port, "0.0.0.0", async () => {
+    const localUrl = `https://localhost:${port}`;
+    writeRuntimeInfo({
+      pid: process.pid,
+      port,
+      token: newShutdownToken(),
+      local_url: localUrl,
+      lan_url: `https://${getLocalIp()}:${port}`,
+      started_at: new Date().toISOString(),
+    });
+    if (background) {
+      console.log(`[TeachSYS] 背景執行中：${localUrl}`);
+      return;
+    }
     await printBanner(port);
-    waitForServerReady(port).then(() => openBrowser(`https://localhost:${port}`));
+    waitForServerReady(port).then(() => openBrowser(localUrl));
   });
 }
 

@@ -1,5 +1,41 @@
 # CHANGELOG
 
+## [2026-10-06k] 程式更新後自動備份資料庫（資料庫遷移前）
+
+- **修改模組/檔案**：`src/backup.ts`（新增）、`src/index.ts`（啟動時在 `initSchema()` 之前呼叫 `backupBeforeUpgrade()`）、`tools/tray/TeachSysTray.cs`（托盤選單新增「開啟資料庫備份資料夾」）、`static/guide.html`、`README.md`
+- **修改類別**：功能新增 / 資料安全
+- **修改內容**：
+  1. 程式更新後第一次啟動，在資料庫遷移之前自動把資料庫備份到 `bin\backups\classroom_record_before_<版本>_<時間>.db`（用 SQLite `VACUUM INTO`，包含尚在 WAL 內的資料；失敗時退回直接複製檔案）。可攜版與安裝版都適用，不需老師手動備份。
+  2. 判斷「程式有更新」：打包版以「執行檔名稱＋檔案大小」為版本標記，記錄在 `bin\backups\.last_version`；任何重新建置（即使版本號相同）都會觸發備份。一般重新啟動、全新安裝（尚無資料庫）都不備份。
+  3. 只保留最近 10 份自動備份；備份失敗不阻擋啟動，只印出警告並在下次啟動重試。
+  4. 只備份資料庫，不含 `bin\uploads`、`bin\photo`（檔案大且升級不會更動）。
+  5. 托盤選單新增「開啟資料庫備份資料夾」，手冊與 README 補上還原步驟。
+- **驗證**：`tsc --noEmit` 通過、托盤程式可編譯；在暫存複本（不動正式資料庫）驗證：全新安裝不備份只記錄版本、同版本重新啟動不備份、模擬升級恰好產生一份備份、備份通過 SQLite 完整性檢查且含已建立的班級資料、備份後伺服器正常運作、超過 10 份時只保留最新 10 份。
+- **未驗證**：備份失敗（磁碟已滿、無寫入權限）時的實際行為（我用唯讀屬性模擬，但 Windows 資料夾唯讀屬性不會阻止寫入檔案，所以沒有真正測到失敗路徑）；備份檔的還原流程只依 SQLite 檔案特性說明，沒有實際操作；重新建置後的安裝檔內托盤選單新項目沒有實際看過。
+
+
+## [2026-10-06j] Windows 安裝版（右下角常駐）與可攜版並存
+
+- **修改模組/檔案**：
+  - 伺服器：`src/runtime.ts`（新增：`bin/runtime.json`、單一執行個體偵測、安全關閉）、`src/index.ts`（`--background` 模式、單一執行個體、`POST /api/system/shutdown`、結束時清除 runtime.json、SIGINT/SIGTERM 安全收尾）
+  - 托盤程式：`tools/tray/TeachSysTray.cs`（新增，C# 5，以 Windows 內建 `csc.exe` 編譯）、`assets/teachsys.ico`（新增）
+  - 安裝程式：`installer/TeachSYS.iss`（新增，Inno Setup 6）、`scripts/build-installer.mjs`（新增）、`build-win-installer.bat`（新增）、`package.json`（新增 `build:installer:win`）
+  - 文件：`README.md`、`static/guide.html`
+- **修改類別**：功能新增 / 部署方式
+- **修改內容**：
+  1. **安裝版**：`ClassManagerSetupV版本.exe`，預設安裝到 `C:\TeachSYS`（程式與 `bin\` 同一資料夾，老師可直接在 `C:\TeachSYS\bin\uploads` 取得學生上傳的檔案）。需管理員身分，會加入 Windows 防火牆規則（區網學生才連得進來）；可選桌面捷徑與開機自動啟動；升級只覆蓋程式檔、不動 `bin\`；解除安裝保留 `bin\`；安裝時可選擇匯入可攜版資料夾。
+  2. **托盤程式 `TeachSYS.exe`**：隱藏啟動伺服器（不開主控台）、右下角圖示與右鍵選單（開啟系統、複製學生連線網址、開啟檔案／資料／記錄資料夾、開機自動啟動開關、重新啟動伺服器、結束）；伺服器意外結束時自動重啟（1 分鐘內最多 3 次）；執行記錄寫入 `bin\logs\server.log`（超過 2MB 自動換檔）；`--exit` 供安裝／解除安裝時安全結束。
+  3. **可攜版維持不變**（`build-win.bat`、雙擊 exe、主控台與自動開瀏覽器），並共用單一執行個體保護：同一份 `bin\` 已有伺服器在跑時，再次啟動只開啟既有網址，避免兩個程序同時寫同一個 SQLite 資料庫。
+- **驗證**：`tsc --noEmit` 通過；在暫存複本（不動專案內 `release\` 與 `bin\`）實際建置安裝檔，並以「僅目前使用者」模式靜默安裝到暫存資料夾測試：伺服器背景隱藏啟動且無視窗、托盤只有 1 個且重複點捷徑不會多開、強制結束伺服器後托盤自動重啟、`--exit` 安全結束且清除 runtime.json、升級覆蓋（舊版 exe 被清除、`bin\` 內資料庫與上傳檔保留）、解除安裝（程式檔移除、`bin\` 保留）、安全關閉端點在缺權杖／錯誤權杖時回 403。
+- **未驗證**：
+  - 以管理員身分安裝時的 Windows 防火牆規則（測試是非管理員模式，該步驟被略過）與開機自動啟動選項。
+  - 「匯入既有可攜版資料」頁的實際操作畫面與複製結果（靜默安裝會略過自訂頁面）。
+  - 右下角圖示與選單的外觀與互動（只確認程序行為，沒有看畫面）；防毒軟體／SmartScreen 對未簽章的 exe 與安裝檔的反應。
+- **注意**：
+  - 建置安裝版需要 Inno Setup 6；請在專案資料夾內執行 `build-win-installer.bat`，會覆蓋 `release\` 內同版本的資料夾（可攜版執行時產生的 `bin\` 若放在 `release\ClassManagerV版本\` 內會被刪除，請勿把正式資料放在那裡）。
+  - 安裝版與可攜版若同時使用不同資料夾，各自有自己的 `runtime.json` 與資料庫，會各自佔用不同埠號。
+
+
 ## [2026-10-06i] 在位掌握：教師端學生卡片只顯示座號與姓名（移除照片）
 
 - **修改模組/檔案**：`static/js/whereabouts.js`（移除學生卡片的大頭照）、`src/routes/whereabouts.ts`（教師端 `GET /api/whereabouts/:courseId` 不再回傳 `student_code`、`gender`）

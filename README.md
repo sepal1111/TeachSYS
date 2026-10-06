@@ -21,7 +21,27 @@ npm run build   # tsc 編譯 + prisma generate
 npm start        # node dist/index.js
 ```
 
-尚未實作：`pkg`/`nexe` 封裝成單一 `.exe`，排在規劃書的「第五階段：打包與隨身碟便攜化」。
+## Windows：可攜版與安裝版
+
+兩種版本共用同一份伺服器程式，資料都放在程式旁的 `bin/`（資料庫、憑證、照片、上傳檔），差別只在啟動方式。
+
+| | 可攜版 | 安裝版 |
+|---|---|---|
+| 建置 | `build-win.bat`（`npm run build:exe:win`） | `build-win-installer.bat`（`npm run build:installer:win`，會一併產生可攜版資料夾） |
+| 輸出 | `release\ClassManagerV版本\`（整個資料夾可放隨身碟） | `release\ClassManagerSetupV版本.exe` |
+| 啟動 | 雙擊 exe，開主控台視窗並自動開瀏覽器 | 開始功能表／桌面的 TeachSYS，在背景執行，右下角通知區顯示圖示 |
+| 資料位置 | 資料夾內 `bin\` | 預設 `C:\TeachSYS\bin\`（學生上傳的檔案在 `C:\TeachSYS\bin\uploads\`） |
+| 適合 | 跑班的科任老師（跟著隨身碟走） | 固定在同一間教室的導師 |
+
+**安裝版**（`installer/TeachSYS.iss`，Inno Setup 6）：
+- 預設安裝到 `C:\TeachSYS`，需要管理員身分（為伺服器加入 Windows 防火牆規則，區網內學生的手機/平板才連得進來）。
+- 右下角托盤程式 `TeachSYS.exe`（`tools/tray/TeachSysTray.cs`，以 Windows 內建的 `csc.exe` 編譯，不需另外安裝 SDK）：隱藏啟動伺服器、伺服器意外結束時自動重啟（1 分鐘內最多 3 次）、選單可開啟系統／複製學生連線網址／開啟檔案資料夾／切換開機自動啟動／重新啟動伺服器／結束，執行記錄在 `bin\logs\server.log`。
+- 安裝程式可選擇「匯入既有可攜版資料」（複製可攜版的 `bin\`，不更動原資料夾）；升級時只覆蓋程式檔，**不動 `bin\`**；解除安裝同樣保留 `bin\`。
+- 建置需要 Inno Setup 6（<https://jrsoftware.org/isdl.php>，也可用環境變數 `ISCC_PATH` 指定 `ISCC.exe`）。
+
+**升級前自動備份資料庫**（`src/backup.ts`，兩種版本共用）：每次啟動在資料庫遷移之前，若程式版本標記（打包版為「執行檔名稱＋大小」，所以任何重新建置都算更新）和上次不同，就用 `VACUUM INTO` 把資料庫完整備份到 `bin/backups/classroom_record_before_<版本>_<時間>.db`，只保留最近 10 份；一般重新啟動不備份，全新安裝沒有資料庫也不備份。備份失敗只印警告、不阻擋啟動（下次啟動會再試）。只備份資料庫，不含 `bin/uploads`、`bin/photo`（檔案很大且升級不會更動）。還原：結束程式後把備份檔複製成 `bin/classroom_record.db`，並刪除同資料夾的 `-wal`、`-shm` 檔。
+
+**單一執行個體與背景模式**（可攜版與安裝版共用，`src/runtime.ts`）：伺服器啟動時寫入 `bin/runtime.json`（pid、埠號、安全關閉用權杖）；同一份資料已有伺服器在跑時，再次啟動只會開啟既有網址，不會另開一份（避免兩個程序同時寫同一個 SQLite 資料庫）。`--background` 參數（托盤程式使用）不開瀏覽器、不印 QR 橫幅。`POST /api/system/shutdown` 供托盤程式安全關閉伺服器：必須來自本機且帶有 runtime.json 內的權杖。
 
 ## 目錄結構
 

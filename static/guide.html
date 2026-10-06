@@ -1970,6 +1970,32 @@
             • <b>Mobile Scoring Connect</b>: the teacher scans with a phone to score on the move without typing a password, synced with the projector.</span>
           </div>
         </div>
+
+        <div class="guide-item-card">
+          <div class="guide-item-header">
+            <span class="guide-item-badge badge-primary"><span data-lang="zh">安裝版</span><span data-lang="en">INSTALLED EDITION</span></span>
+            <div class="guide-item-title">
+              <span data-lang="zh">可攜版與安裝版：右下角常駐、資料位置與升級</span>
+              <span data-lang="en">Portable vs Installed Edition: Tray Icon, Data Location & Upgrades</span>
+            </div>
+          </div>
+          <div class="guide-item-body">
+            <span data-lang="zh">• <b>可攜版</b>（跑班的科任老師）：整個資料夾放隨身碟，雙擊執行檔即可，資料在資料夾內的 <code>bin</code>。<br>
+            • <b>安裝版</b>（固定在同一間教室的導師）：執行安裝程式，預設裝到 <code>C:\TeachSYS</code>。啟動後在背景執行，<b>右下角通知區會出現圖示</b>：雙擊開啟系統；右鍵可複製學生連線網址、開啟檔案資料夾、切換「開機時自動啟動」、重新啟動伺服器或結束。<br>
+            • <b>取得學生上傳的檔案</b>：安裝版在 <code>C:\TeachSYS\bin\uploads</code>，也可從托盤選單「開啟檔案資料夾」直接開啟。<br>
+            • <b>升級</b>：直接執行新版安裝程式即可，只會覆蓋程式檔，<code>bin</code> 內的資料不會被更動；解除安裝也會保留 <code>bin</code>。<b>程式更新後第一次啟動，系統會在資料庫升級前自動備份</b>到 <code>bin\backups</code>（只保留最近 10 份；托盤選單可直接開啟備份資料夾）。如需還原：先從托盤選單「結束」，再把備份檔複製成 <code>bin\classroom_record.db</code>（並刪除同資料夾的 <code>classroom_record.db-wal</code>、<code>-shm</code>），重新啟動即可。<br>
+            • <b>從可攜版搬到安裝版</b>：安裝時在「匯入既有資料」頁選擇可攜版資料夾（裡面有 <code>bin</code> 的那一層），會把資料複製過來，原資料夾不受影響。<br>
+            • <b>防火牆</b>：安裝程式會自動允許本系統通過 Windows 防火牆，區網內的學生手機／平板才連得進來。<br>
+            • 同一份資料只會有一個伺服器在執行；再次點捷徑只會開啟既有網頁。若伺服器異常，可看 <code>bin\logs\server.log</code>。</span>
+            <span data-lang="en">• <b>Portable edition</b> (subject teachers who move between rooms): keep the whole folder on a USB drive and double-click the executable; data lives in the folder's <code>bin</code>.<br>
+            • <b>Installed edition</b> (homeroom teachers fixed in one classroom): run the installer, which defaults to <code>C:\TeachSYS</code>. It runs in the background and <b>shows an icon in the notification area</b>: double-click to open the system; right-click to copy the student connection URL, open the files folder, toggle "Start with Windows," restart the server, or quit.<br>
+            • <b>Getting students' uploaded files</b>: in the installed edition they are in <code>C:\TeachSYS\bin\uploads</code>, or use "Open files folder" from the tray menu.<br>
+            • <b>Upgrading</b>: just run the newer installer; it replaces program files only and never touches <code>bin</code>; uninstalling also keeps <code>bin</code>. <b>On the first launch after an update, the system automatically backs up the database before upgrading it</b> into <code>bin\backups</code> (the 10 most recent are kept; open the folder from the tray menu). To restore: choose "Quit" from the tray menu, copy the backup over <code>bin\classroom_record.db</code> (and delete <code>classroom_record.db-wal</code> / <code>-shm</code> in the same folder), then start again.<br>
+            • <b>Moving from portable to installed</b>: on the "Import existing data" page, choose the portable folder (the level that contains <code>bin</code>); its data is copied over and the original is left untouched.<br>
+            • <b>Firewall</b>: the installer allows the app through Windows Firewall so students' phones/tablets on the LAN can connect.<br>
+            • Only one server runs per data folder; clicking the shortcut again just opens the existing page. If something goes wrong, check <code>bin\logs\server.log</code>.</span>
+          </div>
+        </div>
       </div>
     </section>
 

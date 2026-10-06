@@ -6,10 +6,7 @@
 *.db-wal
 *.sqlite
 *.sqlite3
-bin/classroom_record.db
-bin/photo/
-bin/uploads/
-bin/certs/
+bin/*
 photo/
 uploads/
 backups/
