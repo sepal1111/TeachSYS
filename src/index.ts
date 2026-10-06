@@ -20,6 +20,7 @@ import { getOrCreateHttpsOptions } from "./tls";
 import { systemRouter } from "./routes/system";
 import { coursesRouter } from "./routes/courses";
 import { attendanceRouter } from "./routes/attendance";
+import { whereaboutsRouter, whereaboutsPublicRouter } from "./routes/whereabouts";
 import { groupsRouter } from "./routes/groups";
 import { seatingRouter } from "./routes/seating";
 import { scoresRouter } from "./routes/scores";
@@ -72,7 +73,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   if (
     p.startsWith("/static") ||
     /\.(html|js|css|json)$/.test(p) ||
-    ["", "/", "/projection", "/guide", "/student", "/student-guide", "/quick-guide", "/student-quick-guide", "/favicon.ico"].includes(p)
+    ["", "/", "/projection", "/guide", "/student", "/student-guide", "/quick-guide", "/student-quick-guide", "/whereabouts", "/favicon.ico"].includes(p)
   ) {
     res.set({
       "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
@@ -279,12 +280,25 @@ app.get("/student-quick-guide", (_req, res) => {
   }
 });
 
+// --- 在位掌握：學生自行登記頁（公開頁面，不需教師登入；資料存取需帶班級金鑰） ---
+app.get("/whereabouts", (_req, res) => {
+  const file = path.join(staticDir, "whereabouts.html");
+  if (fs.existsSync(file)) {
+    renderCachedHtml(res, file);
+  } else {
+    res.json({ message: "Whereabouts page is missing" });
+  }
+});
+
 // --- API Routers (each router self-wraps via autoCatch() at construction time,
 // in its own file, so a rejected promise in a handler reaches the error
 // middleware below instead of crashing the whole server) ---
 app.use("/api/system", systemRouter);
 app.use("/api/courses", requireAuth, coursesRouter);
 app.use("/api/attendance", requireAuth, attendanceRouter);
+app.use("/api/whereabouts", requireAuth, whereaboutsRouter);
+// 免登入的學生自行登記（以每班金鑰保護，見 routes/whereabouts.ts）
+app.use("/api/public/whereabouts", whereaboutsPublicRouter);
 app.use("/api/groups", requireAuth, groupsRouter);
 app.use("/api/seating", requireAuth, seatingRouter);
 app.use("/api/scores", requireAuth, scoresRouter);

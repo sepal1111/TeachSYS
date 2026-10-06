@@ -5204,3 +5204,23 @@ body.mobile-scoring-only #quick-group-bar .btn {
   }
 }
 
+
+/* 早自修／午休 在位掌握 */
+.student-card.wb-card { cursor: pointer; }
+.student-card.wb-out {
+  border-color: rgba(249, 115, 22, 0.55);
+  background: rgba(249, 115, 22, 0.08);
+}
+.wb-status {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.3;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.wb-status.in { color: #2f8a62; background: rgba(79, 174, 130, 0.14); }
+.wb-status.out { color: #c2410c; background: rgba(249, 115, 22, 0.16); }
+.wb-teacher { margin-top: 3px; font-size: 0.72rem; color: var(--text-muted); font-weight: 700; }

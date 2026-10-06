@@ -630,6 +630,7 @@ function initTheme() {
 const TAB_TO_CONTEXT_MAP = {
   scoring: 'live',
   attendance: 'live',
+  whereabouts: 'live',
   toolkit: 'live',
   notes: 'logs',
   journal: 'logs',
@@ -811,6 +812,9 @@ function refreshActiveTab(tabName, force = false) {
       break;
     case 'attendance':
       loadAttendanceData();
+      break;
+    case 'whereabouts':
+      if (window.Whereabouts) window.Whereabouts.load();
       break;
     case 'seating':
       loadSeatingData();

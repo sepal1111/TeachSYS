@@ -88,6 +88,7 @@
         <div class="context-subtab-group active" data-context="live" id="subtabs-group-live">
           <button class="nav-tab active" data-tab="scoring">⭐ 即時評分</button>
           <button class="nav-tab" data-tab="attendance">📋 出缺席點名</button>
+          <button class="nav-tab" data-tab="whereabouts">🚶 在位掌握</button>
           <button class="nav-tab" data-tab="toolkit">🧰 教學小工具</button>
         </div>
 
@@ -144,6 +145,7 @@
           <optgroup label="⚡ 課堂即時 (Live Teaching)" data-i18n-label="nav_context_live">
             <option value="scoring">⭐ 即時評分</option>
             <option value="attendance">📋 出缺席點名</option>
+            <option value="whereabouts">🚶 在位掌握</option>
             <option value="toolkit">🧰 教學小工具</option>
           </optgroup>
           <optgroup label="📖 學習歷程 (Learning Logs)" data-i18n-label="nav_context_logs">
@@ -281,6 +283,11 @@
           <!-- Student Attendance Cards inserted by JS -->
         </div>
       </div>
+    </section>
+
+    <!-- 2b. 早自修／午休 在位掌握 Pane -->
+    <section id="pane-whereabouts" class="tab-pane">
+      <div id="whereabouts-root"></div>
     </section>
 
     <!-- 3. 座位表編排 Pane -->
@@ -3818,6 +3825,7 @@
   <script src="/static/js/rewards.js?v=1.3"></script>
   <script src="/static/js/file-collect.js?v=1.0"></script>
   <script src="/static/js/homework-scan.js?v=1.0"></script>
+  <script src="/static/js/whereabouts.js?v=1.0"></script>
   <script src="/static/js/remote-control.js?v=3.0"></script>
 </body>
 </html>

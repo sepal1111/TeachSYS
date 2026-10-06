@@ -48,6 +48,8 @@ model Course {
   bulletinPosts    BulletinPost[]
   fileCollections  FileCollection[]
   fileCollectionItems FileCollectionItem[]
+  whereaboutsRecords  WhereaboutsRecord[]
+  whereaboutsKiosk    WhereaboutsKiosk?
   homeworkItems    HomeworkItem[]
   homeworkPlans    HomeworkPlan[]
   homeworkRecords  HomeworkRecord[]
@@ -141,6 +143,7 @@ model Student {
   leaderDiscussionLogs GroupDiscussionLog[]
   fileCollectionItems  FileCollectionItem[]
   homeworkRecords      HomeworkRecord[]
+  whereaboutsRecords   WhereaboutsRecord[]
 
   @@map("students")
 }
@@ -788,4 +791,52 @@ model WordCloudSession {
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
 
   @@map("wordcloud_sessions")
+}
+
+
+// 早自修／午休「在位掌握」：離開教室的原因（全域設定，所有班級共用）與每日登記。
+// 每筆紀錄代表「一次外出」，保留離開與回來時間，供查詢與統計。
+model WhereaboutsReason {
+  id          Int     @id @default(autoincrement())
+  title       String
+  icon        String  @default("📍")
+  teacherName String? @map("teacher_name")
+  isOther     Int     @default(0) @map("is_other")
+  isActive    Int     @default(1) @map("is_active")
+  sortOrder   Int     @default(0) @map("sort_order")
+
+  records WhereaboutsRecord[]
+
+  @@map("whereabouts_reasons")
+}
+
+model WhereaboutsRecord {
+  id         Int     @id @default(autoincrement())
+  courseId   Int     @map("course_id")
+  studentId  Int     @map("student_id")
+  date       String
+  slot       String
+  reasonId   Int?    @map("reason_id")
+  note       String?
+  outAt      String  @map("out_at")
+  // null＝目前仍在外面；回到教室時填入時間（紀錄保留，不刪除）。同一時段可有多筆（外出、回來、再外出）。
+  returnedAt String? @map("returned_at")
+
+  course  Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  student Student            @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  reason  WhereaboutsReason? @relation(fields: [reasonId], references: [id], onDelete: SetNull)
+
+  @@index([courseId, date, slot])
+  @@map("whereabouts_records")
+}
+
+// 在位掌握「學生自行登記頁」的免登入連結金鑰（每班一組；刪除這筆＝停用）。
+model WhereaboutsKiosk {
+  courseId  Int    @id @map("course_id")
+  token     String
+  createdAt String @map("created_at")
+
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@map("whereabouts_kiosks")
 }

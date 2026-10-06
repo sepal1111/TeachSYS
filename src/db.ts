@@ -570,6 +570,84 @@ export async function initSchema(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_hw_plans_course_date ON hw_plans(course_id, plan_date);"
   );
 
+  // 早自修／午休「在位掌握」（見 routes/whereabouts.ts）
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS whereabouts_reasons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT '📍',
+      teacher_name TEXT,
+      is_other INTEGER NOT NULL DEFAULT 0,
+      is_active INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+  `);
+  // whereabouts_records 由「每時段一筆（有 UNIQUE）」改為「每次外出一筆」：新增 out_at / returned_at，
+  // 並移除 UNIQUE。舊結構（沒有 returned_at 欄位）自動改名、複製資料後刪除，不會遺失紀錄。
+  const wbCols = await prisma.$queryRawUnsafe<Array<{ name: string }>>("PRAGMA table_info(whereabouts_records)");
+  const wbLegacy = wbCols.length > 0 && !wbCols.some((c) => c.name === "returned_at");
+  if (wbLegacy) {
+    await prisma.$executeRawUnsafe("DROP INDEX IF EXISTS idx_whereabouts_course_date");
+    await prisma.$executeRawUnsafe("ALTER TABLE whereabouts_records RENAME TO whereabouts_records_legacy");
+  }
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS whereabouts_records (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      course_id INTEGER NOT NULL,
+      student_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      slot TEXT NOT NULL,
+      reason_id INTEGER,
+      note TEXT,
+      out_at TEXT NOT NULL,
+      returned_at TEXT,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE,
+      FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
+      FOREIGN KEY(reason_id) REFERENCES whereabouts_reasons(id) ON DELETE SET NULL
+    );
+  `);
+  if (wbLegacy) {
+    await prisma.$executeRawUnsafe(`
+      INSERT INTO whereabouts_records (id, course_id, student_id, date, slot, reason_id, note, out_at, returned_at)
+      SELECT id, course_id, student_id, date, slot, reason_id, note, COALESCE(updated_at, date || ' 00:00:00'), NULL
+      FROM whereabouts_records_legacy
+    `);
+    await prisma.$executeRawUnsafe("DROP TABLE whereabouts_records_legacy");
+  }
+  await prisma.$executeRawUnsafe(
+    "CREATE INDEX IF NOT EXISTS idx_whereabouts_course_date ON whereabouts_records(course_id, date, slot);"
+  );
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS whereabouts_kiosks (
+      course_id INTEGER PRIMARY KEY,
+      token TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY(course_id) REFERENCES courses(id) ON DELETE CASCADE
+    );
+  `);
+  // 預設離開原因只在「第一次建立」時寫入一次（以 system_settings 旗標記錄，之後教師刪光也不會自動復原）。
+  await prisma.$executeRawUnsafe(
+    "INSERT OR IGNORE INTO system_settings (key, value) VALUES ('whereabouts_seeded', '0');"
+  );
+  const seededRows = await prisma.$queryRawUnsafe<Array<{ value: string }>>(
+    "SELECT value FROM system_settings WHERE key = 'whereabouts_seeded'"
+  );
+  if (seededRows[0]?.value !== "1") {
+    const defaults: Array<[string, string, number]> = [
+      ["棒球隊", "⚾", 0], ["羽球隊", "🏸", 0], ["合唱團", "🎤", 0], ["田徑隊", "🏃", 0],
+      ["英文訓練", "🔤", 0], ["科展", "🔬", 0], ["奧匹", "🏅", 0], ["語文訓練", "📖", 0],
+      ["糾察隊", "🦺", 0], ["其他", "📝", 1],
+    ];
+    let order = 1;
+    for (const [title, icon, isOther] of defaults) {
+      await prisma.$executeRawUnsafe(
+        "INSERT INTO whereabouts_reasons (title, icon, is_other, sort_order) VALUES (?, ?, ?, ?)",
+        title, icon, isOther, order++
+      );
+    }
+    await prisma.$executeRawUnsafe("UPDATE system_settings SET value = '1' WHERE key = 'whereabouts_seeded'");
+  }
+
   // 課堂即時公布欄：原本只存 localStorage，改為寫入資料庫（見 routes/bulletin.ts）。
   await prisma.$executeRawUnsafe(`
     CREATE TABLE IF NOT EXISTS bulletin_posts (
